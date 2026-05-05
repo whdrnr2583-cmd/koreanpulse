@@ -32,3 +32,9 @@ node_modules/
 .wrangler/
 *.tsbuildinfo
 *.log
+
+# Next.js build artefacts
+next-env.d.ts
+
+# MCPB build artefacts (published via Smithery, not git)
+dist-mcpb/

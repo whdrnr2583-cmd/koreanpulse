@@ -83,10 +83,12 @@ const ROLE_OPTIONS = [
 export default function Home() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
+  const [consent, setConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!consent) return;
     try {
       await fetch("/api/notify", {
         method: "POST",
@@ -416,9 +418,27 @@ export default function Home() {
                 </option>
               ))}
             </select>
+            <label className="flex items-start gap-2 text-xs text-zinc-400">
+              <input
+                type="checkbox"
+                required
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-0.5 accent-accent"
+              />
+              <span>
+                I agree to the{" "}
+                <a href="/privacy" className="underline hover:text-zinc-200">
+                  Privacy Policy
+                </a>{" "}
+                and consent to receive a single launch email. I understand I
+                can unsubscribe at any time.
+              </span>
+            </label>
             <button
               type="submit"
-              className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink hover:opacity-90"
+              disabled={!consent}
+              className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Notify me when Solo trial opens
             </button>
@@ -430,14 +450,46 @@ export default function Home() {
           )}
         </section>
 
-        <footer className="mt-24 text-xs text-zinc-500">
+        {/* Disclaimer — not investment advice */}
+        <section className="mt-16 rounded-md border border-zinc-800 bg-zinc-900/40 p-5 text-xs text-zinc-400">
+          <p className="font-semibold text-zinc-300">Not investment advice.</p>
+          <p className="mt-2 leading-relaxed">
+            koreanpulse provides translated and classified primary-source
+            data from Korean public filings (DART) and Korean industry news.
+            It is not investment advice and does not constitute a
+            recommendation to buy, sell, or hold any security. The service
+            performs no individualized analysis or personalized
+            recommendation. All output is general data routing intended for
+            informational purposes only. You are responsible for your own
+            investment decisions and should consult a licensed financial
+            advisor where appropriate.
+          </p>
+          <p className="mt-2 leading-relaxed text-zinc-500">
+            koreanpulse는 한국 공시시스템(DART) 및 한국 산업 뉴스의 1차
+            자료를 영어로 번역·분류하여 제공하는 데이터 서비스이며,
+            투자자문 또는 투자권유에 해당하지 않습니다.
+          </p>
+        </section>
+
+        <footer className="mt-12 text-xs text-zinc-500">
           <span>© koreanpulse · </span>
-          <a href="https://github.com/whdrnr2583-cmd/koreanpulse" className="underline hover:text-zinc-300">
+          <a
+            href="https://github.com/whdrnr2583-cmd/koreanpulse"
+            className="underline hover:text-zinc-300"
+          >
             GitHub
           </a>
           <span> · </span>
           <a href="/today.json" className="underline hover:text-zinc-300">
             JSON
+          </a>
+          <span> · </span>
+          <a href="/privacy" className="underline hover:text-zinc-300">
+            Privacy
+          </a>
+          <span> · </span>
+          <a href="/terms" className="underline hover:text-zinc-300">
+            Terms
           </a>
           <span> · AGPL source / commercial hosted</span>
         </footer>

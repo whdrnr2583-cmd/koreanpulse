@@ -176,7 +176,8 @@ Cache hits are the entire reason a $29/mo Solo plan can sustain healthy gross ma
 - DART, government data: **public, free to redistribute** with attribution.
 - Korean broker reports: **public-facing summaries only** (paywalled reports excluded).
 - No spatial / mapping data → 공간정보관리법 무관.
-- No investment advice → 자본시장법 유사투자자문업 무관 (data + summary only).
+- **Not investment advice.** koreanpulse provides translated and classified primary-source data. It is not investment advice and does not constitute a recommendation to buy, sell, or hold any security. The service performs no individualized analysis or personalized recommendation. All output is general data routing intended for informational purposes only. Korea Capital Markets Act §101 (유사투자자문업): we provide general informational data without individualized investment judgement, falling outside the registration scope (제공하는 정보가 단순히 금융관련 지식 등을 제공하는 수준).
+- Privacy + data protection: see [https://koreanpulse.dev/privacy](https://koreanpulse.dev/privacy) — covers Korea PIPA, EU GDPR, US CCPA. Terms of service: [https://koreanpulse.dev/terms](https://koreanpulse.dev/terms).
 
 ## Billing (Lemon Squeezy webhook on Cloudflare D1)
 
