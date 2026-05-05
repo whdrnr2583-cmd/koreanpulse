@@ -128,13 +128,12 @@ See `src/koreanpulse/cache.py`, `src/koreanpulse/dart.py:list_filings_cached`.
 
 ## Roadmap
 
-**Live today**: queries (DART filings, foreign-holder + activist tracking, industry news), hosted translation cache (Cloud `KOREANPULSE_CACHE_MODE=hosted`), `/today` daily snapshot, Lemon Squeezy → D1 license issuance.
+**Live today**: queries (DART filings, foreign-holder + activist tracking, industry news), hosted translation cache (Cloud `KOREANPULSE_CACHE_MODE=hosted`), `/today` daily snapshot, Lemon Squeezy → D1 license issuance, **hosted HTTP-transport gateway via [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse)** (no local install — clients connect at `koreanpulse--whdrnr2583.run.tools`).
 
 **Q3 2026 ship targets** (waitlist):
 - Watchlist polling loop (Cloudflare cron + `koreanpulse.alerts`)
 - Alert dispatch enforcement (Discord / Telegram / Slack / webhook)
 - Per-tier limit enforcement: watchlist count, alert-channel count, archive retention, seat count
-- True HTTP-transport remote MCP (no local install)
 
 **Earlier milestones**:
 - **W1–2** ✅ project skeleton, FastMCP server, DART client, agentprod integration
@@ -169,7 +168,7 @@ Two ways to run the MCP, switched via `KOREANPULSE_CACHE_MODE`. **Both require a
 
 Cache hits are the entire reason a $29/mo Solo plan can sustain healthy gross margin: the same Korean filing title gets translated once, then served to every other tenant on the same plan from KV. See [`docs/CLAUDE_DESKTOP.md`](docs/CLAUDE_DESKTOP.md) for the env-var split between modes.
 
-> **Roadmap — true remote MCP (HTTP transport, no local install).** Today every customer still runs `koreanpulse` locally. A Cloudflare Worker hosting the MCP transport directly is on the roadmap but not yet shipped — expect it after watchlist polling/dispatch lands.
+> **Hosted HTTP transport (no local install) — live today.** [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse) distributes the MCP via their hosted gateway at `https://koreanpulse--whdrnr2583.run.tools`. MCP clients (Claude Desktop, Cursor, any client supporting Streamable HTTP) can connect directly without `pip install`. The local stdio install path remains the canonical way for self-hosters and max-privacy users; a first-party Cloudflare-hosted HTTP transport is still on the roadmap for users who want the endpoint outside Smithery.
 
 ## Legal posture
 
@@ -220,11 +219,11 @@ The earlier path (Python `koreanpulse-webhook` FastAPI on Lightsail + Postgres) 
 
 Listing copy + submission checklists in [`docs/MARKETPLACE.md`](docs/MARKETPLACE.md):
 
-- [Smithery](docs/listings/SMITHERY.md) — `smithery.yaml` is in repo root, auto-imports
-- [PulseMCP](docs/listings/PULSEMCP.md) — hand-reviewed, highest signal
-- [Glama](docs/listings/GLAMA.md) — largest by volume
-- [MCP Market](docs/listings/MCPMARKET.md)
-- [Awesome MCP](docs/listings/AWESOME_MCP.md) (GitHub PR)
+- [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse) — **live**, hosted HTTP gateway included
+- [PulseMCP](docs/listings/PULSEMCP.md) — submitted (hand-reviewed)
+- [Glama](docs/listings/GLAMA.md) — submitted (pending review)
+- [Awesome MCP](https://github.com/punkpeye/awesome-mcp-servers) — [PR #5893](https://github.com/punkpeye/awesome-mcp-servers/pull/5893)
+- MCP Market — Smithery ingest (auto)
 
 Beta acquisition (50 users in 30 days) plan + crypto-native channel mix in [`docs/BETA.md`](docs/BETA.md). Demo recording script in [`docs/DEMO.md`](docs/DEMO.md). CI / PyPI release pipeline in [`docs/CI.md`](docs/CI.md).
 
