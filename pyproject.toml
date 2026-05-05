@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "koreanpulse"
-version = "0.0.0"
+version = "0.1.0"
 description = "English-first Korean equity intelligence — DART filings, foreign-holder 5%-rule flows, Korean activist filings, industry news. Free public daily web snapshot + paid MCP for AI agents."
 readme = "README.md"
 license = { text = "AGPL-3.0-or-later" }
