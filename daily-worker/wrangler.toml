@@ -1,0 +1,47 @@
+# koreanpulse-daily — Cloudflare Worker that builds a daily Korean-equity
+# dashboard and serves it as a static page at koreanpulse.dev/today.
+#
+# Cron handler runs once per market-close (KST 16:30 = UTC 07:30) and:
+#   1. Pulls today's DART filings (focus: type-D shareholding / activist).
+#   2. Pulls top etnews / 한국경제 industry headlines.
+#   3. Summarises the top 5 in English via OpenAI.
+#   4. Writes the rendered HTML + JSON snapshot to KV.
+#   5. Pushes a Discord webhook embed (free retention channel).
+#
+# Fetch handler serves /today (HTML), /today.json (machine-readable),
+# and /today/:date (history, last 30 days). All reads are KV → ~5ms.
+#
+# Free tier budget:
+#   Workers: ~150 invocations/day (1 cron + ~150 visitors)  → free 100K cap
+#   KV:      1 write/day + 1 read/visitor                   → well below 100K read / 1K write
+#   Cron:    1 trigger/day                                  → free
+#   OpenAI:  ~5 calls/day × $0.001 ≈ $0.15/month
+#   DART:    ~20 calls/day                                  → 0.05% of soft quota
+
+name = "koreanpulse-daily"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+
+# KV namespace for today's HTML, JSON snapshots, and 30-day history.
+# Create with:
+#   npx wrangler kv:namespace create DAILY
+#   npx wrangler kv:namespace create DAILY --preview
+[[kv_namespaces]]
+binding = "DAILY"
+id = "113ccc7528044c5584f9e7a58579f048"
+preview_id = "7b1196a4fce84bb39abdca6f3ad74a90"
+
+# Cron — KST 16:30 = UTC 07:30 (KOSPI close at 15:30, +1h buffer for late filings).
+[triggers]
+crons = ["30 7 * * 1-5"]
+
+[vars]
+LLM_MODEL = "gpt-5-mini"
+DART_API_BASE = "https://opendart.fss.or.kr/api"
+SITE_URL = "https://koreanpulse.dev"
+HISTORY_DAYS = "30"
+
+# Secrets (set via `wrangler secret put`):
+#   DART_API_KEY                — our DART OpenAPI key (40K calls/day)
+#   OPENAI_API_KEY              — same key as cache-worker; reuse the secret
+#   DISCORD_WEBHOOK_URL         — optional; if set, pushes the daily embed

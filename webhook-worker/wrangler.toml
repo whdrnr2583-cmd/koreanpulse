@@ -1,0 +1,47 @@
+# koreanpulse-webhook — Cloudflare Worker that handles
+#   1. Lemon Squeezy billing webhook (POST /webhook/lemonsqueezy)
+#      — HMAC-SHA256 signature verification, idempotent on meta.webhook_id,
+#      issues / upgrades / deactivates licenses in D1.
+#   2. License validation for koreanpulse-cache (POST /v1/validate)
+#      — Worker-to-Worker HMAC, charges 1 cost unit per call.
+#
+# Replaces the previous Lightsail FastAPI deployment. Whole stack now
+# 100% Cloudflare.
+#
+# Free tier budget:
+#   Workers:  ~100 req/day (LS webhook ~1/sale + cache validates / 60s)  → 100K/day cap
+#   D1:       ~50 reads + ~5 writes/day                                  → 5M reads / 100K writes/day cap
+#
+# Several orders of magnitude headroom.
+
+name = "koreanpulse-webhook"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+
+# D1 binding — license store (Postgres replacement)
+# Create with:
+#   npx wrangler d1 create koreanpulse_db
+# Then paste the returned database_id below.
+[[d1_databases]]
+binding = "DB"
+database_name = "koreanpulse_db"
+database_id = "ad451419-6f49-45d2-8708-fff71780b00a"
+
+[vars]
+# Cache mode: never time out validation cache responses longer than this.
+VALIDATE_CACHE_TTL_SECONDS = "60"
+
+# Secrets (set via `wrangler secret put`):
+#   LEMONSQUEEZY_WEBHOOK_SECRET     — HMAC secret from LS dashboard
+#   KOREANPULSE_CACHE_SHARED_SECRET — same value as in cache-worker
+#   ── Active tiers (pricing v2, 2026-05-05+) ────────────────────────────
+#   LEMONSQUEEZY_VARIANT_SOLO       — variant ID for Cloud Solo $29/mo
+#   LEMONSQUEEZY_VARIANT_ANALYST    — variant ID for Cloud Analyst $79/mo
+#   LEMONSQUEEZY_VARIANT_DESK       — variant ID for Cloud Desk $249/mo
+#   LEMONSQUEEZY_VARIANT_LIFETIME   — variant ID for Design Partner Lifetime
+#                                     ($299, 20 seats max — NOT public)
+#   ── Deprecated / back-compat (leave unset in production) ──────────────
+#   LEMONSQUEEZY_VARIANT_PRO         — historical $19/mo SKU
+#   LEMONSQUEEZY_VARIANT_STARTER     — historical
+#   LEMONSQUEEZY_VARIANT_INDIE       — historical
+#   LEMONSQUEEZY_VARIANT_ENTERPRISE  — historical

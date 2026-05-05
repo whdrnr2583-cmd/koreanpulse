@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!--
+    Square icon variant — for favicon, marketplace tile, app launcher.
+    No wordmark, just the pulse + chamfered square. 64×64 is the safe size;
+    most marketplaces accept SVG and will render down.
+  -->
+  <rect x="0" y="0" width="64" height="64" rx="12" ry="12" fill="#0E1116"/>
+  <g stroke="#F0B429" stroke-width="3" fill="none"
+     stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6,32 18,32 22,18 27,46 32,12 37,52 42,28 46,32 58,32"/>
+  </g>
+</svg>

@@ -1,0 +1,161 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/mcp-server-descriptor.json",
+  "name": "koreanpulse",
+  "displayName": "koreanpulse — English-first Korean Equity Intelligence",
+  "version": "0.0.0",
+  "description": "Get pinged in English the moment a 5%-rule filing or DART event hits a stock you care about. (Beta — watchlist polling + alert dispatch ship Q3 2026.) Today: queries (DART filings + foreign-holder + activist tracking + industry news), hosted English translation cache (no OpenAI key needed), and the public free /today snapshot are live. Q3 2026 ship targets: watchlist polling, alert dispatch (Discord / Telegram / Slack / webhook), per-tier limit enforcement, true HTTP-transport remote MCP. Cloud waitlist with locked-in launch rate: Solo $29/mo, Analyst $79/mo, Desk $249/mo — early supporters keep the rate, no auto-charge until the workflow ships. OSS self-host available.",
+  "homepage": "https://koreanpulse.dev",
+  "repository": "https://github.com/whdrnr2583-cmd/koreanpulse",
+  "license": "AGPL-3.0-or-later",
+  "icon": "https://raw.githubusercontent.com/whdrnr2583-cmd/koreanpulse/main/docs/assets/logo.svg",
+  "tags": [
+    "korea",
+    "kospi",
+    "kosdaq",
+    "dart",
+    "finance",
+    "hedge-fund",
+    "industry",
+    "research",
+    "english"
+  ],
+  "transport": {
+    "type": "stdio",
+    "command": "koreanpulse",
+    "args": []
+  },
+  "install": {
+    "pip": "pip install koreanpulse",
+    "uv": "uv pip install koreanpulse"
+  },
+  "tools": [
+    {
+      "name": "track_korean_filings",
+      "description": "Fetch recent DART filings for Korean listed companies with optional EN translation/summary."
+    },
+    {
+      "name": "lookup_corp_code",
+      "description": "Resolve a Korean company name (or partial name) to its DART corp_code."
+    },
+    {
+      "name": "resolve_stock_code",
+      "description": "Resolve a 6-digit KRX stock code to its DART corp entry."
+    },
+    {
+      "name": "search_korean_industry_news",
+      "description": "Search recent Korean industry news (etnews / 한국경제) classified into 16 industries."
+    },
+    {
+      "name": "monitor_activist_investors",
+      "description": "Watch DART type-D shareholding disclosures with Korean activist auto-tagging (KCGI, Align, Truston, Anda, Cha, Life, Platform, VIP, plus international ValueAct / Elliott)."
+    },
+    {
+      "name": "monitor_foreign_holders",
+      "description": "Watch DART type-D 5%-rule disclosures by foreign passive holders (BlackRock, Vanguard, State Street, Fidelity, T. Rowe Price, Wellington, Norges, GIC, Temasek, Goldman, JPM, Morgan Stanley, Citadel, Millennium, Bridgewater + 5 more). Leading indicator of foreign capital flow into Korean tickers."
+    },
+    {
+      "name": "koreanpulse_about",
+      "description": "Server metadata — version, available tools, corp index size."
+    }
+  ],
+  "env": [
+    {
+      "name": "DART_API_KEY",
+      "description": "Korea FSS DART OpenAPI key. Free at https://opendart.fss.or.kr/. 40,000 calls/day per key.",
+      "required": true
+    },
+    {
+      "name": "OPENAI_API_KEY",
+      "description": "OpenAI key for server-side translation/summary (default provider, gpt-5-mini).",
+      "required": false
+    },
+    {
+      "name": "ANTHROPIC_API_KEY",
+      "description": "Anthropic key, alternative provider when KOREANPULSE_TRANSLATE_PROVIDER=anthropic.",
+      "required": false
+    },
+    {
+      "name": "KOREANPULSE_CACHE_MODE",
+      "description": "'local' (OSS self-host, default — uses your own OPENAI_API_KEY) or 'hosted' (Cloud Solo/Analyst/Desk — calls koreanpulse-cache Worker for global cache + license-gated translation).",
+      "required": false
+    },
+    {
+      "name": "KOREANPULSE_LICENSE_KEY",
+      "description": "Subscription key, required when KOREANPULSE_CACHE_MODE=hosted (Cloud Solo $29/mo, Analyst $79/mo, or Desk $249/mo). Subscribe at https://koreanpulse.dev/pricing.",
+      "required": false
+    }
+  ],
+  "pricing": {
+    "public_free": {
+      "monthly_usd": 0,
+      "watchlists": 0,
+      "retention_days": 3,
+      "note": "Public web only — /today, /today.json, last-3-day archive. No login, no MCP, no alerts. SEO + funnel + AI-crawler surface."
+    },
+    "solo": {
+      "monthly_usd": 29,
+      "queries_per_month": 2000,
+      "watchlists": 5,
+      "retention_days": 30,
+      "alert_channels": 1,
+      "status": "waitlist",
+      "live_today": ["queries_per_month", "hosted_translation_cache"],
+      "ships_q3_2026": ["watchlists", "retention_days", "alert_channels", "daily_digest_dispatch"],
+      "note": "Hosted English translation cache (no OpenAI key needed). Foreign-holder + activist tracking via queries (live today). Watchlists, retention, and the 1 Discord/Telegram channel ship Q3 2026 — early supporters keep the launch rate."
+    },
+    "analyst": {
+      "monthly_usd": 79,
+      "queries_per_month": 15000,
+      "watchlists": 25,
+      "retention_days": 365,
+      "alert_channels": "multiple",
+      "status": "waitlist",
+      "live_today": ["queries_per_month", "hosted_translation_cache"],
+      "ships_q3_2026": ["watchlists", "retention_days", "alert_channels", "saved_searches", "csv_json_export"],
+      "note": "Everything in Solo plus higher query cap. Multi-channel alerts (Discord / Telegram / Email), saved searches, CSV/JSON export, priority refresh ship Q3 2026."
+    },
+    "desk": {
+      "monthly_usd": 249,
+      "queries_per_month": 100000,
+      "watchlists": "shared",
+      "seats": 3,
+      "retention_days": 365,
+      "alert_channels": "Slack / webhook",
+      "status": "waitlist",
+      "live_today": ["queries_per_month", "hosted_translation_cache", "seats"],
+      "ships_q3_2026": ["shared_watchlists", "retention_days", "alert_channels", "team_archive"],
+      "note": "Everything in Analyst plus 3 seats and 100K queries/mo (live today). Shared watchlists, team archive, Slack/webhook alerts ship Q3 2026."
+    },
+    "design_partner": {
+      "public": false,
+      "note": "Private design partner program (20-seat cap, contact-only). Not promoted on landing or in marketplace listings."
+    }
+  },
+  "oss_self_host": {
+    "cost_usd": 0,
+    "note": "AGPL source. Run the MCP locally with your own DART_API_KEY + OPENAI_API_KEY. Community support only — no alerts, no hosted archive, no shared translation cache, no account sync. Separate lane from the Cloud tiers; not a pricing tier. (Cloud customers also install the MCP locally today; a true HTTP-transport remote MCP is on the Q3 2026 roadmap.)"
+  },
+  "data_sources": [
+    {
+      "name": "DART (전자공시시스템)",
+      "url": "https://opendart.fss.or.kr/",
+      "license": "public — free to redistribute with attribution"
+    },
+    {
+      "name": "전자신문 (etnews)",
+      "url": "https://www.etnews.com/",
+      "license": "fair-use summaries with attribution + outbound link"
+    },
+    {
+      "name": "한국경제",
+      "url": "https://www.hankyung.com/",
+      "license": "fair-use summaries with attribution + outbound link"
+    }
+  ],
+  "legal_posture": {
+    "korean_news": "fair-use summaries only, no full-text republication",
+    "dart": "public data, free redistribution with attribution",
+    "broker_reports": "public-facing summaries only, paywalled reports excluded",
+    "investment_advice": "none — data + summary only (자본시장법 유사투자자문업 무관)"
+  }
+}

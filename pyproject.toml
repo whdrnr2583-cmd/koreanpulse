@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "koreanpulse"
+version = "0.0.0"
+description = "English-first Korean equity intelligence — DART filings, foreign-holder 5%-rule flows, Korean activist filings, industry news. Free public daily web snapshot + paid MCP for AI agents."
+readme = "README.md"
+license = { text = "AGPL-3.0-or-later" }
+requires-python = ">=3.10"
+keywords = [
+    "mcp", "korea", "korean", "kospi", "kosdaq",
+    "finance", "industry", "intelligence", "hedge-fund", "research",
+    "dart", "activist", "foreign-flow", "diaspora", "fastmcp",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "fastmcp>=2.0",
+    "httpx>=0.25",
+    "pydantic>=2.0",
+    "lxml>=5.0",
+    "python-dotenv>=1.0",
+    "agentprod",
+]
+
+[project.optional-dependencies]
+billing = ["fastapi>=0.110", "uvicorn>=0.27"]
+postgres = ["asyncpg>=0.29"]
+test = ["pytest>=7.0", "pytest-asyncio>=0.21", "respx>=0.20", "fastapi>=0.110"]
+dev = ["koreanpulse[billing,postgres,test]", "ruff>=0.1"]
+
+[project.urls]
+Homepage = "https://koreanpulse.dev"
+Issues = "https://github.com/whdrnr2583-cmd/koreanpulse/issues"
+
+[project.scripts]
+koreanpulse = "koreanpulse.server:main"
+koreanpulse-webhook = "koreanpulse.billing.webhook_app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/koreanpulse"]
+
+[tool.uv.sources]
+agentprod = { path = "../agentprod", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

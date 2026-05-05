@@ -1,0 +1,81 @@
+# Smithery MCP server manifest.
+# https://smithery.ai/docs/build/project-config
+
+name: koreanpulse
+displayName: koreanpulse — English-first Korean Equity Intelligence
+description: |
+  English-first Korean equity intelligence MCP. We watch your KRX
+  tickers in Korean and (Q3 2026) ping you in English when something
+  material moves — foreign-holder 5%-rule flows (BlackRock / Vanguard /
+  Norges / GIC / Temasek + 15 more), Korean activist filings (KCGI /
+  Align / ValueAct / Elliott), and major DART events — translated to
+  English on-demand. Free public daily web snapshot at
+  koreanpulse.dev/today (live today). Cloud waitlist with locked-in
+  launch rate: Solo $29/mo, Analyst $79/mo, Desk $249/mo. OSS
+  self-host available. KRX, ASIFMA, Wellington all on record that
+  English IR flow is structurally inadequate — we anchor on that gap.
+  Beta status: queries + hosted translation cache live today;
+  watchlist polling + alert dispatch ship Q3 2026.
+homepage: https://koreanpulse.dev
+repository: https://github.com/whdrnr2583-cmd/koreanpulse
+license: AGPL-3.0
+icon: https://raw.githubusercontent.com/whdrnr2583-cmd/koreanpulse/main/docs/assets/logo.svg
+
+tags:
+  - korea
+  - finance
+  - hedge-fund
+  - dart
+  - kospi
+  - research
+  - industry
+  - english
+
+# How Smithery should run the server.
+startCommand:
+  type: stdio
+  command: koreanpulse
+  args: []
+
+# Required environment variables Smithery will surface in its UI.
+env:
+  - name: DART_API_KEY
+    description: |
+      Korean Financial Supervisory Service (DART) OpenAPI key.
+      Free at https://opendart.fss.or.kr/. 40,000 calls/day per key.
+    required: true
+
+  - name: OPENAI_API_KEY
+    description: |
+      OpenAI key for server-side translation/summarization (default provider).
+      Optional — without it, tools return Korean-only fields.
+    required: false
+
+  - name: ANTHROPIC_API_KEY
+    description: |
+      Anthropic key, alternative to OpenAI for translation.
+      Set KOREANPULSE_TRANSLATE_PROVIDER=anthropic to use this instead.
+    required: false
+
+  - name: KOREANPULSE_CACHE_MODE
+    description: |
+      'local' (default, OSS self-host: BYOK OpenAI key + local JSONL
+      translation cache) or 'hosted' (Cloud Solo / Analyst / Desk:
+      route translation calls to our Cloudflare Worker, no OpenAI key
+      needed on your side, license-gated).
+    required: false
+    default: "local"
+
+  - name: KOREANPULSE_LICENSE_KEY
+    description: |
+      Required when KOREANPULSE_CACHE_MODE=hosted. Issued by Lemon
+      Squeezy on subscription (kp_…). Subscribe / join the waitlist
+      at https://koreanpulse.dev/pricing.
+    required: false
+
+  - name: KOREANPULSE_REQUIRE_LICENSE
+    description: |
+      Set to "1" in production to enforce paid license keys.
+      Off by default for local development.
+    required: false
+    default: "0"

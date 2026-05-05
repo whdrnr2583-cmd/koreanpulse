@@ -1,0 +1,39 @@
+# koreanpulse-cache — Cloudflare Worker that
+#   1. validates a license key against the koreanpulse-webhook process,
+#   2. serves cached translations / summaries from KV,
+#   3. on miss, calls OpenAI and writes the result back to KV.
+#
+# The whole thing runs on Cloudflare's free tier in production:
+#   Workers      100,000 req/day free
+#   KV           100,000 reads + 1,000 writes/day free
+#   Cache API    unmetered
+#
+# The validation hop to our own webhook server is HMAC-signed and cached for
+# 60s in the Worker's per-colocation Cache API, so each license generates at
+# most ~1 validate/min/colo of Postgres pressure.
+
+name = "koreanpulse-cache"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+
+# KV namespace for the actual translation/summary cache.
+# Create with:
+#   npx wrangler kv:namespace create TRANSLATIONS
+#   npx wrangler kv:namespace create TRANSLATIONS --preview
+# Then paste the returned IDs here.
+[[kv_namespaces]]
+binding = "TRANSLATIONS"
+id = "2b60d9f855a64cc59acaa3b17fff0522"
+preview_id = "6972ab577a1e4532910f342b3914c046"
+
+[vars]
+# URL of the koreanpulse-webhook process exposing /v1/validate.
+WEBHOOK_VALIDATE_URL = "https://api.koreanpulse.dev/v1/validate"
+LLM_PROVIDER = "openai"
+LLM_MODEL = "gpt-5-mini"
+# Soft limits applied at the Worker layer (cheap defense before the LLM call).
+MAX_INPUT_CHARS = "6000"
+
+# Secrets (never put in [vars]; use `wrangler secret put`):
+#   OPENAI_API_KEY              — the same key the Python translator uses
+#   WEBHOOK_SHARED_SECRET       — HMAC secret shared with koreanpulse-webhook

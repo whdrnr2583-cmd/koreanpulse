@@ -1,0 +1,18 @@
+{
+  "name": "koreanpulse-daily",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Cloudflare Worker — daily KRX dashboard for crypto-native rotators (DART activists + foreign trade + AI summary)",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "build-once": "wrangler dev --test-scheduled --local"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250101.0",
+    "typescript": "^5.4.0",
+    "wrangler": "^3.78.0"
+  }
+}
