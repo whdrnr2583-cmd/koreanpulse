@@ -7,6 +7,29 @@ All notable changes to koreanpulse, in version order. Format follows
 
 Building toward `v0.2.0`. The `v0.1.0` first PyPI release shipped 2026-05-05.
 
+### Legal infrastructure (2026-05-05 evening)
+
+Same-day audit + auto-implementation of regulatory mitigations before any payment is received.
+
+**Live (deployed to koreanpulse.dev)**:
+- `/privacy` — Privacy Policy covering Korea PIPA, EU GDPR, US CCPA. Collection items, lawful basis (per data type), retention periods (waitlist 24mo, paid records 5yr per Korean tax law, logs 30d), sub-processor list (Lemon Squeezy / Cloudflare / Vercel / OpenAI), data subject rights, breach notification within 72h, CPO contact (`privacy@koreanpulse.dev`).
+- `/terms` — Terms of Service. "Not investment advice" callout in Korean and English, AGPL vs hosted-data IP split, 30-day refund (Lemon Squeezy MoR), Korean Capital Markets Act §101 acceptable-use clause, Seoul Central District Court venue.
+- Landing footer: Privacy + Terms links visible on every page.
+- Landing form: required consent checkbox; submit button disabled until consent given (GDPR + PIPA opt-in compliance).
+- Landing body: dedicated "Not investment advice" disclaimer block, both Korean and English.
+- README §Legal posture: explicit citation of §101 self-classification ("단순 금융 관련 지식 제공"), pointers to /privacy and /terms.
+
+**Reference document**: `_workspace/legal_audit_2026-05-05.md` — full risk matrix, mitigation copy templates, Korean PIPA §30 required items, US Investment Advisers Act §202(a)(11)(D) publisher-exception three-prong test (Lowe v. SEC, 1985).
+
+**Pending user action** (cannot be automated):
+- Korean business registration (홈택스 → 간이과세자, ~30 minutes online) immediately before first payment.
+- `privacy@koreanpulse.dev` and `legal@koreanpulse.dev` email aliases (Cloudflare Email Routing or Gmail forwarding).
+- Optional: 1-hour consultation with a Korean Capital Markets Act lawyer (~₩200,000) after the first 5 paid signups, to validate the §101 self-classification and Korean news fair-use posture in writing.
+
+**Pending git push**: commit `e72a565` is committed locally but not pushed — the PAT was revoked end-of-day. Next session, after a fresh PAT (with `repo` + ideally `workflow` scope), `git push` will sync this and any subsequent commits.
+
+
+
 ## [v0.1.0] — 2026-05-05
 
 First public release. End of bootstrap; start of beta acquisition.
