@@ -129,9 +129,12 @@ A few things that didn't fit:
   lands then. Today's enforced tier delta is the monthly query cap and
   seat count only; everything else on the pricing card is a paper limit
   until polling ships.
-- True remote MCP (HTTP transport, no local install) is also Q3 2026.
-  Cloud customers today still `pip install koreanpulse` locally — only
-  translation calls leave the machine, and only to our Worker.
+- Hosted HTTP-transport endpoint is live today via Smithery
+  (smithery.ai/servers/whdrnr2583/koreanpulse — `koreanpulse--whdrnr2583.run.tools`).
+  Clients that speak Streamable HTTP can connect with no `pip install` at
+  all. Local stdio remains the canonical path for self-hosters and
+  max-privacy users; a first-party Cloudflare-hosted HTTP transport is
+  still on the roadmap for users who want the endpoint outside Smithery.
 - Day job: I run a live Korean automated trading system. Koreanpulse fell
   out of the same data pipeline I built for myself.
 ```
