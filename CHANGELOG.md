@@ -5,7 +5,66 @@ All notable changes to koreanpulse, in version order. Format follows
 
 ## [Unreleased]
 
-Pre-release, building on `main`. The first tagged version will be `v0.1.0`.
+Building toward `v0.2.0`. The `v0.1.0` first PyPI release shipped 2026-05-05.
+
+## [v0.1.0] — 2026-05-05
+
+First public release. End of bootstrap; start of beta acquisition.
+
+### Released
+
+- **PyPI**: `koreanpulse 0.1.0` (https://pypi.org/project/koreanpulse/0.1.0/)
+- **PyPI**: `agentprod 0.0.1` (https://pypi.org/project/agentprod/0.0.1/) — separate repo, MIT, required dep
+- **GitHub**: public repo at `https://github.com/whdrnr2583-cmd/koreanpulse` (AGPL-3.0)
+- **Production**: domain `koreanpulse.dev` registered + 4 surfaces live —
+  `/` (Vercel landing), `/today` + `/today.json` + `/today/{date}` (daily-worker
+  via Cloudflare route), `cache.koreanpulse.dev` (cache-worker), `api.koreanpulse.dev`
+  (webhook-worker, Lemon Squeezy + license validate)
+- **Smithery**: `whdrnr2583/koreanpulse` published with hosted HTTP gateway at
+  `koreanpulse--whdrnr2583.run.tools` — closes the "true HTTP-transport remote
+  MCP, no `pip install`" gap that was originally a Q3 2026 ship target
+- **Awesome MCP**: PR #5893 open with 🤖🤖🤖 fast-track marker
+- **Glama**: server submitted, pending hand-review
+- **PulseMCP**: submission email sent to hello@pulsemcp.com (weekly ingest cycle)
+- **Lemon Squeezy**: 4 variants registered (Solo $29 / Analyst $79 / Desk $249 /
+  Lifetime $299 private). Application under merchant review with Shahan@LS;
+  follow-up requested overview / pricing / demo, replied 2026-05-05
+- **D1 license database**: `0001_licenses.sql` + `0002_pricing_v2.sql` migrations
+  applied to remote
+- **Cloudflare secrets**: 6 in webhook-worker, 2 in cache-worker, 3 in
+  daily-worker — all rotated to fresh OpenAI key (the original key was 401)
+
+### Reconciled
+
+- **Copy ↔ code mismatch fixed**: README + HN_LAUNCH no longer claim "true
+  HTTP-transport remote MCP is Q3 2026 ship target" — Smithery hosted gateway
+  delivers it today. Watchlist polling + alert dispatch + per-tier limit
+  enforcement remain Q3 2026 (unchanged, real ship target).
+- **Distribution / marketplaces section** in README updated with live URLs
+  for Smithery, Glama, PulseMCP, Awesome PR, MCP Market.
+
+### Verified end-to-end
+
+- LS webhook synthesised flow (subscription_created → license issued → /v1/validate
+  → KV translation → subscription_cancelled → license inactive) all 7 cases pass
+- cache-worker /v1/translate against real OpenAI: translate ✓, summarize ✓, KV
+  cache hit ✓, bad license rejected with 402 ✓
+- daily-worker /today.json + /today HTML + /today/{date} archive all 200, route
+  patterns at `koreanpulse.dev/today` (exact) + `/today/*` + `/today.json`
+- `pip install koreanpulse` resolves via PyPI (agentprod auto-pulled as transitive)
+
+### Pending — next session
+
+- Demo video (Loom, 60-90 sec) — for LS Shahan follow-up by 2026-05-12
+- Daily cron monitoring: confirm `/today.json` `takeaway` / `activist_filings`
+  / `foreign_flows` populated post OpenAI key rotation (next cron 2026-05-06
+  UTC 07:30)
+- Multiplier DM (Sanghyun Park / Douglas Kim) Wed–Thu 09:00–11:00 KST
+- Show HN: gated on 3 consecutive successful cron builds — earliest viable
+  date 2026-05-12 or 2026-05-13 (Tue/Wed)
+- GitHub PAT + PyPI token revoke (channel-exposed; both single-use)
+
+
 
 ### Pre-domain-registration consistency sweep (2026-05-05 round 4)
 
