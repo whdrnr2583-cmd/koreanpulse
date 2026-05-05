@@ -328,6 +328,19 @@ export default function Home() {
             so no OpenAI key is needed on your side. Enterprise / SLA: contact
             us.
           </p>
+          <p className="mt-3 text-xs text-zinc-500">
+            By subscribing you agree to our{" "}
+            <a href="/terms" className="underline hover:text-zinc-300">
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a href="/privacy" className="underline hover:text-zinc-300">
+              Privacy Policy
+            </a>
+            . koreanpulse provides data only —{" "}
+            <strong className="text-zinc-300">not investment advice</strong>{" "}
+            (자본시장법 §101 면제 영역).
+          </p>
         </section>
 
         {/* Run it yourself (OSS) — separate, below pricing */}

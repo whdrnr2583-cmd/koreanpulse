@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Privacy / data-protection inquiry
+    url: mailto:privacy@koreanpulse.dev
+    about: For PIPA / GDPR / CCPA rights (access, deletion, portability) — not a public issue.
+  - name: Legal / Terms inquiry
+    url: mailto:legal@koreanpulse.dev
+    about: For Terms of Service or licensing questions — not a public issue.
+  - name: Public daily snapshot
+    url: https://koreanpulse.dev/today
+    about: Free English digest of Korean filings + activist + foreign holders, updated KST 16:30 weekdays.
+  - name: Smithery hosted gateway
+    url: https://smithery.ai/servers/whdrnr2583/koreanpulse
+    about: Use the MCP without local install via the Smithery hosted endpoint.
