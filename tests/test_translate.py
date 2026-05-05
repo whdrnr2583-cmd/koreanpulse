@@ -5,9 +5,8 @@ import json
 import httpx
 import pytest
 
-from koreanpulse.cache import FileCache, NullCache
+from koreanpulse.cache import FileCache
 from koreanpulse.translate import (
-    PROVIDER_DEFAULTS,
     TranslationError,
     Translator,
 )

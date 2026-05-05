@@ -4,7 +4,6 @@ import httpx
 import pytest
 
 from koreanpulse.alerts import (
-    AlertResult,
     Channel,
     detect_channel,
     send_alert,

@@ -8,7 +8,6 @@ import pytest
 import koreanpulse.dart as dart_mod
 from koreanpulse.cache import FileCache
 from koreanpulse.dart import (
-    DART_HARD_DAILY_LIMIT,
     _ttl_for_query,
     daily_usage_snapshot,
     list_filings_cached,

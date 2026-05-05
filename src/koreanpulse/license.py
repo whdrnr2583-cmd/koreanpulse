@@ -169,7 +169,7 @@ class InMemoryLicenseStore:
             ]
         if not matches:
             return None
-        matches.sort(key=lambda l: l.created_at, reverse=True)
+        matches.sort(key=lambda lic: lic.created_at, reverse=True)
         return matches[0]
 
     async def next_lifetime_seq(self) -> int:

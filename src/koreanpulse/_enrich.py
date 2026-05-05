@@ -9,7 +9,6 @@ these from inside their main flow when `translate=True`.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from koreanpulse.translate import Translator
 

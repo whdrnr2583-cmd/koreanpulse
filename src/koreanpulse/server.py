@@ -29,7 +29,6 @@ from koreanpulse.cache import FileCache
 from koreanpulse.corp_code import (
     CorpEntry,
     ensure_index_loaded,
-    lookup_by_corp_code,
     lookup_by_name,
     lookup_by_stock_code,
 )
