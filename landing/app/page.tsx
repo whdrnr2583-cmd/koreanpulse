@@ -8,12 +8,14 @@ const PRICING = [
     price: "$29/mo",
     audience: "Individual traders, solo analysts",
     features: [
+      "Unlocks 2 paid MCP tools: monitor_activist_investors + monitor_foreign_holders",
+      "Korean activist filer match — KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform / ValueAct / Elliott",
+      "Foreign-holder allowlist — BlackRock / Vanguard / Norges / GIC / Temasek / Goldman / JPM + 13 more",
       "Hosted translation cache (no OpenAI key needed)",
       "~2,000 queries/mo (live today)",
       "5 watchlists (Q3 2026)",
       "30-day archive search (Q3 2026)",
       "1 Discord or Telegram alert channel (Q3 2026)",
-      "Foreign-holder + activist tracking (live today)",
       "Daily English digest (live today)",
     ],
   },
@@ -23,7 +25,7 @@ const PRICING = [
     audience: "Boutique fund analysts, paid-research-budget retail",
     highlighted: true,
     features: [
-      "Everything in Solo",
+      "Everything in Solo (2 paid MCP tools + classification)",
       "~15,000 queries/mo (live today)",
       "25 watchlists (Q3 2026)",
       "1-year archive search (Q3 2026)",
@@ -38,7 +40,7 @@ const PRICING = [
     price: "$249/mo",
     audience: "Small research teams, boutique long/short desks",
     features: [
-      "Everything in Analyst",
+      "Everything in Analyst (2 paid MCP tools + classification)",
       "~100,000 queries/mo (live today)",
       "3 seats, shared watchlists (Q3 2026)",
       "Slack / webhook alerts (Q3 2026)",
@@ -309,7 +311,94 @@ export default function Home() {
             tier that matches how many tickers you&apos;ll watch and how many
             channels you&apos;ll want pinged once polling/dispatch ships.
           </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+
+          {/* 3b — Free vs Paid comparison box (clarify what subscribing actually unlocks) */}
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-md border border-zinc-800 p-5">
+              <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                What you get without a license
+              </div>
+              <div className="mt-1 text-lg font-semibold text-zinc-200">
+                5 free MCP tools — raw DART surface
+              </div>
+              <ul className="mt-3 space-y-1.5 text-sm text-zinc-400">
+                <li>· <code>track_korean_filings</code> — raw DART filings, optionally translated</li>
+                <li>· <code>lookup_corp_code</code> — Korean name → DART corp code</li>
+                <li>· <code>resolve_stock_code</code> — KRX 6-digit ticker → corp entry</li>
+                <li>· <code>search_korean_industry_news</code> — etnews / 한국경제 RSS, 16 industries</li>
+                <li>· <code>koreanpulse_about</code> — server info, free vs paid tool list</li>
+              </ul>
+              <p className="mt-3 text-xs text-zinc-500">
+                No signup, no API key. Connect via{" "}
+                <code>https://mcp.koreanpulse.dev/mcp</code> from ChatGPT or
+                Claude.ai and these answer immediately.
+              </p>
+            </div>
+            <div className="rounded-md border border-amber-700/50 bg-amber-500/5 p-5">
+              <div className="text-xs font-semibold uppercase tracking-wide text-amber-300">
+                What Solo $29/mo+ unlocks
+              </div>
+              <div className="mt-1 text-lg font-semibold text-zinc-100">
+                2 paid MCP tools — classification work
+              </div>
+              <ul className="mt-3 space-y-1.5 text-sm text-zinc-300">
+                <li>
+                  · <code>monitor_activist_investors</code> — Korean activist
+                  filer match (KCGI, Align Partners, Truston, Anda, Cha, VIP,
+                  Life, Platform, ValueAct, Elliott)
+                </li>
+                <li>
+                  · <code>monitor_foreign_holders</code> — global allowlist
+                  match (BlackRock, Vanguard, Norges, GIC, Temasek, State
+                  Street, Fidelity, Capital Group, T. Rowe Price, Wellington,
+                  Goldman, JPMorgan, Morgan Stanley, Citadel, Millennium,
+                  Bridgewater + others)
+                </li>
+              </ul>
+              <p className="mt-3 text-xs text-zinc-400">
+                These two classifications are not derivable from the raw DART
+                feed — they require a maintained allowlist + Korean-name
+                normalisation + filer-of-record disambiguation. That work is
+                what your $29/mo pays for.
+              </p>
+            </div>
+          </div>
+
+          {/* 3e — what the paid gate actually looks like in your AI client (live demo) */}
+          <div className="mt-6 rounded-md border border-zinc-800 bg-zinc-950/50 p-5">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              What the paid gate looks like in your AI client (live, 2026-05-07)
+            </div>
+            <p className="mt-2 text-sm text-zinc-400">
+              When a Claude.ai or ChatGPT user asks{" "}
+              <em>&quot;what activist filings happened on Samsung Electronics
+              this week?&quot;</em> without a Koreanpulse license, the
+              hosted endpoint refuses to fall back silently. Claude.ai
+              renders this verbatim:
+            </p>
+            <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded bg-black/60 p-4 text-xs text-zinc-200">
+{`I need a Koreanpulse license to identify activist investor filings on
+Samsung Electronics.
+
+The monitor_activist_investors tool that identifies known activist
+filers (KCGI, Align Partners, Truston, Anda, VIP, Cha, Life, Platform,
+ValueAct, Elliott, etc.) is a paid-tier feature ($29/mo Solo plan).
+This classification work isn't available from raw DART filings alone.
+
+To subscribe: https://buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB
+
+Once you have a license key, I can fetch Samsung Electronics' recent
+activist filings from this week. Would you like to sign up?`}
+            </pre>
+            <p className="mt-3 text-xs text-zinc-500">
+              Verified end-to-end against Claude.ai 2026-05-07. ChatGPT
+              behaviour varies — its system prompt sometimes routes around
+              the gate via web search. For the strongest paid-tool UX, use
+              Claude.ai or the OpenAI Responses API directly.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-3">
             {PRICING.map((p) => (
               <div
                 key={p.name}
