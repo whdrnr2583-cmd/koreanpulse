@@ -326,11 +326,13 @@ async def monitor_foreign_holders(
     managers and sovereign wealth funds.
 
     Distinct from `monitor_activist_investors` because passive holders
-    (BlackRock, Vanguard, Norges, GIC, Temasek) signal *allocation* rather
-    than *governance pressure*. Their filings are a leading indicator of
-    foreign capital flow into a Korean ticker — when a global manager
-    crosses 5% in a KOSPI/KOSDAQ name, English-data audiences treat it
-    as a buy / sell signal regardless of the manager's intent.
+    (BlackRock, Vanguard, Norges, GIC, Temasek) indicate *allocation*
+    rather than *governance pressure*. Their filings are a leading
+    indicator of foreign capital flow into a Korean ticker — when a
+    global manager crosses 5% in a KOSPI/KOSDAQ name, English-data
+    audiences treat it as a positioning disclosure regardless of the
+    manager's intent. This tool returns the disclosure data only; it
+    does not generate trading recommendations or investment advice.
 
     Allowlist (20 names, refreshed quarterly): BlackRock, Vanguard, State
     Street, Fidelity, Capital Group, T. Rowe Price, Wellington, Matthews

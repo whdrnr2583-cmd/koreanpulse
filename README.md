@@ -10,6 +10,8 @@
 
 > **For AI/MCP agent builders.** koreanpulse plugs Korean equity primary sources into your existing Claude Desktop / Cursor / FastMCP agent — same MCP shape your agent already uses for US data. `pip install koreanpulse` + 4-line config, or hosted via Smithery without local install at [smithery.ai/servers/whdrnr2583/koreanpulse](https://smithery.ai/servers/whdrnr2583/koreanpulse). The 7 tools surface DART filings, foreign-holder 5%-rule flows, Korean activist filings, and 16-sector industry news as typed function calls; the rest of your trading-agent stack stays unchanged.
 
+> **Claude.ai / ChatGPT (remote MCP).** Connect koreanpulse as a remote MCP server from Claude.ai (custom connectors) or ChatGPT developer mode using the Smithery hosted endpoint `koreanpulse--whdrnr2583.run.tools`. Read-only — surfaces filings and disclosures only. No trading execution, no investment advice.
+
 ---
 
 ## Status
