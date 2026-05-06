@@ -14,16 +14,6 @@ from __future__ import annotations
 import logging
 import os
 from datetime import date, datetime, timedelta, timezone
-
-# DART filings are stamped in KST (UTC+9). When a US/EU user asks for
-# "today" or "last 7 days" the window must follow DART's clock, not the
-# caller's local one — otherwise we'd show empty/stale windows for half
-# the planet.
-_KST = timezone(timedelta(hours=9))
-
-
-def _kst_today() -> date:
-    return datetime.now(_KST).date()
 from typing import Optional
 
 from agentprod import CostTracker
@@ -50,6 +40,17 @@ from koreanpulse.license import (
 from koreanpulse.models import ActivistFiling, Article, Filing, ForeignHolderFiling
 from koreanpulse.news import fetch_industry_news
 from koreanpulse.translate import Translator
+
+# DART filings are stamped in KST (UTC+9). When a US/EU user asks for
+# "today" or "last 7 days" the window must follow DART's clock, not the
+# caller's local one — otherwise we'd show empty/stale windows for half
+# the planet.
+_KST = timezone(timedelta(hours=9))
+
+
+def _kst_today() -> date:
+    return datetime.now(_KST).date()
+
 
 logger = logging.getLogger(__name__)
 
