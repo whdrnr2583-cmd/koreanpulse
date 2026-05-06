@@ -26,8 +26,9 @@ import {
   type License,
   type Plan,
 } from "./license";
+import { sendLicenseEmail, type EmailEnv } from "./email";
 
-export interface PolarEnv {
+export interface PolarEnv extends EmailEnv {
   DB: D1Database;
   POLAR_WEBHOOK_SECRET: string;
   POLAR_PRODUCT_SOLO?: string;
@@ -280,6 +281,7 @@ async function onSubscriptionActive(env: PolarEnv, a: SubArgs): Promise<HandlerR
   const subId = String(a.data.id ?? "");
 
   if (existing) {
+    const previousPlan = existing.plan;
     existing.plan = plan;
     existing.active = true;
     existing.metadata = {
@@ -293,6 +295,15 @@ async function onSubscriptionActive(env: PolarEnv, a: SubArgs): Promise<HandlerR
       existing.metadata.self_description = a.selfDescription;
     }
     await upsertLicense(env.DB, existing);
+    // Re-email only if the plan changed (don't spam on every status flip).
+    if (previousPlan !== plan) {
+      await sendLicenseEmail(env, {
+        to: existing.customer_email,
+        license_key: existing.key,
+        plan,
+        is_lifetime: existing.is_lifetime,
+      });
+    }
     return {
       ok: true,
       action: "upgraded",
@@ -323,6 +334,15 @@ async function onSubscriptionActive(env: PolarEnv, a: SubArgs): Promise<HandlerR
     updated_at: now,
   };
   await upsertLicense(env.DB, lic);
+  // Fire-and-forget license-key email. Non-throwing — webhook ack stays
+  // ok=true even if Resend is down or unconfigured (D1 row is the source
+  // of truth; operator can replay manually).
+  await sendLicenseEmail(env, {
+    to: lic.customer_email,
+    license_key: lic.key,
+    plan,
+    is_lifetime: lic.is_lifetime,
+  });
   return {
     ok: true,
     action: "issued",
