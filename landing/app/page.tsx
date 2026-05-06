@@ -322,7 +322,23 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <p className="mt-4 text-xs text-zinc-500">
+          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <a
+              href="https://buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-ink hover:opacity-90"
+            >
+              Subscribe via Polar →
+            </a>
+            <a
+              href="#waitlist"
+              className="rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-medium text-zinc-200 hover:bg-zinc-900"
+            >
+              Or join the waitlist (free)
+            </a>
+          </div>
+          <p className="mt-6 text-xs text-zinc-500">
             Annual billing −20% at launch. Cloud customers still install the
             local MCP (one `pip install` + 4-line Claude Desktop config); the
             Cloudflare Worker holds our OpenAI key and validates your license,
@@ -402,7 +418,7 @@ export default function Home() {
         </section>
 
         {/* Email capture with role */}
-        <section className="mt-20">
+        <section id="waitlist" className="mt-20 scroll-mt-20">
           <h2 className="text-2xl font-semibold">Get notified at launch</h2>
           <p className="mt-2 text-sm text-zinc-400">
             One email when the Solo trial opens and the marketplaces accept us.
