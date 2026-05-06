@@ -150,7 +150,8 @@ export default function Home() {
             English flow off Korean primary sources is structurally inadequate.
             Bloomberg charges $24K/yr and still misses the front page of
             전자신문. We translate, classify, and route the same data into
-            your Discord / Telegram / inbox.
+            your Discord / Telegram / inbox — or call it as MCP tools from
+            Claude, Cursor, or your own AI agent.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
