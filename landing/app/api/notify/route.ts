@@ -1,21 +1,21 @@
 // Email-capture endpoint with optional self-described role.
 // Captures the audience composition signal we need for BETA.md decision matrix.
 //
-// Wire to a real provider before launch:
-//   - Buttondown:  POST https://api.buttondown.email/v1/subscribers
-//   - ConvertKit:  POST https://api.convertkit.com/v3/forms/<id>/subscribe
-//   - Lemon Squeezy: not built for this — use Buttondown
-//
-// For now we just log to stdout (surfaces in Vercel function log).
+// Persistence:
+//   - SIGNUPS_WEBHOOK_URL (Vercel env): a webhook that receives every signup.
+//     Set to a Discord/Slack/Telegram webhook for live ping + archive, or to
+//     a Buttondown/Resend ingest URL once the list is wired. The forward is
+//     fire-and-forget so a bad endpoint never blocks the user response.
+//   - console.log: always emitted as a safety net in Vercel function logs.
 
 import { NextResponse } from "next/server";
 
 const ALLOWED_ROLES = new Set([
-  "analyst",       // foreign / boutique / hedge fund / SMB analyst covering Korea
-  "journalist",    // K-content / EM journalist
-  "developer",     // building tools, MCP-curious
-  "rotator",       // crypto-native rotating into KRX (the original Jay persona)
-  "diaspora",      // Korean-American / overseas Korean investor
+  "analyst",
+  "journalist",
+  "developer",
+  "rotator",
+  "diaspora",
   "other",
 ]);
 
@@ -32,23 +32,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad email" }, { status: 400 });
   }
 
-  // Role is optional — empty / unknown values just become "unknown" so the
-  // bucket exists in the analytics layer.
   const rawRole = (body.role || "").trim().toLowerCase();
   const role = ALLOWED_ROLES.has(rawRole) ? rawRole : "unknown";
+  const ts = new Date().toISOString();
 
-  // TODO: pipe into your real provider with both email + role tags.
-  console.log(`[koreanpulse-notify] signup email=${email} role=${role}`);
+  console.log(`[koreanpulse-notify] signup email=${email} role=${role} ts=${ts}`);
 
-  // Example wiring (uncomment and set BUTTONDOWN_TOKEN env on Vercel):
-  // await fetch("https://api.buttondown.email/v1/subscribers", {
-  //   method: "POST",
-  //   headers: {
-  //     "Authorization": `Token ${process.env.BUTTONDOWN_TOKEN}`,
-  //     "Content-Type": "application/json",
-  //   },
-  //   body: JSON.stringify({ email, tags: [`role:${role}`] }),
-  // });
+  const forwardUrl = process.env.SIGNUPS_WEBHOOK_URL;
+  if (forwardUrl) {
+    void fetch(forwardUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        // Discord/Slack-compatible field
+        content: `📥 koreanpulse signup — ${email} (role: ${role})`,
+        // Generic ingest payload
+        email,
+        role,
+        ts,
+        source: "koreanpulse.dev/landing",
+      }),
+    }).catch((err) => {
+      console.warn("[koreanpulse-notify] forward failed:", err);
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

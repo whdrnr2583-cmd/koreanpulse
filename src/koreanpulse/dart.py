@@ -227,7 +227,9 @@ def _ttl_for_query(end_de: date) -> int:
     - end_de is past 1–6 days ago → 1 hour (recent, may be amended)
     - end_de is past ≥7 days ago → 24 hours (effectively immutable)
     """
-    today = date.today()
+    # KST clock — DART filings stamp in KST and the freshness cutoff for
+    # "today's window" must follow that, not the caller's local timezone.
+    today = datetime.now(timezone(timedelta(hours=9))).date()
     if end_de >= today:
         return 60
     days_old = (today - end_de).days

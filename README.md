@@ -14,7 +14,7 @@
 
 ## Status
 
-**Pre-alpha (v0.0.0).** 7 MCP tools shipped. 181 tests pass. Beta/waitlist tone — watchlist polling + alert dispatch ship Q3 2026. Beta acquisition plan in `docs/BETA.md`.
+**Pre-alpha (v0.1.3).** 7 MCP tools shipped. 181 tests pass, 1 skipped. Beta/waitlist tone — watchlist polling + alert dispatch ship Q3 2026. Beta acquisition plan in `docs/BETA.md`.
 
 ---
 
@@ -54,13 +54,13 @@ The free daily snapshot at [`/today`](https://koreanpulse.dev/today) (no login, 
 
 ## Pricing
 
-> 🚧 **Beta — lock-in pricing for waitlist.** Solo $29 / Analyst $79 / Desk $249. Queries + hosted translation cache are live today. Watchlist polling, alert dispatch, seat enforcement, and per-tier retention windows ship Q3 2026. Today the **only runtime-enforced difference** between tiers is the **monthly query cap (2K / 15K / 100K)**; seat counts, watchlist counts, alert-channel limits, and archive-retention windows are paper limits until the polling/dispatch loop lands. Early supporters keep the launch rate — no auto-charge until the workflow ships.
+> 🚧 **Beta — lock-in pricing for waitlist.** Solo $29 / Analyst $79 / Desk $249. The hosted translation cache + license validation path are wired and verified end-to-end; the monthly query cap (2K / 15K / 100K) is metered server-side and switches to a hard cap once the first paid signup lands and per-tier counters are sealed. Watchlist polling, alert dispatch, seat enforcement, and per-tier retention windows ship Q3 2026. Until then, seat counts, watchlist counts, alert-channel limits, and archive-retention windows are paper limits. Early supporters keep the launch rate — no auto-charge until the workflow ships.
 
 | Tier | $/mo | Watchlists | Queries/mo | Archive | Alert channels |
 |---|---|---|---|---|---|
-| **Cloud Solo** | **29** | 5 *(Q3 2026)* | ~2,000 *(live)* | 30 days *(Q3 2026)* | 1 Discord or Telegram *(Q3 2026)* |
-| **Cloud Analyst** | **79** | 25 *(Q3 2026)* | ~15,000 *(live)* | 1 year *(Q3 2026)* | Multi (Discord / Telegram / Email) *(Q3 2026)* |
-| **Cloud Desk** | **249** | shared, 3 seats *(Q3 2026)* | ~100,000 *(live)* | team archive *(Q3 2026)* | Slack / webhooks *(Q3 2026)* |
+| **Cloud Solo** | **29** | 5 *(Q3 2026)* | ~2,000 *(metered)* | 30 days *(Q3 2026)* | 1 Discord or Telegram *(Q3 2026)* |
+| **Cloud Analyst** | **79** | 25 *(Q3 2026)* | ~15,000 *(metered)* | 1 year *(Q3 2026)* | Multi (Discord / Telegram / Email) *(Q3 2026)* |
+| **Cloud Desk** | **249** | shared, 3 seats *(Q3 2026)* | ~100,000 *(metered)* | team archive *(Q3 2026)* | Slack / webhooks *(Q3 2026)* |
 
 Annual billing: **−20%** at launch. 30-day refund.
 

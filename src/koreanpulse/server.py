@@ -13,7 +13,17 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+
+# DART filings are stamped in KST (UTC+9). When a US/EU user asks for
+# "today" or "last 7 days" the window must follow DART's clock, not the
+# caller's local one — otherwise we'd show empty/stale windows for half
+# the planet.
+_KST = timezone(timedelta(hours=9))
+
+
+def _kst_today() -> date:
+    return datetime.now(_KST).date()
 from typing import Optional
 
 from agentprod import CostTracker
@@ -103,7 +113,9 @@ async def track_korean_filings(
         filing_type: optional one-letter code:
             A=periodic, B=major event, C=issuance, D=shareholding,
             E=other, F=audit, G=fund, H=ABS, I=exchange, J=FTC.
-        limit: max filings to return (≤100).
+        limit: max filings to return (≤100). DART returns most-recent first,
+            so on a busy window the older end of the range is dropped first.
+            Narrow `days` or `filing_type` if you need older items.
         translate: True to fill `title_en` via server-side LLM (cached).
         summarize: True to fill `summary_en` (≤200 words). Costs more — use
             sparingly. Long-form analysis should be done by the client LLM.
@@ -115,7 +127,7 @@ async def track_korean_filings(
     await _gate(license_key, units=1 + (1 if summarize else 0))
 
     days = max(1, min(days, 30))
-    end_de = date.today()
+    end_de = _kst_today()
     bgn_de = end_de - timedelta(days=days)
 
     filings = await list_filings_cached(
@@ -258,7 +270,7 @@ async def monitor_activist_investors(
     await _gate(license_key, units=1 + (1 if activist_only else 0))
 
     days = max(1, min(days, 60))
-    end_de = date.today()
+    end_de = _kst_today()
     bgn_de = end_de - timedelta(days=days)
 
     filings = await list_filings_cached(
@@ -340,7 +352,7 @@ async def monitor_foreign_holders(
     await _gate(license_key, units=1)
 
     days = max(1, min(days, 60))
-    end_de = date.today()
+    end_de = _kst_today()
     bgn_de = end_de - timedelta(days=days)
 
     filings = await list_filings_cached(
