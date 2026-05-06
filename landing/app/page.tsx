@@ -360,8 +360,46 @@ export default function Home() {
           </p>
         </section>
 
-        {/* Run it yourself (OSS) — separate, below pricing */}
+        {/* Hosted remote MCP — for ChatGPT / Claude.ai / Responses API users */}
         <section className="mt-16 rounded-md border border-zinc-800 p-6">
+          <h2 className="text-xl font-semibold">
+            Connect from ChatGPT or Claude.ai (no install)
+          </h2>
+          <p className="mt-3 text-sm text-zinc-300">
+            Add the hosted endpoint as a custom connector. The 7 tools (DART
+            filings, foreign-holder + activist tracking, Korean industry news)
+            return Korean→English translated results in your existing chat —
+            no <code>pip install</code>, no local config. Read-only data layer;
+            not investment advice.
+          </p>
+          <div className="mt-4 rounded bg-zinc-900 p-3 font-mono text-sm text-zinc-200 break-all">
+            https://mcp.koreanpulse.dev/mcp
+          </div>
+          <ul className="mt-4 ml-5 list-disc text-sm text-zinc-400 space-y-1">
+            <li>
+              <strong className="text-zinc-200">ChatGPT</strong> — Settings →
+              Connectors → Add custom connector → paste URL. Authentication:
+              None.
+            </li>
+            <li>
+              <strong className="text-zinc-200">Claude.ai</strong> — Settings →
+              Connectors → Add custom connector → paste URL.
+            </li>
+            <li>
+              <strong className="text-zinc-200">OpenAI Responses API</strong>{" "}
+              — <code>{`tools=[{type: "mcp", server_url: "https://mcp.koreanpulse.dev/mcp"}]`}</code>
+            </li>
+          </ul>
+          <p className="mt-3 text-xs text-zinc-500">
+            Streamable HTTP transport (single-region node, Let&apos;s Encrypt
+            cert). Validated end-to-end against ChatGPT and Claude.ai 2026-05-06.
+            For max privacy or self-hosting, the local stdio path below is
+            still canonical.
+          </p>
+        </section>
+
+        {/* Run it yourself (OSS) — separate, below pricing */}
+        <section className="mt-8 rounded-md border border-zinc-800 p-6">
           <h2 className="text-xl font-semibold">Run it yourself (OSS)</h2>
           <p className="mt-3 text-sm text-zinc-300">
             Source is AGPL-3.0. Self-hosters can run the MCP server locally

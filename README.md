@@ -8,9 +8,9 @@
 
 **The pitch**: We'll watch your KRX tickers in Korean and ping you in English when something material moves — foreign-holder 5%-rule disclosures, Korean activist filings, major DART events. KRX itself, ASIFMA, Wellington and Aberdeen all on record — Korean disclosure flow into English is structurally inadequate. Bloomberg costs $24K/yr and still misses the front page of 전자신문. We translate, classify, and route the same Korean primary sources institutional analysts read into your Discord / Telegram / inbox. Free public daily snapshot at `/today` (live today); paid Cloud tiers for the workflow (Solo $29/mo, Analyst $79/mo, Desk $249/mo) — **lock-in pricing for waitlist; queries + hosted translation are live today, watchlist polling + alert dispatch ship Q3 2026**. OSS self-host available for hackers — see [Run it yourself](#run-it-yourself-oss).
 
-> **For AI/MCP agent builders.** koreanpulse plugs Korean equity primary sources into your existing Claude Desktop / Cursor / FastMCP agent — same MCP shape your agent already uses for US data. `pip install koreanpulse` + 4-line config, or hosted via Smithery without local install at [smithery.ai/servers/whdrnr2583/koreanpulse](https://smithery.ai/servers/whdrnr2583/koreanpulse). The 7 tools surface DART filings, foreign-holder 5%-rule flows, Korean activist filings, and 16-sector industry news as typed function calls; the rest of your trading-agent stack stays unchanged.
+> **For AI/MCP agent builders.** koreanpulse plugs Korean equity primary sources into your existing Claude Desktop / Cursor / FastMCP agent — same MCP shape your agent already uses for US data. Three connection modes: **(a) hosted remote MCP at `https://mcp.koreanpulse.dev/mcp`** for ChatGPT / Claude.ai / OpenAI Responses API custom connectors, **(b) `pip install koreanpulse` + 4-line config** for Claude Desktop / Cursor stdio, **(c) [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse) marketplace listing** for Smithery CLI users. The 7 tools surface DART filings, foreign-holder 5%-rule flows, Korean activist filings, and 16-sector industry news as typed function calls; the rest of your trading-agent stack stays unchanged.
 
-> **Claude.ai / ChatGPT (remote MCP).** Connect koreanpulse as a remote MCP server from Claude.ai (custom connectors) or ChatGPT developer mode using the Smithery hosted endpoint `koreanpulse--whdrnr2583.run.tools`. Read-only — surfaces filings and disclosures only. No trading execution, no investment advice.
+> **Claude.ai / ChatGPT (remote MCP) — live today.** Add `https://mcp.koreanpulse.dev/mcp` as a custom connector in Claude.ai (Settings → Connectors), ChatGPT (Settings → Connectors or Apps SDK), or wire it directly from the OpenAI Responses API: `tools=[{type: "mcp", server_url: "https://mcp.koreanpulse.dev/mcp"}]`. Read-only — surfaces filings and disclosures only. No trading execution, no investment advice.
 
 ---
 
@@ -134,7 +134,7 @@ See `src/koreanpulse/cache.py`, `src/koreanpulse/dart.py:list_filings_cached`.
 
 ## Roadmap
 
-**Live today**: queries (DART filings, foreign-holder + activist tracking, industry news), hosted translation cache (Cloud `KOREANPULSE_CACHE_MODE=hosted`), `/today` daily snapshot, **Polar → D1 license issuance** (Polar Merchant of Record; Lemon Squeezy handler kept dormant for future re-application), **hosted HTTP-transport gateway via [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse)** (no local install — clients connect at `koreanpulse--whdrnr2583.run.tools`).
+**Live today**: queries (DART filings, foreign-holder + activist tracking, industry news), hosted translation cache (Cloud `KOREANPULSE_CACHE_MODE=hosted`), `/today` daily snapshot, **Polar → D1 license issuance** (Polar Merchant of Record; Lemon Squeezy handler kept dormant for future re-application), **first-party hosted MCP endpoint at `https://mcp.koreanpulse.dev/mcp`** (Streamable HTTP transport for ChatGPT / Claude.ai / OpenAI Responses API custom connectors — no `pip install`).
 
 **Q3 2026 ship targets** (waitlist):
 - Watchlist polling loop (Cloudflare cron + `koreanpulse.alerts`)
@@ -174,7 +174,7 @@ Two ways to run the MCP, switched via `KOREANPULSE_CACHE_MODE`. **Both require a
 
 Cache hits are the entire reason a $29/mo Solo plan can sustain healthy gross margin: the same Korean filing title gets translated once, then served to every other tenant on the same plan from KV. See [`docs/CLAUDE_DESKTOP.md`](docs/CLAUDE_DESKTOP.md) for the env-var split between modes.
 
-> **Hosted HTTP transport (no local install) — live today.** [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse) distributes the MCP via their hosted gateway at `https://koreanpulse--whdrnr2583.run.tools`. MCP clients (Claude Desktop, Cursor, any client supporting Streamable HTTP) can connect directly without `pip install`. The local stdio install path remains the canonical way for self-hosters and max-privacy users; a first-party Cloudflare-hosted HTTP transport is still on the roadmap for users who want the endpoint outside Smithery.
+> **Hosted HTTP transport (no local install) — live today.** First-party endpoint at `https://mcp.koreanpulse.dev/mcp` (Streamable HTTP, single-region node fronted by Caddy + Let's Encrypt cert). Add as a custom connector in ChatGPT (Settings → Connectors), Claude.ai (Settings → Connectors), or wire it directly from the OpenAI Responses API. Validated end-to-end against ChatGPT and Claude.ai 2026-05-06 — `monitor_activist_investors` chains `lookup_corp_code` and returns Korean→English translated 5%-rule filings without any client-side install. The local stdio install path remains canonical for self-hosters and max-privacy users; the [Smithery listing](https://smithery.ai/servers/whdrnr2583/koreanpulse) keeps Smithery CLI users in the discovery path.
 
 ## Legal posture
 
@@ -229,7 +229,8 @@ The earlier path (Python `koreanpulse-webhook` FastAPI on Lightsail + Postgres) 
 
 Listing copy + submission checklists in [`docs/MARKETPLACE.md`](docs/MARKETPLACE.md):
 
-- [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse) — **live**, hosted HTTP gateway included
+- **First-party hosted endpoint** — `https://mcp.koreanpulse.dev/mcp` (ChatGPT / Claude.ai / OpenAI Responses API custom connectors)
+- [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse) — marketplace listing for Smithery CLI users
 - [PulseMCP](docs/listings/PULSEMCP.md) — submitted (hand-reviewed)
 - [Glama](docs/listings/GLAMA.md) — submitted (pending review)
 - [Awesome MCP](https://github.com/punkpeye/awesome-mcp-servers) — [PR #5893](https://github.com/punkpeye/awesome-mcp-servers/pull/5893)

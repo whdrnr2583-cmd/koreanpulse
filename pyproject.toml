@@ -16,6 +16,8 @@ keywords = [
     "mcp-server", "claude-desktop", "cursor",
     "algotrading", "ai-trading", "llm-trading", "trading-agent",
     "korean-news", "korean-stocks",
+    "remote-mcp", "chatgpt", "claude-ai", "streamable-http",
+    "openai-apps", "responses-api",
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
