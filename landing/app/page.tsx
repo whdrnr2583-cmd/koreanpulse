@@ -48,11 +48,27 @@ const PRICING = [
   },
 ];
 
-const TOOLS = [
+const TOOLS_FREE = [
   {
     name: "track_korean_filings",
     blurb: "Real-time DART filings, optionally translated. Same source institutional analysts read.",
   },
+  {
+    name: "search_korean_industry_news",
+    blurb:
+      "etnews + 한국경제 RSS classified into 16 industries (semis, batteries, defense, biotech…).",
+  },
+  {
+    name: "lookup_corp_code",
+    blurb: "Korean company name → DART corp code. Resolves Hangul or romanized spellings.",
+  },
+  {
+    name: "resolve_stock_code",
+    blurb: "KRX 6-digit ticker → DART corp entry. Pairs cleanly with track_korean_filings.",
+  },
+];
+
+const TOOLS_PAID = [
   {
     name: "monitor_foreign_holders",
     blurb:
@@ -62,11 +78,6 @@ const TOOLS = [
     name: "monitor_activist_investors",
     blurb:
       "Activist 5%-rule filings auto-tagged for KCGI / Align / Truston / Anda / Cha / VIP / ValueAct / Elliott.",
-  },
-  {
-    name: "search_korean_industry_news",
-    blurb:
-      "etnews + 한국경제 RSS classified into 16 industries (semis, batteries, defense, biotech…).",
   },
 ];
 
@@ -429,16 +440,20 @@ export default function Home() {
         <section className="mt-16">
           <h2 className="text-xl font-semibold">What runs under the hood</h2>
           <p className="mt-3 text-zinc-400 text-sm max-w-2xl">
-            When you connect your AI client (Claude Desktop, Cursor, any MCP
-            client) to the local MCP (Cloud customers still `pip install`
-            locally — only translation calls hit our Worker), these tools are
-            what your agent calls against the cached, classified Korean data
-            layer. You don&apos;t need to know they exist to get the alert in
-            your Discord once dispatch ships — but if you&apos;re building
-            agent workflows on top, here&apos;s the surface.
+            7 MCP tools split into <strong className="text-zinc-200">5 free</strong> (raw
+            DART + RSS surface, no signup) and{" "}
+            <strong className="text-zinc-200">2 paid</strong> — the
+            classification work that takes a Korean speaker by hand
+            (5%-rule foreign-holder + Korean activist filer matching).
+            ChatGPT and Claude.ai render the inline subscription link
+            automatically when a paid tool is called without a license.
           </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {TOOLS.map((t) => (
+
+          <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-400">
+            Free (no signup)
+          </h3>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            {TOOLS_FREE.map((t) => (
               <div
                 key={t.name}
                 className="rounded-md border border-zinc-800 p-4"
@@ -448,6 +463,22 @@ export default function Home() {
               </div>
             ))}
           </div>
+
+          <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-400">
+            Paid (Solo $29/mo or higher)
+          </h3>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            {TOOLS_PAID.map((t) => (
+              <div
+                key={t.name}
+                className="rounded-md border border-amber-700/40 bg-amber-950/10 p-4"
+              >
+                <code className="text-sm text-accent">{t.name}</code>
+                <p className="mt-2 text-sm text-zinc-300">{t.blurb}</p>
+              </div>
+            ))}
+          </div>
+
           <p className="mt-4 text-sm text-zinc-500">
             More shipping: <code>summarize_korean_earnings_call</code>,{" "}
             <code>get_ma_pipeline</code>, <code>track_government_policy</code>,

@@ -16,7 +16,7 @@
 
 ## Status
 
-**Pre-alpha (v0.1.3).** 7 MCP tools shipped. 181 tests pass, 1 skipped. Beta/waitlist tone — watchlist polling + alert dispatch ship Q3 2026. Beta acquisition plan in `docs/BETA.md`.
+**Pre-alpha (v0.1.3).** 7 MCP tools shipped — 5 free + 2 paid (activist + foreign-holder classification gated to Solo $29/mo+). 181 tests pass, 1 skipped. Beta/waitlist tone — watchlist polling + alert dispatch ship Q3 2026. Beta acquisition plan in `docs/BETA.md`.
 
 ---
 
@@ -90,19 +90,28 @@ OSS self-host is **not** in the pricing table above — it's a separate lane. Se
 
 ## What it does
 
-7 MCP tools shipped, callable from Claude Desktop / Cursor / any MCP client:
+7 MCP tools shipped — **5 free + 2 paid**. Callable from Claude Desktop / Cursor / any MCP client. The paid tier unlocks the classification work that takes a Korean speaker to do by hand; the free tier ships the raw DART + RSS surface so distribution doesn't pay for itself.
+
+**Free tier** (no `license_key`, no signup):
 
 | Tool | One-line |
 |---|---|
 | `track_korean_filings` | DART filings real-time + EN translation/summary |
-| `monitor_activist_investors` | Activist 5%-rule filings auto-tagged (KCGI / Align / Truston / Anda / Cha / VIP / ValueAct / Elliott) |
-| `monitor_foreign_holders` | Foreign 5%-rule disclosures (BlackRock / Vanguard / Norges / GIC / Temasek + 15 more) |
 | `lookup_corp_code` | Korean company name → DART corp code |
 | `resolve_stock_code` | KRX 6-digit → DART corp entry |
 | `search_korean_industry_news` | etnews / 한국경제 RSS, classified into 16 industries |
-| `koreanpulse_about` | Server info / available tools |
+| `koreanpulse_about` | Server info, free vs paid tool list, current Polar checkout URL |
 
-5 more planned (`docs/SPEC.md`): `digest_analyst_reports`, `monitor_activist_investors`, `get_ma_pipeline`, `track_government_policy`, `summarize_korean_earnings_call`.
+**Paid tier** (Solo $29/mo+, requires `license_key` — pass as tool argument or via the calling client's secure-input field):
+
+| Tool | One-line |
+|---|---|
+| `monitor_activist_investors` | Activist 5%-rule filings auto-tagged (KCGI / Align / Truston / Anda / Cha / VIP / ValueAct / Elliott) |
+| `monitor_foreign_holders` | Foreign 5%-rule disclosures (BlackRock / Vanguard / Norges / GIC / Temasek + 15 more) |
+
+When a paid tool is called without a license, the server returns a structured error message that surfaces the Polar checkout URL — ChatGPT / Claude.ai render that link inline so the user can subscribe in one click.
+
+4 more planned (`docs/SPEC.md`): `digest_analyst_reports`, `get_ma_pipeline`, `track_government_policy`, `summarize_korean_earnings_call`.
 
 ## Differentiation vs incumbents
 

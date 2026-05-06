@@ -78,7 +78,22 @@ def _require_license() -> bool:
     return os.environ.get("KOREANPULSE_REQUIRE_LICENSE", "0").strip() == "1"
 
 
+# Polar checkout link surfaced in paid-tier error messages so the LLM client
+# can render it directly to the user. Override via env if a future migration
+# changes the URL — keeps this single source of truth out of git.
+POLAR_CHECKOUT_URL = os.environ.get(
+    "KOREANPULSE_POLAR_CHECKOUT_URL",
+    "https://buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB",
+)
+
+
 async def _gate(license_key: Optional[str], *, units: int = 1) -> None:
+    """Free-tier gate — only enforces when KOREANPULSE_REQUIRE_LICENSE=1.
+
+    Used by tools that ship in the free tier (DART filings, corp lookup,
+    industry news, server info). On the hosted endpoint (env=0), free-tier
+    tools answer without any license check.
+    """
     if not _require_license():
         return
     try:
@@ -86,6 +101,33 @@ async def _gate(license_key: Optional[str], *, units: int = 1) -> None:
     except LicenseError as exc:
         # Surface a clean, actionable error to the LLM client.
         raise RuntimeError(f"[koreanpulse:{exc.code}] {exc}") from exc
+
+
+async def _paid_gate(
+    license_key: Optional[str],
+    *,
+    units: int = 1,
+    tool_name: str = "",
+) -> None:
+    """Always-on gate for paid-tier tools.
+
+    Independent of KOREANPULSE_REQUIRE_LICENSE — paid tools require a license
+    even when the server runs in free-tier mode (e.g. the hosted
+    mcp.koreanpulse.dev endpoint where most callers are anonymous).
+    Error messages render the Polar checkout URL so the LLM client can
+    forward the link to the user.
+    """
+    try:
+        await validate_license_or_raise(license_key, cost_units=units)
+    except LicenseError as exc:
+        raise RuntimeError(
+            f"[koreanpulse:{exc.code}] {exc} "
+            f"`{tool_name}` is a paid-tier tool — the Solo plan ($29/mo) unlocks "
+            f"5%-rule foreign-holder filings (BlackRock, Vanguard, Norges, GIC, "
+            f"Temasek + 15 more) and Korean activist filer classification "
+            f"(KCGI, Align Partners, Truston, Anda, VIP, Cha, Life, Platform). "
+            f"Subscribe: {POLAR_CHECKOUT_URL}"
+        ) from exc
 
 
 # `fill_corp_name_en` lives in `koreanpulse._enrich` so it can be
@@ -252,6 +294,11 @@ async def monitor_activist_investors(
 ) -> list[ActivistFiling]:
     """Watch DART shareholding disclosures (filing type D) for activist moves.
 
+    **Paid tier — Solo $29/mo or higher.** Pass a Koreanpulse `license_key`
+    or call `track_korean_filings` (free) for raw filings without activist
+    classification. Subscribe at the URL surfaced in the LICENSE_REQUIRED
+    error message if a license is missing.
+
     Returns 주식등의대량보유상황보고서 (5% rule) and related shareholding
     filings, with each row tagged when the filer matches a known Korean
     activist (KCGI, Align Partners, Truston, Anda, Cha, Life, Platform, VIP,
@@ -268,7 +315,11 @@ async def monitor_activist_investors(
     Returns:
         ActivistFiling rows ordered by filing date desc.
     """
-    await _gate(license_key, units=1 + (1 if activist_only else 0))
+    await _paid_gate(
+        license_key,
+        units=1 + (1 if activist_only else 0),
+        tool_name="monitor_activist_investors",
+    )
 
     days = max(1, min(days, 60))
     end_de = _kst_today()
@@ -325,6 +376,11 @@ async def monitor_foreign_holders(
     """Watch DART 5%-rule disclosures (filing type D) by global asset
     managers and sovereign wealth funds.
 
+    **Paid tier — Solo $29/mo or higher.** Pass a Koreanpulse `license_key`
+    or call `track_korean_filings` (free) for raw filings without
+    foreign-holder allowlist matching. Subscribe at the URL surfaced in
+    the LICENSE_REQUIRED error message if a license is missing.
+
     Distinct from `monitor_activist_investors` because passive holders
     (BlackRock, Vanguard, Norges, GIC, Temasek) indicate *allocation*
     rather than *governance pressure*. Their filings are a leading
@@ -352,7 +408,11 @@ async def monitor_foreign_holders(
         ForeignHolderFiling rows ordered by filing date desc. Each row
         carries `holder_label` (canonical English) and `holder_origin`.
     """
-    await _gate(license_key, units=1)
+    await _paid_gate(
+        license_key,
+        units=1,
+        tool_name="monitor_foreign_holders",
+    )
 
     days = max(1, min(days, 60))
     end_de = _kst_today()
@@ -400,7 +460,7 @@ async def monitor_foreign_holders(
 
 @mcp.tool()
 async def koreanpulse_about() -> dict:
-    """Return basic info about this MCP server (version, available tools, sources)."""
+    """Return basic info about this MCP server (version, available tools, sources, pricing)."""
     n_corp = 0
     try:
         n_corp = await ensure_index_loaded()
@@ -413,14 +473,16 @@ async def koreanpulse_about() -> dict:
             "Korean industry intelligence MCP for foreign fund analysts. "
             "Real-time DART filings + Korean industry news, translated to English on-demand."
         ),
-        "tools_available": [
+        "tools_free": [
             "track_korean_filings",
             "lookup_corp_code",
             "resolve_stock_code",
             "search_korean_industry_news",
+            "koreanpulse_about",
+        ],
+        "tools_paid": [
             "monitor_activist_investors",
             "monitor_foreign_holders",
-            "koreanpulse_about",
         ],
         "tools_planned": [
             "digest_analyst_reports",
@@ -428,6 +490,11 @@ async def koreanpulse_about() -> dict:
             "track_government_policy",
             "summarize_korean_earnings_call",
         ],
+        "paid_tier": {
+            "starting_at_usd_per_month": 29,
+            "plan": "Solo",
+            "subscribe_url": POLAR_CHECKOUT_URL,
+        },
         "corp_index_size": n_corp,
         "homepage": "https://koreanpulse.dev",
     }
