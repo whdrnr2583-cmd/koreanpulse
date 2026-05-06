@@ -12,8 +12,11 @@
  *   D1 (this) replaces Postgres.
  */
 
-import { handleEvent, verifyLsSignature, type Env } from "./lemonsqueezy";
+import { handleEvent, verifyLsSignature, type Env as LsEnv } from "./lemonsqueezy";
+import { handlePolarEvent, verifyPolarSignature, type PolarEnv } from "./polar";
 import { validateAndCharge } from "./license";
+
+export type Env = LsEnv & PolarEnv;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -31,6 +34,10 @@ export default {
       return await handleLemonSqueezy(request, env);
     }
 
+    if (url.pathname === "/webhook/polar") {
+      return await handlePolar(request, env);
+    }
+
     if (url.pathname === "/v1/validate") {
       return await handleValidate(request, env);
     }
@@ -38,6 +45,58 @@ export default {
     return json({ error: "not found" }, 404);
   },
 };
+
+async function handlePolar(request: Request, env: Env): Promise<Response> {
+  const secret = (env.POLAR_WEBHOOK_SECRET ?? "").trim();
+  if (!secret) {
+    console.error("POLAR_WEBHOOK_SECRET not set");
+    return json({ error: "server not configured" }, 500);
+  }
+
+  // Standard Webhooks headers (lower-case canonical names; tolerate caps).
+  const webhookId =
+    request.headers.get("webhook-id") ||
+    request.headers.get("Webhook-Id") ||
+    "";
+  const webhookTimestamp =
+    request.headers.get("webhook-timestamp") ||
+    request.headers.get("Webhook-Timestamp") ||
+    "";
+  const signature =
+    request.headers.get("webhook-signature") ||
+    request.headers.get("Webhook-Signature") ||
+    "";
+  const body = await request.text();
+
+  const ok = await verifyPolarSignature(
+    body,
+    webhookId,
+    webhookTimestamp,
+    signature,
+    secret,
+  );
+  if (!ok) {
+    console.warn("rejected polar webhook with bad signature", { webhookId });
+    return json({ error: "invalid signature" }, 401);
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(body);
+  } catch (exc) {
+    const message = exc instanceof Error ? exc.message : String(exc);
+    return json({ error: `invalid JSON: ${message}` }, 400);
+  }
+
+  try {
+    const result = await handlePolarEvent(env, payload, webhookId);
+    return json(result, 200);
+  } catch (exc) {
+    const message = exc instanceof Error ? exc.message : String(exc);
+    console.error("handlePolarEvent failed", { message });
+    return json({ ok: false, action: "error", message }, 500);
+  }
+}
 
 async function handleLemonSqueezy(request: Request, env: Env): Promise<Response> {
   const secret = (env.LEMONSQUEEZY_WEBHOOK_SECRET ?? "").trim();

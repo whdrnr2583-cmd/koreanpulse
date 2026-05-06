@@ -32,9 +32,17 @@ database_id = "ad451419-6f49-45d2-8708-fff71780b00a"
 VALIDATE_CACHE_TTL_SECONDS = "60"
 
 # Secrets (set via `wrangler secret put`):
-#   LEMONSQUEEZY_WEBHOOK_SECRET     — HMAC secret from LS dashboard
+#   ── Polar (active provider 2026-05-06+, after LS application denied) ──
+#   POLAR_WEBHOOK_SECRET            — `polar_whs_...` from Polar webhook page
+#   POLAR_API_TOKEN                 — `polar_oat_...` for API reads (subscriptions:read)
+#   POLAR_PRODUCT_SOLO              — UUID of Cloud Solo product
+#   POLAR_PRODUCT_ANALYST           — UUID of Cloud Analyst product
+#   POLAR_PRODUCT_DESK              — UUID of Cloud Desk product
+#   ── Shared ─────────────────────────────────────────────────────────────
 #   KOREANPULSE_CACHE_SHARED_SECRET — same value as in cache-worker
-#   ── Active tiers (pricing v2, 2026-05-05+) ────────────────────────────
+#   ── Lemon Squeezy (dormant — application denied 2026-05-06; kept for
+#       future re-application once paid traction exists) ─────────────────
+#   LEMONSQUEEZY_WEBHOOK_SECRET     — HMAC secret from LS dashboard
 #   LEMONSQUEEZY_VARIANT_SOLO       — variant ID for Cloud Solo $29/mo
 #   LEMONSQUEEZY_VARIANT_ANALYST    — variant ID for Cloud Analyst $79/mo
 #   LEMONSQUEEZY_VARIANT_DESK       — variant ID for Cloud Desk $249/mo
