@@ -64,6 +64,8 @@ The free daily snapshot at [`/today`](https://koreanpulse.dev/today) (no login, 
 
 Annual billing: **−20%** at launch. 30-day refund.
 
+**Subscribe**: [buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB](https://buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB) — single hosted Polar checkout covering all three tiers (Polar acts as Merchant of Record; sales tax / VAT / refunds handled).
+
 > **Enterprise / SLA**: contact us. No published price.
 
 ## Run it yourself (OSS)
@@ -130,7 +132,7 @@ See `src/koreanpulse/cache.py`, `src/koreanpulse/dart.py:list_filings_cached`.
 
 ## Roadmap
 
-**Live today**: queries (DART filings, foreign-holder + activist tracking, industry news), hosted translation cache (Cloud `KOREANPULSE_CACHE_MODE=hosted`), `/today` daily snapshot, Lemon Squeezy → D1 license issuance, **hosted HTTP-transport gateway via [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse)** (no local install — clients connect at `koreanpulse--whdrnr2583.run.tools`).
+**Live today**: queries (DART filings, foreign-holder + activist tracking, industry news), hosted translation cache (Cloud `KOREANPULSE_CACHE_MODE=hosted`), `/today` daily snapshot, **Polar → D1 license issuance** (Polar Merchant of Record; Lemon Squeezy handler kept dormant for future re-application), **hosted HTTP-transport gateway via [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse)** (no local install — clients connect at `koreanpulse--whdrnr2583.run.tools`).
 
 **Q3 2026 ship targets** (waitlist):
 - Watchlist polling loop (Cloudflare cron + `koreanpulse.alerts`)
@@ -140,7 +142,7 @@ See `src/koreanpulse/cache.py`, `src/koreanpulse/dart.py:list_filings_cached`.
 **Earlier milestones**:
 - **W1–2** ✅ project skeleton, FastMCP server, DART client, agentprod integration
 - **W3–4** ✅ MVP: `track_korean_filings`, `lookup_corp_code`, `search_korean_industry_news`, translation layer with cache
-- **W5–6** ✅ Lemon Squeezy webhook handler skeleton (license auto-issuance)
+- **W5–6** ✅ Webhook handler skeleton (license auto-issuance) — Lemon Squeezy first, then Polar after LS denied the store application 2026-05-06
 - **W5–6** ✅ Cloudflare D1-backed `LicenseStore` (replaces in-memory)
 - **W7–8** ⏳ **Watchlist polling + alert dispatch** (Q3 2026 ship target) — wiring `cache-worker` cron + `daily-worker` cron + `koreanpulse.alerts` module into the watchlist-to-alert workflow that powers Solo / Analyst / Desk. D1 schema and alert-dispatch primitives already shipped; the cron loop is the missing piece.
 - **W7–8** `digest_analyst_reports`, `summarize_korean_earnings_call`
@@ -152,7 +154,7 @@ See `src/koreanpulse/cache.py`, `src/koreanpulse/dart.py:list_filings_cached`.
 - **MCP server** — FastMCP (Python), runs on the user's machine over stdio. Zero hosting cost on our side. Cloud customers still install this locally; switching `KOREANPULSE_CACHE_MODE=hosted` routes translation calls (only) to the Worker.
 - **Cache Worker** ([`cache-worker/`](cache-worker/README.md)) — Cloudflare Workers + KV. Holds our OpenAI key, fronts a global translation cache, gates each call behind a license check. Free tier (100K req/day Workers + 100K read/day KV) covers paid traffic until well past $5K MRR.
 - **Daily Worker** ([`daily-worker/`](daily-worker/README.md)) — Cloudflare Workers + KV. Cron-driven `/today` dashboard build (KST 16:30 weekdays).
-- **Webhook Worker** ([`webhook-worker/`](webhook-worker/README.md)) — Cloudflare Worker + D1 (SQLite). Handles Lemon Squeezy events and `/v1/validate` for the Cache Worker. Replaces the old Lightsail/FastAPI/Postgres stack so the operator runs zero servers.
+- **Webhook Worker** ([`webhook-worker/`](webhook-worker/README.md)) — Cloudflare Worker + D1 (SQLite). Handles **Polar** billing events (active 2026-05-06+) and `/v1/validate` for the Cache Worker. Lemon Squeezy handler is kept dormant for future re-application once paid traction exists. Replaces the old Lightsail/FastAPI/Postgres stack so the operator runs zero servers.
 - **Reuses [`agentprod`](../agentprod)** — Throttle, Retry, CostTracker.
 
 ## OSS self-host vs Cloud
@@ -181,9 +183,11 @@ Cache hits are the entire reason a $29/mo Solo plan can sustain healthy gross ma
 - **Not investment advice.** koreanpulse provides translated and classified primary-source data. It is not investment advice and does not constitute a recommendation to buy, sell, or hold any security. The service performs no individualized analysis or personalized recommendation. All output is general data routing intended for informational purposes only. Korea Capital Markets Act §101 (유사투자자문업): we provide general informational data without individualized investment judgement, falling outside the registration scope (제공하는 정보가 단순히 금융관련 지식 등을 제공하는 수준).
 - Privacy + data protection: see [https://koreanpulse.dev/privacy](https://koreanpulse.dev/privacy) — covers Korea PIPA, EU GDPR, US CCPA. Terms of service: [https://koreanpulse.dev/terms](https://koreanpulse.dev/terms).
 
-## Billing (Lemon Squeezy webhook on Cloudflare D1)
+## Billing (Polar webhook on Cloudflare D1)
 
-Billing runs on the [`webhook-worker/`](webhook-worker/README.md) Cloudflare Worker + D1 (SQLite). The operator runs **zero servers**. See [`webhook-worker/README.md`](webhook-worker/README.md) for the full deploy + secrets walkthrough; the short version:
+Billing runs on the [`webhook-worker/`](webhook-worker/README.md) Cloudflare Worker + D1 (SQLite). The operator runs **zero servers**. **Polar** ([polar.sh](https://polar.sh)) is the active Merchant of Record as of 2026-05-06 — it handles VAT / sales tax / refunds / chargebacks. The Lemon Squeezy handler is kept dormant for future re-application once paid traction exists.
+
+See [`webhook-worker/README.md`](webhook-worker/README.md) for the full deploy + secrets walkthrough; the short version:
 
 ```bash
 cd webhook-worker
@@ -191,30 +195,31 @@ npm install
 npx wrangler d1 create koreanpulse_db   # paste returned id into wrangler.toml
 npm run migrate:prod                     # applies 0001_licenses.sql + 0002_pricing_v2.sql
 
-# Required secrets
-npx wrangler secret put LEMONSQUEEZY_WEBHOOK_SECRET
+# ── Polar (active provider) ──────────────────────────────────────────
+npx wrangler secret put POLAR_WEBHOOK_SECRET    # `polar_whs_...` from Polar webhook page
+npx wrangler secret put POLAR_API_TOKEN         # `polar_oat_...` (subscriptions:read scope)
+npx wrangler secret put POLAR_PRODUCT_SOLO      # UUID of Cloud Solo product
+npx wrangler secret put POLAR_PRODUCT_ANALYST   # UUID of Cloud Analyst product
+npx wrangler secret put POLAR_PRODUCT_DESK      # UUID of Cloud Desk product
+
+# ── Shared ───────────────────────────────────────────────────────────
 npx wrangler secret put KOREANPULSE_CACHE_SHARED_SECRET   # same value cache-worker uses
 
-# Active pricing v2 variants (one per published tier)
-npx wrangler secret put LEMONSQUEEZY_VARIANT_SOLO         # Cloud Solo $29/mo
-npx wrangler secret put LEMONSQUEEZY_VARIANT_ANALYST      # Cloud Analyst $79/mo
-npx wrangler secret put LEMONSQUEEZY_VARIANT_DESK         # Cloud Desk $249/mo
+# ── Lemon Squeezy (dormant — re-applies once traction exists) ────────
+# npx wrangler secret put LEMONSQUEEZY_WEBHOOK_SECRET
+# npx wrangler secret put LEMONSQUEEZY_VARIANT_SOLO / _ANALYST / _DESK / _LIFETIME
 
-# Design Partner lifetime (private 20-seat SKU; see footnote in Pricing)
-npx wrangler secret put LEMONSQUEEZY_VARIANT_LIFETIME
-
-# Deprecated / back-compat slots (leave unset in production):
-#   LEMONSQUEEZY_VARIANT_PRO / _STARTER / _INDIE / _ENTERPRISE
 npm run deploy
 ```
 
 Endpoints (deployed to `https://api.koreanpulse.dev` or `https://koreanpulse-webhook.<account>.workers.dev`):
 
 - `GET /health` → `{"status":"ok"}`
-- `POST /webhook/lemonsqueezy` → HMAC-SHA256 signature verified, idempotent on `meta.webhook_id`
+- `POST /webhook/polar` → Standard Webhooks signature verified (`webhook-id` / `webhook-timestamp` / `webhook-signature`), idempotent on `webhook-id`
+- `POST /webhook/lemonsqueezy` → HMAC-SHA256 (dormant; no LS variant secrets configured in production)
 - `POST /v1/validate` → HMAC-signed by the cache-worker, validates license + atomically increments period counter
 
-Handles: `subscription_created` / `_updated` / `_cancelled` / `_payment_success` / `_payment_failed` / `order_created` (lifetime deal). Auto-issues license keys, upgrades plans in place, resets period counters on renewal, preserves lifetime licenses past subscription cancellation.
+Polar events handled: `subscription.created` / `.active` / `.updated` / `.canceled` / `.revoked`. Auto-issues license keys, upgrades plans in place, deactivates on cancellation. License rows are tagged with `metadata.provider = "polar"` so the source is traceable per row.
 
 The earlier path (Python `koreanpulse-webhook` FastAPI on Lightsail + Postgres) is **superseded** as of 2026-05-05; for operator memory it lives at [`docs/legacy/POSTGRES_LIGHTSAIL.md`](docs/legacy/POSTGRES_LIGHTSAIL.md). New deploys should use the Cloudflare Worker path.
 
