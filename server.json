@@ -1,0 +1,17 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.whdrnr2583-cmd/koreanpulse",
+  "title": "koreanpulse",
+  "description": "English-first Korean equity intelligence MCP for DART filings, Korean activist filings, foreign-holder 5%-rule flows, and Korean industry news.",
+  "version": "0.1.3",
+  "repository": {
+    "url": "https://github.com/whdrnr2583-cmd/koreanpulse",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.koreanpulse.dev/mcp"
+    }
+  ]
+}
