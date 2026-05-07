@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.1.5 — 2026-05-07 (LS rejected, not dormant — verbiage correction)
+
+Doc-only release that re-syncs the PyPI long_description with the
+post-correction README. The 0.1.4 long_description still described Lemon
+Squeezy as "kept dormant for future re-application" — wording the
+operator (correctly) flagged as hedging away from the actual fact:
+their store application was **declined** on 2026-05-06 and we did not
+appeal. Polar is our sole billing provider, full stop. The previous
+softer phrasing risked LLM crawlers (Glama / mcpmarket) and human
+prospects classifying LS as "another option on the table" instead of
+"closed path."
+
+Code: no changes. The 0.1.4 server runtime is identical to 0.1.5.
+
+Docs:
+- README §Billing: "Lemon Squeezy: dormant" → "Lemon Squeezy: not in
+  use. Their store application was declined on 2026-05-06; we did not
+  appeal." Three other paragraphs in the section parallelled the same
+  hedge → all switched to declined / sole / historical-reference
+  language.
+- `docs/LEMONSQUEEZY.md` top banner: 🚧 DORMANT → 🚫 NOT IN USE.
+  Removes "we can flip back once subscription count justifies a
+  re-application" — the most directly misleading sentence on the repo.
+- `webhook-worker/README.md`: lead paragraph + every reactivation
+  reference rewritten. Legal-posture section now states explicitly
+  "We have no MoR relationship with Lemon Squeezy." LS comment block
+  in the secrets section says "any LS traffic in production is by
+  definition spurious".
+- `webhook-worker/wrangler.toml`: LEMONSQUEEZY_* secret comment block
+  changed from "(dormant — application denied; kept for future re-
+  application)" to "NOT IN USE — Polar is sole MoR. Do NOT set in
+  production."
+- `docs/ARCHITECTURE.md`: ASCII MoR box + process table both updated.
+- `docs/SPEC.md`, `docs/DEMO.md`, `docs/BETA.md`,
+  `docs/listings/MCPMARKET.md`: same swap in their billing-related
+  cells.
+
+The 0.1.4 entry below remains accurate for the runtime/code changes
+that shipped that day; this release is purely the verbiage correction
+on top.
+
 ## 0.1.4 — 2026-05-07 (positioning + paywall + LS dormant verbiage)
 
 PyPI release that re-syncs the package long-description with the post-Polar

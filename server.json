@@ -3,7 +3,7 @@
   "name": "io.github.whdrnr2583-cmd/koreanpulse",
   "title": "koreanpulse",
   "description": "Korean equity intel (EN): DART filings, activist filings, 5% foreign-holder flows, KRX news.",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "repository": {
     "url": "https://github.com/whdrnr2583-cmd/koreanpulse",
     "source": "github"
