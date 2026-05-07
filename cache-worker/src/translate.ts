@@ -79,22 +79,33 @@ async function callOpenAI(
   model: string,
   env: Env,
 ): Promise<string> {
-  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
+  const body: Record<string, unknown> = {
+    model,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    // GPT-5 series uses max_completion_tokens, not max_tokens.
+    max_completion_tokens: 1024,
+  };
+  // gpt-5 family is a reasoning model — without minimal effort the
+  // reasoning_tokens silently consume the budget, returning empty content.
+  if (model.startsWith("gpt-5")) {
+    body.reasoning_effort = "minimal";
+  }
+  // Cloudflare AI Gateway proxy — bypasses OpenAI region block on KR/HK
+  // CF colos.
+  const resp = await fetch(
+    "https://gateway.ai.cloudflare.com/v1/520ed8d88fdd95e30af7d0a0e81c1706/koreanpulse/openai/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      // GPT-5 series uses max_completion_tokens, not max_tokens.
-      max_completion_tokens: 1024,
-    }),
-  });
+  );
 
   if (!resp.ok) {
     const errBody = (await resp.text()).slice(0, 200);
@@ -102,9 +113,14 @@ async function callOpenAI(
   }
 
   const data = (await resp.json()) as {
-    choices?: { message?: { content?: string } }[];
+    choices?: { message?: { content?: string }; finish_reason?: string }[];
   };
-  return (data.choices?.[0]?.message?.content ?? "").trim();
+  const out = (data.choices?.[0]?.message?.content ?? "").trim();
+  if (!out) {
+    const fr = data.choices?.[0]?.finish_reason ?? "unknown";
+    throw new Error(`OpenAI empty content (finish_reason=${fr})`);
+  }
+  return out;
 }
 
 async function buildCacheKey(

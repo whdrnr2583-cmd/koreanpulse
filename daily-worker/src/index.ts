@@ -122,7 +122,7 @@ export default {
 
 async function buildDaily(
   env: Env,
-): Promise<{ activists: number; foreign: number; top: number; date: string }> {
+): Promise<{ activists: number; foreign: number; top: number; takeaway: number; date: string }> {
   // KST date — DART is filed in KST and the dashboard targets KOSPI close.
   const nowKst = new Date(Date.now() + 9 * 3600 * 1000);
   const date = nowKst.toISOString().slice(0, 10);

@@ -48,29 +48,49 @@ async function callOpenAI(
   user: string,
   maxTokens: number,
 ): Promise<string> {
-  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+  const body: Record<string, unknown> = {
+    model: env.LLM_MODEL,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user.slice(0, MAX_INPUT_CHARS) },
+    ],
+    max_completion_tokens: maxTokens,
+  };
+  // gpt-5 family is a reasoning model — without reasoning_effort="minimal"
+  // the reasoning_tokens silently consume the max_completion_tokens budget,
+  // returning visible content as an empty string. Setting minimal disables
+  // chain-of-thought so the full budget goes to user-facing text.
+  if (typeof env.LLM_MODEL === "string" && env.LLM_MODEL.startsWith("gpt-5")) {
+    body.reasoning_effort = "minimal";
+  }
+  // Cloudflare AI Gateway proxy — bypasses OpenAI's region block on KR/HK
+  // CF colos. Same OpenAI key, same payload, just routed through CF infra.
+  const resp = await fetch(
+    "https://gateway.ai.cloudflare.com/v1/520ed8d88fdd95e30af7d0a0e81c1706/koreanpulse/openai/chat/completions",
+    {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.OPENAI_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model: env.LLM_MODEL,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user.slice(0, MAX_INPUT_CHARS) },
-      ],
-      max_completion_tokens: maxTokens,
-    }),
-  });
+    body: JSON.stringify(body),
+    },
+  );
   if (!resp.ok) {
     const errBody = (await resp.text()).slice(0, 200);
     throw new Error(`OpenAI ${resp.status}: ${errBody}`);
   }
   const data = (await resp.json()) as {
-    choices?: { message?: { content?: string } }[];
+    choices?: { message?: { content?: string }; finish_reason?: string }[];
   };
-  return (data.choices?.[0]?.message?.content ?? "").trim();
+  const out = (data.choices?.[0]?.message?.content ?? "").trim();
+  if (!out) {
+    // Throw rather than cache empty — safe* wrappers convert to "" without
+    // poisoning KV. Includes finish_reason for diagnosis.
+    const fr = data.choices?.[0]?.finish_reason ?? "unknown";
+    throw new Error(`OpenAI empty content (finish_reason=${fr})`);
+  }
+  return out;
 }
 
 export async function translateTitle(env: Env, koTitle: string): Promise<string> {
@@ -79,7 +99,7 @@ export async function translateTitle(env: Env, koTitle: string): Promise<string>
   const cached = await env.DAILY.get(key);
   if (cached !== null) return cached;
 
-  const out = await callOpenAI(env, SYSTEM_TRANSLATE, koTitle, 256);
+  const out = await callOpenAI(env, SYSTEM_TRANSLATE, koTitle, 1024);
   // Translations of filing titles are stable — cache 90 days.
   await env.DAILY.put(key, out, { expirationTtl: 60 * 60 * 24 * 90 });
   return out;
@@ -91,7 +111,7 @@ export async function translateCorpName(env: Env, nameKo: string): Promise<strin
   const cached = await env.DAILY.get(key);
   if (cached !== null) return cached;
 
-  const out = await callOpenAI(env, SYSTEM_CORP_NAME, nameKo, 128);
+  const out = await callOpenAI(env, SYSTEM_CORP_NAME, nameKo, 512);
   // Company-name translations are stable forever — no TTL.
   await env.DAILY.put(key, out);
   return out;
@@ -103,7 +123,7 @@ export async function summariseFiling(env: Env, koTitle: string): Promise<string
   const cached = await env.DAILY.get(key);
   if (cached !== null) return cached;
 
-  const out = await callOpenAI(env, SYSTEM_SUMMARIZE_FILING, koTitle, 256);
+  const out = await callOpenAI(env, SYSTEM_SUMMARIZE_FILING, koTitle, 1024);
   await env.DAILY.put(key, out, { expirationTtl: 60 * 60 * 24 * 90 });
   return out;
 }
@@ -154,7 +174,7 @@ export async function generateTakeaway(
   }
 
   const user = `Date: ${date}\n\nDigest:\n${digestJson}`;
-  const raw = await callOpenAI(env, SYSTEM_TAKEAWAY, user, 256);
+  const raw = await callOpenAI(env, SYSTEM_TAKEAWAY, user, 1024);
 
   // Parse to bullets — strip markdown, drop empties, cap at 3.
   const bullets = raw

@@ -16,6 +16,10 @@ name = "koreanpulse-cache"
 main = "src/index.ts"
 compatibility_date = "2025-04-01"
 
+# Smart Placement — see daily-worker for rationale (avoid KR colo OpenAI 403s).
+[placement]
+mode = "smart"
+
 # KV namespace for the actual translation/summary cache.
 # Create with:
 #   npx wrangler kv:namespace create TRANSLATIONS
