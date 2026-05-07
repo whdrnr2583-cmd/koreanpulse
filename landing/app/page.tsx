@@ -158,6 +158,9 @@ export default function Home() {
         </header>
 
         <section className="mt-16">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/5 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-accent">
+            The Korean equity MCP for ChatGPT, Claude.ai, Cursor
+          </div>
           <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
             Get pinged in English the moment a 5%-rule filing or DART event hits a stock you care about.
           </h1>
@@ -171,6 +174,16 @@ export default function Home() {
             전자신문. We translate, classify, and route the same data into
             your Discord / Telegram / inbox — or call it as MCP tools from
             Claude, Cursor, or your own AI agent.
+          </p>
+          <p className="mt-4 max-w-2xl text-sm text-zinc-400">
+            <strong className="text-zinc-200">1-click connect.</strong> Add{" "}
+            <code className="rounded bg-zinc-900 px-1.5 py-0.5 text-xs text-accent">
+              https://mcp.koreanpulse.dev/mcp
+            </code>{" "}
+            as a custom connector in ChatGPT or Claude.ai — no{" "}
+            <code className="text-xs">npx</code> install, no JSON config, no
+            local secrets. Latest MCP Streamable HTTP transport, OAuth-ready,
+            actively maintained.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -269,6 +282,178 @@ export default function Home() {
               T+2 settlement, low fees, retail-accessible.
             </li>
           </ul>
+        </section>
+
+        {/* How koreanpulse compares — open positioning vs adjacent Korean MCP servers */}
+        <section className="mt-20">
+          <h2 className="text-2xl font-semibold">How koreanpulse compares</h2>
+          <p className="mt-2 max-w-2xl text-sm text-zinc-400">
+            There are a handful of Korean-data MCP servers in the wild. Pick the
+            one that matches your job. We focus on{" "}
+            <strong className="text-zinc-200">
+              English-first equity intelligence with named-entity classification,
+              served as a hosted endpoint your LLM client can connect to in one
+              click.
+            </strong>{" "}
+            If you need raw KRX OHLCV or Korean-language financial statement
+            tables, others do that better.
+          </p>
+
+          <div className="mt-6 overflow-x-auto rounded-md border border-zinc-800">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead className="bg-zinc-900/60 text-xs uppercase tracking-wide text-zinc-400">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold">Capability</th>
+                  <th className="px-4 py-3 text-left font-semibold">koreanpulse</th>
+                  <th className="px-4 py-3 text-left font-semibold">korea-stock-mcp</th>
+                  <th className="px-4 py-3 text-left font-semibold">openregistry</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800 text-zinc-300">
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">Transport</td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span> Streamable HTTP +
+                    SSE (latest MCP spec)
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">stdio only (npx install)</td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span> Streamable HTTP
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">Hosted endpoint</td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span>{" "}
+                    <code className="text-xs">mcp.koreanpulse.dev/mcp</code>
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">— (self-install)</td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span>{" "}
+                    <code className="text-xs">openregistry.sophymarine.com/mcp</code>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">
+                    1-click connect (ChatGPT / Claude.ai)
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span> Yes
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">
+                    No (stdio not supported by remote connectors)
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span> Yes
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">
+                    Activist filer classification
+                    <div className="text-xs font-normal text-zinc-500">
+                      KCGI, Align, Truston, Anda, Cha, VIP, Life, Platform,
+                      ValueAct, Elliott
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span> 10+ labels
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
+                  <td className="px-4 py-3 text-zinc-500">— registry data only</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">
+                    Foreign-holder 5%-rule allowlist
+                    <div className="text-xs font-normal text-zinc-500">
+                      BlackRock, Vanguard, Norges, GIC, Temasek + 16 more
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span> 21+ labels
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
+                  <td className="px-4 py-3 text-zinc-500">— registry data only</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">
+                    English-first docstrings (LLM-friendly)
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span> All tools
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">Korean primary, English secondary</td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">
+                    Korean industry news (etnews / 한국경제 RSS, EN translated)
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span> 16 industries
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">—</td>
+                  <td className="px-4 py-3 text-zinc-500">—</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">
+                    KRX OHLCV (daily prices)
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">— (out of scope)</td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span> KOSPI / KOSDAQ / KONEX
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">—</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">
+                    XBRL financial statements
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">— (out of scope)</td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span>
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">—</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">Pricing</td>
+                  <td className="px-4 py-3">
+                    Free 5 tools · Solo $29 · Analyst $79 · Desk $249/mo
+                  </td>
+                  <td className="px-4 py-3">Free OSS (BYO API keys)</td>
+                  <td className="px-4 py-3">Free anonymous tier</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p className="mt-4 max-w-2xl text-xs text-zinc-500">
+            Comparison verified 2026-05-07. Other servers in the space:{" "}
+            <a
+              href="https://github.com/SongT-50/korean-stock-mcp"
+              className="underline hover:text-zinc-300"
+            >
+              SongT-50/korean-stock-mcp
+            </a>
+            ,{" "}
+            <a
+              href="https://github.com/koreal6803/finlab-ai"
+              className="underline hover:text-zinc-300"
+            >
+              koreal6803/finlab-ai
+            </a>{" "}
+            (quant-focused),{" "}
+            <a
+              href="https://github.com/eddmpython/dartlab"
+              className="underline hover:text-zinc-300"
+            >
+              eddmpython/dartlab
+            </a>{" "}
+            (Python lib). The MCP-server space for Korean equities is shaped by
+            the underlying data scope, not by any one team — pick what fits your
+            workflow.
+          </p>
         </section>
 
         {/* Free public daily snapshot — teaser, not a pricing tier */}

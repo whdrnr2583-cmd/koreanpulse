@@ -123,6 +123,34 @@ When a paid tool is called without a license, the server returns a structured er
 | Indie/SMB pricing | none ($24K+/yr) | none | free (low signal) | **$29 / $79 / $249 Cloud tiers (waitlist, lock-in)** |
 | Korean activist / M&A pipeline | weak | weak | reactive | **proactive watch** *(Q3 2026)* |
 
+## Differentiation vs other Korean MCP servers
+
+A handful of Korean-data MCP servers exist. Pick what matches your job. We
+focus on **English-first equity intelligence with named-entity classification,
+served as a hosted endpoint your LLM client can connect to in one click.** If
+you need raw KRX OHLCV or Korean-language financial-statement tables, others
+do that better.
+
+| Capability | **koreanpulse** | korea-stock-mcp ([jjlabsio](https://github.com/jjlabsio/korea-stock-mcp), 124★) | openregistry ([sophymarine](https://github.com/sophymarine/openregistry)) |
+|---|---|---|---|
+| Transport | **Streamable HTTP + SSE** | stdio only (`npx` install) | Streamable HTTP |
+| Hosted endpoint | **`mcp.koreanpulse.dev/mcp`** | — (self-install) | `openregistry.sophymarine.com/mcp` |
+| 1-click connect (ChatGPT / Claude.ai) | **Yes** | No (stdio not supported by remote connectors) | Yes |
+| Activist filer classification (KCGI / Align / Truston / Anda / Cha / VIP / Life / Platform / ValueAct / Elliott) | **10+ labels** | — raw filings only | — registry data only |
+| Foreign-holder 5%-rule allowlist (BlackRock / Vanguard / Norges / GIC / Temasek + 16 more) | **21+ labels** | — raw filings only | — registry data only |
+| English-first docstrings (LLM-friendly) | **All tools** | Korean primary, English secondary | Yes |
+| Korean industry news (etnews / 한국경제 RSS, EN translated) | **16 industries** | — | — |
+| KRX OHLCV (daily prices) | — out of scope | **Yes** (KOSPI / KOSDAQ / KONEX) | — |
+| XBRL financial statements | — out of scope | **Yes** | — |
+| Pricing | Free 5 tools · Solo $29 · Analyst $79 · Desk $249/mo | Free OSS (BYO API keys) | Free anonymous tier |
+
+Other servers in the space (different scope or smaller install base):
+[SongT-50/korean-stock-mcp](https://github.com/SongT-50/korean-stock-mcp),
+[koreal6803/finlab-ai](https://github.com/koreal6803/finlab-ai)
+(quant-focused),
+[eddmpython/dartlab](https://github.com/eddmpython/dartlab) (Python lib).
+Comparison verified 2026-05-07.
+
 ## Capacity (DART quota math)
 
 DART caps each API key at **40,000 calls/day** (verified 2026-05). We enforce a soft cap at **32,000/day (80%)** with `DART_DAILY_QUOTA` env override.
