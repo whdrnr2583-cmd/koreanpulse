@@ -108,26 +108,37 @@ async def _paid_gate(
     *,
     units: int = 1,
     tool_name: str = "",
-) -> None:
+) -> Optional[str]:
     """Always-on gate for paid-tier tools.
 
-    Independent of KOREANPULSE_REQUIRE_LICENSE — paid tools require a license
-    even when the server runs in free-tier mode (e.g. the hosted
-    mcp.koreanpulse.dev endpoint where most callers are anonymous).
-    Error messages render the Polar checkout URL so the LLM client can
-    forward the link to the user.
+    Returns ``None`` when the license is valid; the caller proceeds normally.
+    Returns a paywall message string when the license is missing or invalid;
+    the caller MUST return that string immediately so it reaches the user as
+    a regular tool result.
+
+    Why a string instead of ``raise``: a raised RuntimeError gets serialized
+    by FastMCP as an MCP error (``isError=true``), and several LLM clients
+    (notably ChatGPT's mcp connector) treat that as an internal failure and
+    never forward the subscribe URL to the user. Returning a normal string
+    forces the message through the success path so the LLM hands it to the
+    user verbatim and the Polar checkout URL is actually clickable.
     """
     try:
         await validate_license_or_raise(license_key, cost_units=units)
+        return None
     except LicenseError as exc:
-        raise RuntimeError(
-            f"[koreanpulse:{exc.code}] {exc} "
-            f"`{tool_name}` is a paid-tier tool — the Solo plan ($29/mo) unlocks "
-            f"5%-rule foreign-holder filings (BlackRock, Vanguard, Norges, GIC, "
-            f"Temasek + 15 more) and Korean activist filer classification "
-            f"(KCGI, Align Partners, Truston, Anda, VIP, Cha, Life, Platform). "
-            f"Subscribe: {POLAR_CHECKOUT_URL}"
-        ) from exc
+        return (
+            f"`{tool_name}` is a paid-tier Koreanpulse tool that needs a "
+            f"Solo plan license ($29/mo). Subscribe at {POLAR_CHECKOUT_URL} "
+            f"— the license key is emailed immediately. Then call this tool "
+            f"again with `license_key=\"<your-key>\"`.\n\n"
+            f"What this tool unlocks (and cannot be approximated by "
+            f"`track_korean_filings`): 5%-rule foreign-holder filings "
+            f"(BlackRock, Vanguard, Norges, GIC, Temasek + 15 more) and "
+            f"Korean activist filer classification (KCGI, Align Partners, "
+            f"Truston, Anda, VIP, Cha, Life, Platform).\n\n"
+            f"Diagnostic for client developers: gate returned [{exc.code}] {exc}"
+        )
 
 
 # `fill_corp_name_en` lives in `koreanpulse._enrich` so it can be
@@ -311,7 +322,7 @@ async def monitor_activist_investors(
     translate: bool = True,
     limit: int = 50,
     license_key: Optional[str] = None,
-) -> list[ActivistFiling]:
+) -> list[ActivistFiling] | str:
     """Watch DART shareholding disclosures (filing type D) for activist moves.
 
     **Paid tier — Solo $29/mo or higher.** Pass a Koreanpulse `license_key`.
@@ -343,11 +354,13 @@ async def monitor_activist_investors(
     Returns:
         ActivistFiling rows ordered by filing date desc.
     """
-    await _paid_gate(
+    paywall = await _paid_gate(
         license_key,
         units=1 + (1 if activist_only else 0),
         tool_name="monitor_activist_investors",
     )
+    if paywall:
+        return paywall
 
     days = max(1, min(days, 60))
     end_de = _kst_today()
@@ -400,7 +413,7 @@ async def monitor_foreign_holders(
     translate: bool = True,
     limit: int = 50,
     license_key: Optional[str] = None,
-) -> list[ForeignHolderFiling]:
+) -> list[ForeignHolderFiling] | str:
     """Watch DART 5%-rule disclosures (filing type D) by global asset
     managers and sovereign wealth funds.
 
@@ -446,11 +459,13 @@ async def monitor_foreign_holders(
         ForeignHolderFiling rows ordered by filing date desc. Each row
         carries `holder_label` (canonical English) and `holder_origin`.
     """
-    await _paid_gate(
+    paywall = await _paid_gate(
         license_key,
         units=1,
         tool_name="monitor_foreign_holders",
     )
+    if paywall:
+        return paywall
 
     days = max(1, min(days, 60))
     end_de = _kst_today()
