@@ -1,3 +1,4 @@
+<!-- mcp-name: io.github.whdrnr2583-cmd/koreanpulse -->
 <p align="center">
   <img src="docs/assets/logo.svg" alt="koreanpulse" width="256" height="256">
 </p>
