@@ -48,8 +48,10 @@ customer's machine.
                                         ▼
                            ┌────────────────────────┐
                            │  Webhook Worker (CF)   │
-                           │   /webhook/            │
-                           │     lemonsqueezy       │
+                           │   /webhook/polar       │ ← active route
+                           │   /webhook/lemonsqueezy│ ← retained route,
+                           │                        │   no LS secrets in
+                           │                        │   prod, no-op response
                            │   /v1/validate         │
                            │   D1 (SQLite):         │
                            │     licenses           │
@@ -253,15 +255,22 @@ FastMCP wire-up. Registers seven tools, holds the singleton `_cache` /
 ### `webhook-worker/` (TypeScript Worker + D1)
 
 Replaces the Python `koreanpulse-webhook` FastAPI app + Postgres store.
-Three modules (~700 LOC):
+Modules:
 
 - `src/license.ts` — D1 query helpers (`getByKey`, `findByEmail`,
   `nextLifetimeSeq`, `upsertLicense`, `incrementUsage`,
   `validateAndCharge`, `markEventSeen`, `issueLicenseKey`).
-- `src/lemonsqueezy.ts` — HMAC-SHA256 verify (constant-time), 7-event
-  dispatcher, role/self_description capture, idempotency via D1.
-- `src/index.ts` — fetch handler for `/health`, `/webhook/lemonsqueezy`,
-  `/v1/validate`. Mirrors the legacy Python webhook semantics 1:1.
+- `src/polar.ts` — **active billing handler.** Standard Webhooks
+  signature verify, subscription event dispatch (`subscription.created
+  / .active / .updated / .canceled / .revoked`), product_id → plan
+  resolution, RESEND license-email delivery, idempotency via D1.
+- `src/lemonsqueezy.ts` — historical LS handler. HMAC-SHA256 verify,
+  7-event dispatcher. **Not in use** (LS store application declined
+  2026-05-06); retained only as a reference implementation. Returns
+  no-op when no LS variant secrets are configured.
+- `src/index.ts` — fetch handler for `/health`, `/webhook/polar`
+  (active), `/webhook/lemonsqueezy` (no-op when LS secrets unset),
+  `/v1/validate`.
 
 D1 schema in `webhook-worker/migrations/0001_licenses.sql` — two tables:
 
