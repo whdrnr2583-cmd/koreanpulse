@@ -81,8 +81,8 @@ export default function TermsPage() {
             </li>
             <li>
               <strong>Paid Cloud subscription</strong> — license key issued
-              by our webhook on successful Lemon Squeezy purchase. Tiers
-              listed on the homepage.
+              by our webhook on successful Polar purchase. Tiers listed on
+              the homepage.
             </li>
           </ul>
           <p>
@@ -123,13 +123,13 @@ export default function TermsPage() {
           </h2>
           <ul className="list-disc pl-6 space-y-1">
             <li>
-              All payments are processed by Lemon Squeezy, Inc. as the
-              merchant of record. Lemon Squeezy&apos;s terms apply to the
+              All payments are processed by Polar Software Inc. (polar.sh)
+              as the merchant of record. Polar&apos;s terms apply to the
               payment transaction itself.
             </li>
             <li>
               Subscriptions auto-renew monthly until cancelled. You can
-              cancel any time from the Lemon Squeezy customer portal; access
+              cancel any time from the Polar customer portal; access
               continues to the end of the paid period.
             </li>
             <li>
@@ -248,8 +248,8 @@ export default function TermsPage() {
             District Court (서울중앙지방법원) shall have exclusive
             jurisdiction for disputes between koreanpulse and a Korean-
             resident user. For non-Korean-resident users, payment-related
-            disputes are subject to Lemon Squeezy&apos;s terms; all other
-            disputes are subject to the courts of Seoul, Korea.
+            disputes are subject to Polar&apos;s terms; all other disputes
+            are subject to the courts of Seoul, Korea.
           </p>
 
           <h2 className="text-xl font-semibold text-zinc-100">

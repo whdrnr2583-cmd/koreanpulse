@@ -63,7 +63,7 @@ export default function PrivacyPage() {
             <li>
               <strong>Payment metadata</strong> — when you purchase a paid
               plan: name, country, last four card digits, plan, subscription
-              status. The full payment instrument is held by Lemon Squeezy,
+              status. The full payment instrument is held by Polar Software
               Inc. (our merchant of record); we receive only the metadata
               fields above.
             </li>
@@ -158,8 +158,10 @@ export default function PrivacyPage() {
           </p>
           <ul className="list-disc pl-6 space-y-1">
             <li>
-              <strong>Lemon Squeezy, Inc.</strong> (USA) — payment processing
-              (merchant of record). Receives full payment instrument.
+              <strong>Polar Software Inc.</strong> (USA, polar.sh) — payment
+              processing (merchant of record). Receives full payment
+              instrument; we receive only metadata (name, country, last four
+              card digits, plan, subscription status).
             </li>
             <li>
               <strong>Cloudflare, Inc.</strong> (USA) — hosting, DNS, KV
@@ -235,8 +237,8 @@ export default function PrivacyPage() {
           </h2>
           <p>
             All traffic is TLS 1.2+. License keys are stored hashed. Payment
-            credentials never reach our servers (handled by Lemon Squeezy).
-            We disclose any confirmed personal-data breach to affected users
+            credentials never reach our servers (handled by Polar). We
+            disclose any confirmed personal-data breach to affected users
             and to the relevant supervisory authority within 72 hours, as
             required by GDPR Art. 33 and PIPA §34.
           </p>
