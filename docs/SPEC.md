@@ -218,7 +218,7 @@ Aggregated cost across the 12mo customer mix: **~$380/mo total LLM spend** vs $1
 | LLM (translation/summary) | **OpenAI GPT-5-mini** (default) or Claude Haiku 4.5 | $0.25/M in + $2/M out — ~3× cheaper than Haiku at similar/better quality. Provider switchable via env. |
 | Cache | File JSONL → Supabase Postgres | File for v0 simplicity, swap when scale demands |
 | Auth | Supabase Auth + license-key MCP middleware | Same flow already validated |
-| Billing | **Polar** primary (active 2026-05-06+), Lemon Squeezy dormant for re-application | Polar acts as MoR — VAT/sales tax/refunds handled |
+| Billing | **Polar** sole provider (active 2026-05-06+); Lemon Squeezy not in use, store application declined 2026-05-06 | Polar acts as MoR — VAT/sales tax/refunds handled |
 | Hosting | AWS Lightsail Seoul + Vercel landing | Already provisioned |
 
 ## Throttle / cost discipline

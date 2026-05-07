@@ -1,14 +1,16 @@
 # Lemon Squeezy setup — step by step
 
-> 🚧 **STATUS: DORMANT (since 2026-05-06).** Polar ([polar.sh](https://polar.sh))
-> is the active Merchant of Record. The Lemon Squeezy store application was
-> declined 2026-05-06 (no traction at the time); we keep the LS handler code
-> wired up so we can flip back once subscription count justifies a
-> re-application. **Do not configure LS secrets in production while Polar is
-> active** — it would double-issue licenses on shared events. Polar setup
-> lives in [`docs/POLAR.md`](POLAR.md) (or the Billing section of the root
-> [`README.md`](../README.md)). Everything below is historical reference
-> for the LS path only.
+> 🚫 **STATUS: NOT IN USE — Lemon Squeezy store application was declined
+> 2026-05-06.** Polar ([polar.sh](https://polar.sh)) is our sole billing
+> provider and Merchant of Record. The LS handler code remains in the repo
+> only as a historical implementation reference; we do not plan to
+> re-apply, and **no LS secrets should be configured in production**
+> (doing so would attempt to dispatch licenses against a provider with no
+> MoR relationship). For active billing setup see the Billing section of
+> the root [`README.md`](../README.md) or
+> [`webhook-worker/README.md`](../webhook-worker/README.md). Everything
+> below this banner is a snapshot of the LS path as it existed before
+> 2026-05-06 — keep for context only.
 
 
 

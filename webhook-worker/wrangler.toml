@@ -40,8 +40,10 @@ VALIDATE_CACHE_TTL_SECONDS = "60"
 #   POLAR_PRODUCT_DESK              — UUID of Cloud Desk product
 #   ── Shared ─────────────────────────────────────────────────────────────
 #   KOREANPULSE_CACHE_SHARED_SECRET — same value as in cache-worker
-#   ── Lemon Squeezy (dormant — application denied 2026-05-06; kept for
-#       future re-application once paid traction exists) ─────────────────
+#   ── Lemon Squeezy (NOT IN USE — store application declined 2026-05-06;
+#       Polar is sole MoR. Slots below are documented only because the
+#       handler code is still in the repo as a historical reference. Do
+#       NOT set in production — Polar is the only billing provider) ────
 #   LEMONSQUEEZY_WEBHOOK_SECRET     — HMAC secret from LS dashboard
 #   LEMONSQUEEZY_VARIANT_SOLO       — variant ID for Cloud Solo $29/mo
 #   LEMONSQUEEZY_VARIANT_ANALYST    — variant ID for Cloud Analyst $79/mo

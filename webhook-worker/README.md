@@ -1,10 +1,12 @@
 # koreanpulse-webhook
 
-Cloudflare Worker that handles **Polar** billing webhooks (active provider
-since 2026-05-06) and license validation, backed by Cloudflare D1 (SQLite).
-The Lemon Squeezy handler is kept wired up but **dormant** — no LS variant
-secrets are configured in production. Replaces the older Lightsail
-FastAPI deployment.
+Cloudflare Worker that handles **Polar** billing webhooks and license
+validation, backed by Cloudflare D1 (SQLite). Polar is our sole billing
+provider, active since 2026-05-06. The Lemon Squeezy store application
+was declined the same day and LS is **not in use** — its handler code
+remains in the repo only as a historical implementation reference. No
+LS variant secrets are configured in production and none should be.
+Replaces the older Lightsail FastAPI deployment.
 
 ## Why this exists
 
@@ -35,11 +37,13 @@ POST /webhook/polar                     ← active provider
   → audit row in webhook_events
   → 200 (always, unless infra error)
 
-POST /webhook/lemonsqueezy              ← dormant; returns 200 with no-op
+POST /webhook/lemonsqueezy              ← not in use; LS rejected 2026-05-06
   HMAC-SHA256 verify (LEMONSQUEEZY_WEBHOOK_SECRET)
-  Handler code retained for re-application path; no LS variant secrets
-  configured in production, so any incoming event resolves to "unknown
-  plan" and the response is a graceful no-op rather than a 500.
+  Handler code retained only as a historical implementation reference.
+  No LS variant secrets are configured in production, so any incoming
+  event resolves to "unknown plan" and the response is a graceful no-op
+  rather than a 500. Do not configure LS secrets — Polar is our sole
+  MoR and any LS traffic in production is by definition spurious.
 
 POST /v1/validate
   HMAC verify (KOREANPULSE_CACHE_SHARED_SECRET, shared with cache-worker)
@@ -86,16 +90,18 @@ npx wrangler secret put POLAR_PRODUCT_DESK              # UUID of Cloud Desk pro
 npx wrangler secret put RESEND_API_KEY                  # for license-key email on subscription.created
 npx wrangler secret put KOREANPULSE_CACHE_SHARED_SECRET # same value cache-worker uses
 
-# Lemon Squeezy — dormant; do NOT set in production while Polar is active.
-# Setting any LEMONSQUEEZY_* secret while Polar is also active would
-# double-issue licenses on shared events. Re-enable only if Polar is
-# decommissioned and LS is reactivated.
+# Lemon Squeezy — not in use. Their store application was declined
+# 2026-05-06 and Polar is our sole billing provider. Do NOT set any
+# LEMONSQUEEZY_* secret in production. The slots below are documented
+# only because the handler code is still in the repo as a historical
+# implementation reference; setting them would attempt to dispatch
+# licenses against a provider with no current MoR relationship.
 #   npx wrangler secret put LEMONSQUEEZY_WEBHOOK_SECRET
 #   npx wrangler secret put LEMONSQUEEZY_VARIANT_SOLO         # Cloud Solo $29/mo
 #   npx wrangler secret put LEMONSQUEEZY_VARIANT_ANALYST      # Cloud Analyst $79/mo
 #   npx wrangler secret put LEMONSQUEEZY_VARIANT_DESK         # Cloud Desk $249/mo
 #   npx wrangler secret put LEMONSQUEEZY_VARIANT_LIFETIME     # Design Partner $299
-# Deprecated/legacy slots (remained only so a pre-2026-05-05 storefront
+# Deprecated/legacy slots (only kept so a pre-2026-05-05 storefront
 # would not 500): LEMONSQUEEZY_VARIANT_PRO / _STARTER / _INDIE / _ENTERPRISE.
 
 # 4. Run locally
@@ -123,10 +129,9 @@ In Polar dashboard:
 5. Product UUIDs (Solo / Analyst / Desk): copy into
    `POLAR_PRODUCT_SOLO` / `POLAR_PRODUCT_ANALYST` / `POLAR_PRODUCT_DESK`
 
-The Lemon Squeezy dashboard configuration is **not** part of the active
-deploy path. If LS is ever reactivated, register the webhook URL
-`https://api.koreanpulse.dev/webhook/lemonsqueezy` against
-`LEMONSQUEEZY_WEBHOOK_SECRET` and unset `POLAR_*` to avoid double-issue.
+The Lemon Squeezy dashboard configuration is **not** part of the deploy
+path. LS is not in use (store application declined 2026-05-06) and we
+do not plan to re-apply.
 
 ## Custom domain
 
@@ -198,10 +203,10 @@ New purchases go to `solo` / `analyst` / `desk`.
 
 The Lemon Squeezy variant slots (`LEMONSQUEEZY_VARIANT_SOLO/_ANALYST/_DESK/_LIFETIME`
 plus the deprecated `_PRO` / `_STARTER` / `_INDIE` / `_ENTERPRISE`)
-remain wired in code so the LS path can be reactivated without a deploy
-if traction ever justifies a re-application — but they are intentionally
-**unset in production** today, and any LS webhook delivery resolves to
-"unknown plan" → no-op.
+remain wired in code only as a historical implementation reference. LS
+is not in use (store application declined 2026-05-06) and the slots
+are intentionally **unset in production**; any LS webhook delivery
+resolves to "unknown plan" → no-op.
 
 ## Today vs Q3 2026
 
@@ -231,8 +236,8 @@ For v0 (no production traffic yet), this is a non-issue — start fresh on D1.
 
 - Polar webhook: Standard Webhooks signature, HMAC-SHA256 over
   `webhook-id.webhook-timestamp.body`, constant-time compare.
-- LS webhook (dormant): HMAC-SHA256 (constant-time compare) — same
-  guarantee, retained for the re-application path.
+- LS webhook (not in use): HMAC-SHA256 (constant-time compare) — same
+  guarantee, retained only as a historical implementation reference.
 - Both endpoints reject on signature mismatch.
 - Secrets via `wrangler secret put` — never in `wrangler.toml`.
 - License keys are 32 random bytes (urlsafe-base64), `kp_` prefix.
@@ -245,8 +250,7 @@ For v0 (no production traffic yet), this is a non-issue — start fresh on D1.
 ## Legal posture
 
 License store contains email addresses (PII). Cloudflare D1 is
-GDPR-compliant storage. **Polar Software Inc. is the Merchant of Record**
-for all current sales — they collect and remit VAT / sales tax / GST and
-handle KYC, refunds, and chargebacks. The Lemon Squeezy MoR
-relationship is dormant; if reactivated, MoR responsibility transfers
-back to LS for the periods they handle.
+GDPR-compliant storage. **Polar Software Inc. is the sole Merchant of
+Record** — they collect and remit VAT / sales tax / GST and handle KYC,
+refunds, and chargebacks for all sales. We have no MoR relationship
+with Lemon Squeezy (their store application was declined 2026-05-06).
