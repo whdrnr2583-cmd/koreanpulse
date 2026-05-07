@@ -10,10 +10,17 @@ expectations. License enforcement uses the same per-tool `license_key`
 argument flow as stdio mode — set KOREANPULSE_REQUIRE_LICENSE=1 +
 DATABASE_URL in the systemd EnvironmentFile so license keys issued by
 the webhook process resolve here.
+
+Root path `/` returns a plain-text guide so users who paste the bare
+host into a browser see what to do next instead of a 404.
 """
 from __future__ import annotations
 
 import os
+
+from starlette.applications import Starlette
+from starlette.responses import PlainTextResponse
+from starlette.routing import Mount, Route
 
 from koreanpulse.server import mcp
 
@@ -25,4 +32,43 @@ if os.environ.get("KOREANPULSE_REQUIRE_LICENSE", "0").strip() == "1" and not os.
         "Hosted MCP must share the Postgres license store with the webhook process."
     )
 
-app = mcp.http_app(transport="streamable-http", path="/mcp")
+_mcp_app = mcp.http_app(transport="streamable-http", path="/mcp")
+
+_ROOT_BODY = (
+    "koreanpulse — hosted MCP endpoint\n"
+    "==================================\n"
+    "\n"
+    "This URL is the MCP server itself, not a web page. Connect it from\n"
+    "an MCP-aware client:\n"
+    "\n"
+    "  Claude.ai → Settings → Connectors → Add custom connector\n"
+    "    URL: https://mcp.koreanpulse.dev/mcp\n"
+    "\n"
+    "  ChatGPT → Settings → Connectors → Add custom connector\n"
+    "    URL: https://mcp.koreanpulse.dev/mcp\n"
+    "\n"
+    "  OpenAI Responses API:\n"
+    "    tools=[{type: \"mcp\", server_url: \"https://mcp.koreanpulse.dev/mcp\"}]\n"
+    "\n"
+    "5 free tools (no key): track_korean_filings, search_korean_industry_news,\n"
+    "  monitor_activist_investors (gate), monitor_foreign_holders (gate),\n"
+    "  resolve_stock_code, lookup_corp_code, koreanpulse_about\n"
+    "\n"
+    "2 paid tools (Solo $29/mo+): activist_investors + foreign_holders\n"
+    "  classification (KCGI / Align / BlackRock / Norges / etc).\n"
+    "\n"
+    "Pricing + signup:  https://koreanpulse.dev/#pricing\n"
+    "Free daily digest: https://koreanpulse.dev/today\n"
+    "Source (AGPL):     https://github.com/whdrnr2583-cmd/koreanpulse\n"
+    "PyPI:              https://pypi.org/project/koreanpulse/\n"
+)
+
+
+async def _root(_request):
+    return PlainTextResponse(_ROOT_BODY, media_type="text/plain; charset=utf-8")
+
+
+app = Starlette(
+    routes=[Route("/", _root), Mount("/", app=_mcp_app)],
+    lifespan=_mcp_app.router.lifespan_context,
+)

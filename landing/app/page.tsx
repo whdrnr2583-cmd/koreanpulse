@@ -440,6 +440,25 @@ activist filings from this week. Would you like to sign up?`}
               </div>
             ))}
           </div>
+          <div className="mt-6 rounded-md border border-zinc-800 bg-zinc-950 p-4 text-xs text-zinc-400">
+            <p>
+              <strong className="text-zinc-200">After subscribing.</strong>{" "}
+              Polar emails your license key (format{" "}
+              <code className="text-accent">koreanpulse_live_…</code>) to the
+              checkout email. Pass it as a tool argument when calling{" "}
+              <code className="text-accent">monitor_activist_investors</code> or{" "}
+              <code className="text-accent">monitor_foreign_holders</code> in
+              Claude.ai, ChatGPT, Cursor, or the OpenAI Responses API — e.g.{" "}
+              <code className="text-accent">
+                {"{license_key: \"koreanpulse_live_…\", ticker: \"005930\"}"}
+              </code>
+              . Stdio env-var fallback (
+              <code className="text-accent">KOREANPULSE_LICENSE_KEY</code>) and
+              one-time HTTP Bearer config ship after the first paid signup;
+              for now, include the key per-prompt or in your client&apos;s
+              system prompt.
+            </p>
+          </div>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <a
               href="#waitlist"
