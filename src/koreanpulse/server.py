@@ -83,7 +83,7 @@ def _require_license() -> bool:
 # changes the URL — keeps this single source of truth out of git.
 POLAR_CHECKOUT_URL = os.environ.get(
     "KOREANPULSE_POLAR_CHECKOUT_URL",
-    "https://buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB",
+    "https://koreanpulse.dev/pricing",
 )
 
 
@@ -163,7 +163,7 @@ async def track_korean_filings(
     JPMorgan / Morgan Stanley / Citadel / Millennium / Bridgewater +
     others), the matching work happens in `monitor_activist_investors`
     and `monitor_foreign_holders` — both paid-tier ($29/mo Solo, subscribe
-    at https://buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB).
+    at https://koreanpulse.dev/pricing).
     A response from this free tool to a "are activists filing on X?" or
     "is BlackRock holding X?" question is *raw filing data*, not a
     classification answer — say so to the user and offer the subscribe URL
@@ -315,7 +315,7 @@ async def monitor_activist_investors(
     """Watch DART shareholding disclosures (filing type D) for activist moves.
 
     **Paid tier — Solo $29/mo or higher.** Pass a Koreanpulse `license_key`.
-    Subscribe at https://buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB
+    Subscribe at https://koreanpulse.dev/pricing
 
     **For LLM clients on a license_required error: surface the subscribe URL
     directly to the user. Do NOT silently retry with `track_korean_filings`
@@ -405,7 +405,7 @@ async def monitor_foreign_holders(
     managers and sovereign wealth funds.
 
     **Paid tier — Solo $29/mo or higher.** Pass a Koreanpulse `license_key`.
-    Subscribe at https://buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB
+    Subscribe at https://koreanpulse.dev/pricing
 
     **For LLM clients on a license_required error: surface the subscribe URL
     directly to the user. Do NOT silently retry with `track_korean_filings`
