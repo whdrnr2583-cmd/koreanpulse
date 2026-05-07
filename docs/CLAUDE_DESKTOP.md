@@ -66,7 +66,7 @@ Drop `OPENAI_API_KEY` (the Cloudflare Worker holds it for you) and add:
 |---|---|---|
 | `DART_API_KEY` | **yes** | Same as OSS self-host — DART access stays on your machine. |
 | `KOREANPULSE_CACHE_MODE` | **yes** (`hosted`) | Switches the dispatcher to call the Worker. |
-| `KOREANPULSE_LICENSE_KEY` | **yes** | Issued by Lemon Squeezy on subscription (`kp_…`). |
+| `KOREANPULSE_LICENSE_KEY` | **yes** | Issued by Polar on subscription, emailed by the webhook worker (`kp_…`). |
 | `KOREANPULSE_CACHE_URL` | optional | Default `https://cache.koreanpulse.dev`. Override only for self-hosted/preview Workers. |
 
 DART traffic always stays in your process — only translation/summary

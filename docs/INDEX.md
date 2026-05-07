@@ -19,7 +19,7 @@ Single jumping-off point for everything written about koreanpulse.
 | [RUN_LIVE.md](RUN_LIVE.md) | How to run the MCP server against real DART |
 | [CLAUDE_DESKTOP.md](CLAUDE_DESKTOP.md) | How to wire koreanpulse into Claude Desktop / Cursor |
 | [POSTGRES.md](POSTGRES.md) | Production LicenseStore — Supabase / RDS schema + wiring |
-| [LEMONSQUEEZY.md](LEMONSQUEEZY.md) | Billing setup — Variants, webhooks, **no domain required** path |
+| [LEMONSQUEEZY.md](LEMONSQUEEZY.md) | 🚧 **DORMANT** — historical Lemon Squeezy setup. Polar (`webhook-worker/`) is the active billing path since 2026-05-06. |
 | [CI.md](CI.md) | GitHub Actions workflows, PyPI trusted publishing, cutting a release |
 
 ## Marketing & launch

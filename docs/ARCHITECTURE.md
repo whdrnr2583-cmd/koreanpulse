@@ -59,8 +59,12 @@ customer's machine.
                                         │ HMAC-verified webhook POST
                                         │
                            ┌────────────┴───────────┐
-                           │  Lemon Squeezy         │
+                           │  Polar (active)        │
                            │  (Merchant of Record)  │
+                           │                        │
+                           │  Lemon Squeezy: dormant│
+                           │  (handler kept; no LS  │
+                           │   secrets in prod)     │
                            └────────────────────────┘
 
       Independent: Daily Worker (cron, builds /today)
@@ -95,7 +99,7 @@ customer's machine.
 |---|---|---|---|
 | `koreanpulse` MCP server | Customer's machine (stdio under Claude Desktop / Cursor / any MCP client) | DART filings + corp lookup + activist/foreign-holder tracking + industry news + translation dispatch | Live |
 | Cache Worker | Cloudflare Workers + KV | Hosted translation cache, holds our OpenAI key, license-gated | Live |
-| Webhook Worker | Cloudflare Worker + D1 | Lemon Squeezy webhook handler + license validation endpoint | Live |
+| Webhook Worker | Cloudflare Worker + D1 | **Polar** webhook handler + license validation endpoint (Lemon Squeezy handler kept dormant) | Live |
 | Daily Worker | Cloudflare Workers + KV (cron) | Builds `/today` daily snapshot, optional Discord push | Live |
 | Watchlist polling loop | (Q3 2026) — likely a fourth Worker cron consuming the D1 watchlist table | Cron-pulls DART changes for each watchlist, calls `koreanpulse.alerts` on hits | **Roadmap** |
 | True remote MCP transport | (Q3 2026) — HTTP-transport Worker so customers don't `pip install` | Eliminates local install for Cloud customers | **Roadmap** |

@@ -102,7 +102,7 @@ Hold for 5 seconds. Done.
 3. **Show HN post** — embed in the body
 4. **Crypto-native channels** (BETA Channel 7) — Twitter quote-reply
    when topic-relevant
-5. **Lemon Squeezy product page** — supported
+5. **Polar checkout pages** — Solo / Analyst / Desk (active billing path 2026-05-06+; the Lemon Squeezy product page concept is dormant)
 
 ## What not to do
 

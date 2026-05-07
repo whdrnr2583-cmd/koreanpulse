@@ -309,7 +309,7 @@ In order:
 | Supabase free tier | 0 |
 | Lightsail Seoul (already provisioned) | 0 |
 | Anthropic API for translations during beta (estimate 50 users × 100 calls × $0.001) | 5 |
-| Lemon Squeezy / PayPal: only on first paid sale | 0 |
+| Polar fees: only on first paid sale (5% + $0.40 / Stripe pass-through; Lemon Squeezy dormant) | 0 |
 | **Total beta budget** | **< $40** |
 
 Inside the user's "no capital increase" rule by 75×.
@@ -324,7 +324,7 @@ Pre-beta checklist:
 - [ ] First live `quickstart.py` run succeeds end-to-end
 - [ ] Domain registered
 - [ ] Landing page live (even single page) with email capture
-- [ ] Lemon Squeezy account approved (1–2 days from application)
+- [x] Polar account active (Lemon Squeezy dormant since 2026-05-06 after store rejection)
 - [ ] All 5 marketplace listings filed (Smithery, PulseMCP, Glama, MCP Market, Awesome MCP PR)
 - [ ] Show HN draft reviewed by ≥ 1 honest reader (you)
 
