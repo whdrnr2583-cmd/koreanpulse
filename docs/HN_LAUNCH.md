@@ -94,6 +94,18 @@ Build notes: FastMCP on the server, Cloudflare Workers + KV + D1 in
 front, zero servers I run myself. Whole thing costs <$15/mo at beta
 scale. Source is AGPL.
 
+There are a few other Korean-equity MCP servers (korea-stock-mcp,
+SongT-50/korean-stock-mcp, openregistry, etc.) — most are stdio-only,
+so an end user has to npx-install them and edit a JSON config before
+they work. Koreanpulse runs the latest Streamable HTTP transport at
+mcp.koreanpulse.dev/mcp, so a ChatGPT or Claude.ai user adds it as a
+custom connector with one URL paste — no install, no config. Pair
+that with 21+ named-entity classification (KCGI/Align activists +
+BlackRock/Norges/GIC foreign holders) that raw DART feeds can't
+derive, and that's the lane we're in. If you actually need raw KRX
+OHLCV or XBRL financial statements, korea-stock-mcp is excellent for
+that and we'll keep that out of scope.
+
 Looking for: people who actually cover Korea from outside Korea — analysts,
 PMs, journalists, activist-fund staff. Two questions I'd love feedback on:
 (1) which DART form types matter most to you that I haven't covered yet,
@@ -129,12 +141,13 @@ A few things that didn't fit:
   lands then. Today's enforced tier delta is the monthly query cap and
   seat count only; everything else on the pricing card is a paper limit
   until polling ships.
-- Hosted HTTP-transport endpoint is live today via Smithery
-  (smithery.ai/servers/whdrnr2583/koreanpulse — `koreanpulse--whdrnr2583.run.tools`).
-  Clients that speak Streamable HTTP can connect with no `pip install` at
-  all. Local stdio remains the canonical path for self-hosters and
-  max-privacy users; a first-party Cloudflare-hosted HTTP transport is
-  still on the roadmap for users who want the endpoint outside Smithery.
+- First-party hosted Streamable-HTTP endpoint at
+  `https://mcp.koreanpulse.dev/mcp`. Add it as a custom connector in
+  ChatGPT (Settings → Connectors) or Claude.ai (Settings → Connectors)
+  and the 5 free tools answer immediately, no pip install, no JSON
+  config. Local stdio install via PyPI (`pip install koreanpulse`) is
+  still the canonical path for self-hosters and max-privacy users —
+  pick whichever fits.
 - Day job: I run a live Korean automated trading system. Koreanpulse fell
   out of the same data pipeline I built for myself.
 ```
