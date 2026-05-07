@@ -1,7 +1,9 @@
 # koreanpulse-webhook
 
-Cloudflare Worker that handles Lemon Squeezy billing webhooks and license
-validation, backed by Cloudflare D1 (SQLite). Replaces the Lightsail
+Cloudflare Worker that handles **Polar** billing webhooks (active provider
+since 2026-05-06) and license validation, backed by Cloudflare D1 (SQLite).
+The Lemon Squeezy handler is kept wired up but **dormant** — no LS variant
+secrets are configured in production. Replaces the older Lightsail
 FastAPI deployment.
 
 ## Why this exists
@@ -20,17 +22,24 @@ SSH + systemd + Caddy          →   `wrangler deploy`
 ## What it does
 
 ```
-POST /webhook/lemonsqueezy
-  HMAC-SHA256 verify (LEMONSQUEEZY_WEBHOOK_SECRET)
+POST /webhook/polar                     ← active provider
+  Standard Webhooks signature verify
+    (POLAR_WEBHOOK_SECRET, headers webhook-id / -timestamp / -signature)
   → JSON parse
-  → idempotency check (D1 webhook_events PK)
-  → dispatch on meta.event_name
-       subscription_created/_resumed/_updated/_cancelled/_expired
-       subscription_payment_success/_failed
-       order_created  (lifetime SKU)
-  → upsert D1 licenses
+  → idempotency check (D1 webhook_events PK on webhook-id)
+  → dispatch on type
+       subscription.created / .active / .updated / .canceled / .revoked
+  → resolve product_id → plan via POLAR_PRODUCT_SOLO/_ANALYST/_DESK
+  → upsert D1 licenses (metadata.provider = "polar")
+  → email license key via Resend on subscription.created
   → audit row in webhook_events
   → 200 (always, unless infra error)
+
+POST /webhook/lemonsqueezy              ← dormant; returns 200 with no-op
+  HMAC-SHA256 verify (LEMONSQUEEZY_WEBHOOK_SECRET)
+  Handler code retained for re-application path; no LS variant secrets
+  configured in production, so any incoming event resolves to "unknown
+  plan" and the response is a graceful no-op rather than a 500.
 
 POST /v1/validate
   HMAC verify (KOREANPULSE_CACHE_SHARED_SECRET, shared with cache-worker)
@@ -48,9 +57,9 @@ GET /health
 
 | Service | Daily usage | Free limit | Headroom |
 |---|---|---|---|
-| Workers requests | ~100 (LS webhook on each sale + validate every 60s/license) | 100K/day | 1000× |
+| Workers requests | ~100 (Polar webhook on each sale + validate every 60s/license) | 100K/day | 1000× |
 | D1 reads | ~50 (per validate hit on first) | 5M/day | 100K× |
-| D1 writes | ~5 (LS event + license issue) | 100K/day | 20K× |
+| D1 writes | ~5 (Polar event + license issue) | 100K/day | 20K× |
 
 Several orders of magnitude headroom even at $5K MRR scale.
 
@@ -68,20 +77,26 @@ npx wrangler d1 create koreanpulse_db
 npm run migrate:local      # local SQLite for `npm run dev`
 npm run migrate:prod       # remote D1 for production
 
-# 3. Set secrets — pricing v2 (2026-05-05+)
-npx wrangler secret put LEMONSQUEEZY_WEBHOOK_SECRET
-npx wrangler secret put KOREANPULSE_CACHE_SHARED_SECRET   # same as cache-worker
+# 3. Set secrets — Polar is the active provider (2026-05-06+)
+npx wrangler secret put POLAR_WEBHOOK_SECRET            # `polar_whs_…` from the Polar webhook page
+npx wrangler secret put POLAR_API_TOKEN                 # `polar_oat_…` (subscriptions:read scope)
+npx wrangler secret put POLAR_PRODUCT_SOLO              # UUID of Cloud Solo product
+npx wrangler secret put POLAR_PRODUCT_ANALYST           # UUID of Cloud Analyst product
+npx wrangler secret put POLAR_PRODUCT_DESK              # UUID of Cloud Desk product
+npx wrangler secret put RESEND_API_KEY                  # for license-key email on subscription.created
+npx wrangler secret put KOREANPULSE_CACHE_SHARED_SECRET # same value cache-worker uses
 
-# Active pricing v2 variants — one per published tier
-npx wrangler secret put LEMONSQUEEZY_VARIANT_SOLO         # Cloud Solo $29/mo
-npx wrangler secret put LEMONSQUEEZY_VARIANT_ANALYST      # Cloud Analyst $79/mo
-npx wrangler secret put LEMONSQUEEZY_VARIANT_DESK         # Cloud Desk $249/mo
-npx wrangler secret put LEMONSQUEEZY_VARIANT_LIFETIME     # Design Partner $299 (private)
-
-# Deprecated / back-compat — leave unset in production:
-#   LEMONSQUEEZY_VARIANT_PRO / _STARTER / _INDIE / _ENTERPRISE
-# These are kept only so historical webhook payloads from a pre-2026-05-05
-# storefront still resolve to a known plan instead of 500ing.
+# Lemon Squeezy — dormant; do NOT set in production while Polar is active.
+# Setting any LEMONSQUEEZY_* secret while Polar is also active would
+# double-issue licenses on shared events. Re-enable only if Polar is
+# decommissioned and LS is reactivated.
+#   npx wrangler secret put LEMONSQUEEZY_WEBHOOK_SECRET
+#   npx wrangler secret put LEMONSQUEEZY_VARIANT_SOLO         # Cloud Solo $29/mo
+#   npx wrangler secret put LEMONSQUEEZY_VARIANT_ANALYST      # Cloud Analyst $79/mo
+#   npx wrangler secret put LEMONSQUEEZY_VARIANT_DESK         # Cloud Desk $249/mo
+#   npx wrangler secret put LEMONSQUEEZY_VARIANT_LIFETIME     # Design Partner $299
+# Deprecated/legacy slots (remained only so a pre-2026-05-05 storefront
+# would not 500): LEMONSQUEEZY_VARIANT_PRO / _STARTER / _INDIE / _ENTERPRISE.
 
 # 4. Run locally
 npm run dev      # http://localhost:8787
@@ -97,13 +112,21 @@ curl http://localhost:8787/health
 npm run deploy
 ```
 
-In Lemon Squeezy dashboard:
-1. Settings → Webhooks → Add webhook
-2. URL: `https://api.koreanpulse.dev/webhook/lemonsqueezy`
-   (or `https://koreanpulse-webhook.<account>.workers.dev/webhook/lemonsqueezy`
+In Polar dashboard:
+1. Settings → Webhooks → Add endpoint
+2. URL: `https://api.koreanpulse.dev/webhook/polar`
+   (or `https://koreanpulse-webhook.<account>.workers.dev/webhook/polar`
    if no custom domain yet)
-3. Events: subscription_created / _updated / _cancelled / _payment_success / _payment_failed / order_created
-4. Secret: same as `LEMONSQUEEZY_WEBHOOK_SECRET` you set
+3. Events: `subscription.created` / `subscription.active` /
+   `subscription.updated` / `subscription.canceled` / `subscription.revoked`
+4. Signing secret: copy into `POLAR_WEBHOOK_SECRET` via `wrangler secret put`
+5. Product UUIDs (Solo / Analyst / Desk): copy into
+   `POLAR_PRODUCT_SOLO` / `POLAR_PRODUCT_ANALYST` / `POLAR_PRODUCT_DESK`
+
+The Lemon Squeezy dashboard configuration is **not** part of the active
+deploy path. If LS is ever reactivated, register the webhook URL
+`https://api.koreanpulse.dev/webhook/lemonsqueezy` against
+`LEMONSQUEEZY_WEBHOOK_SECRET` and unset `POLAR_*` to avoid double-issue.
 
 ## Custom domain
 
@@ -117,6 +140,13 @@ Cloudflare dashboard → Workers → koreanpulse-webhook → Triggers → Custom
 npx wrangler d1 execute koreanpulse_db --remote \
   --command "SELECT COUNT(*) FROM licenses WHERE active = 1"
 
+# Per-plan / per-active breakdown
+npx wrangler d1 execute koreanpulse_db --remote --json \
+  --command "SELECT plan, active, COUNT(*) AS cnt
+             FROM licenses
+             GROUP BY plan, active
+             ORDER BY cnt DESC"
+
 # Audience composition (the BETA.md decision-matrix query)
 npx wrangler d1 execute koreanpulse_db --remote --json \
   --command "SELECT json_extract(metadata, '$.self_description') AS role,
@@ -125,11 +155,12 @@ npx wrangler d1 execute koreanpulse_db --remote --json \
              GROUP BY role
              ORDER BY n DESC"
 
-# Lifetime deal seats remaining
-npx wrangler d1 execute koreanpulse_db --remote \
-  --command "SELECT 100 - COUNT(*) AS remaining
+# Provider attribution (Polar vs the dormant LS path)
+npx wrangler d1 execute koreanpulse_db --remote --json \
+  --command "SELECT json_extract(metadata, '$.provider') AS provider,
+                    COUNT(*) AS n
              FROM licenses
-             WHERE is_lifetime = 1"
+             GROUP BY provider"
 
 # Recent webhook events
 npx wrangler d1 execute koreanpulse_db --remote \
@@ -149,30 +180,28 @@ npx wrangler d1 execute koreanpulse_db --remote \
 Both files run via `npm run migrate:prod`.
 
 Two tables:
-- `licenses` — one row per issued license. Mirrors the Postgres schema
-  in `migrations/001_licenses.sql` but with SQLite-compatible types
-  (TEXT for timestamps, INTEGER for booleans, JSON-as-TEXT for metadata).
-  Denormalised `is_lifetime` + `deal_seq` columns to keep lifetime
-  accounting fast without a JSON functional index.
+- `licenses` — one row per issued license. Carries `metadata.provider`
+  (`"polar"` or, historically, `"lemonsqueezy"`) so source attribution
+  is per-row. Denormalised `is_lifetime` + `deal_seq` columns to keep
+  lifetime accounting fast.
 - `webhook_events` — idempotency log. PK on `webhook_id` makes duplicate
   inserts fail with UNIQUE constraint, which the handler treats as
   "already processed."
 
 ## Pricing v2 (2026-05-05)
 
-Production exercises **`LEMONSQUEEZY_VARIANT_SOLO`,
-`LEMONSQUEEZY_VARIANT_ANALYST`, `LEMONSQUEEZY_VARIANT_DESK`, and
-`LEMONSQUEEZY_VARIANT_LIFETIME`** — the workflow-priced 3-tier ladder
-plus the private design-partner one-time SKU. The plan CHECK constraint
-still allows the deprecated values (`free` / `starter` / `indie` / `pro` /
-`enterprise`) so any pre-pricing-v2 license row continues to resolve. New
-purchases go to `solo` / `analyst` / `desk` (subscription) or `analyst` +
-`is_lifetime=1` (one-time design-partner SKU).
+Production exercises three Polar products: Cloud Solo $29/mo, Cloud
+Analyst $79/mo, Cloud Desk $249/mo. The plan CHECK constraint still
+allows deprecated values (`free` / `starter` / `indie` / `pro` /
+`enterprise`) so any pre-pricing-v2 license row continues to resolve.
+New purchases go to `solo` / `analyst` / `desk`.
 
-The deprecated `LEMONSQUEEZY_VARIANT_PRO` / `_STARTER` / `_INDIE` /
-`_ENTERPRISE` env slots remain wired up so an older storefront still
-resolves to a known plan instead of returning a 500 — leave them unset
-in production.
+The Lemon Squeezy variant slots (`LEMONSQUEEZY_VARIANT_SOLO/_ANALYST/_DESK/_LIFETIME`
+plus the deprecated `_PRO` / `_STARTER` / `_INDIE` / `_ENTERPRISE`)
+remain wired in code so the LS path can be reactivated without a deploy
+if traction ever justifies a re-application — but they are intentionally
+**unset in production** today, and any LS webhook delivery resolves to
+"unknown plan" → no-op.
 
 ## Today vs Q3 2026
 
@@ -200,17 +229,24 @@ For v0 (no production traffic yet), this is a non-issue — start fresh on D1.
 
 ## Security model
 
-- HMAC-SHA256 (constant-time compare) on both endpoints.
+- Polar webhook: Standard Webhooks signature, HMAC-SHA256 over
+  `webhook-id.webhook-timestamp.body`, constant-time compare.
+- LS webhook (dormant): HMAC-SHA256 (constant-time compare) — same
+  guarantee, retained for the re-application path.
+- Both endpoints reject on signature mismatch.
 - Secrets via `wrangler secret put` — never in `wrangler.toml`.
 - License keys are 32 random bytes (urlsafe-base64), `kp_` prefix.
 - License key never logged in full (Worker `console.warn` follows the
   Python convention of `key.slice(0,8)+"…"`).
 - D1 auto-encrypted at rest by Cloudflare.
 - Idempotency log retains webhook IDs indefinitely (no PII inside —
-  only the LS event identifier).
+  only the provider event identifier).
 
 ## Legal posture
 
-License store contains email addresses (PII). Cloudflare D1 is GDPR-compliant
-storage. Lemon Squeezy is the Merchant of Record so all sales tax /
-KYC obligations route through them.
+License store contains email addresses (PII). Cloudflare D1 is
+GDPR-compliant storage. **Polar Software Inc. is the Merchant of Record**
+for all current sales — they collect and remit VAT / sales tax / GST and
+handle KYC, refunds, and chargebacks. The Lemon Squeezy MoR
+relationship is dormant; if reactivated, MoR responsibility transfers
+back to LS for the periods they handle.
