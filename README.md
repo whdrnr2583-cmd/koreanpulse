@@ -131,18 +131,21 @@ served as a hosted endpoint your LLM client can connect to in one click.** If
 you need raw KRX OHLCV or Korean-language financial-statement tables, others
 do that better.
 
-| Capability | **koreanpulse** | korea-stock-mcp ([jjlabsio](https://github.com/jjlabsio/korea-stock-mcp), 124★) | openregistry ([sophymarine](https://github.com/sophymarine/openregistry)) |
-|---|---|---|---|
-| Transport | **Streamable HTTP + SSE** | stdio only (`npx` install) | Streamable HTTP |
-| Hosted endpoint | **`mcp.koreanpulse.dev/mcp`** | — (self-install) | `openregistry.sophymarine.com/mcp` |
-| 1-click connect (ChatGPT / Claude.ai) | **Yes** | No (stdio not supported by remote connectors) | Yes |
-| Activist filer classification (KCGI / Align / Truston / Anda / Cha / VIP / Life / Platform / ValueAct / Elliott) | **10+ labels** | — raw filings only | — registry data only |
-| Foreign-holder 5%-rule allowlist (BlackRock / Vanguard / Norges / GIC / Temasek + 16 more) | **21+ labels** | — raw filings only | — registry data only |
-| English-first docstrings (LLM-friendly) | **All tools** | Korean primary, English secondary | Yes |
-| Korean industry news (etnews / 한국경제 RSS, EN translated) | **16 industries** | — | — |
-| KRX OHLCV (daily prices) | — out of scope | **Yes** (KOSPI / KOSDAQ / KONEX) | — |
-| XBRL financial statements | — out of scope | **Yes** | — |
-| Pricing | Free 5 tools · Solo $29 · Analyst $79 · Desk $249/mo | Free OSS (BYO API keys) | Free anonymous tier |
+| Capability | **koreanpulse** | korea-stock-mcp ([jjlabsio](https://github.com/jjlabsio/korea-stock-mcp), 124★) | korean-dart-mcp ([chrisryugj](https://github.com/chrisryugj/korean-dart-mcp), 35★) | openregistry ([sophymarine](https://github.com/sophymarine/openregistry)) |
+|---|---|---|---|---|
+| Transport | **Streamable HTTP + SSE** | stdio only (`npx`) | stdio only (`npx`) | Streamable HTTP |
+| Hosted endpoint | **`mcp.koreanpulse.dev/mcp`** | — (self-install) | — (self-install) | `openregistry.sophymarine.com/mcp` |
+| 1-click connect (ChatGPT / Claude.ai) | **Yes** | No (stdio) | No (stdio) | Yes |
+| Activist filer classification (KCGI / Align / Truston / Anda / Cha / VIP / Life / Platform / ValueAct / Elliott) | **10+ labels** | — raw filings only | — raw filings only | — registry data only |
+| Foreign-holder 5%-rule allowlist (BlackRock / Vanguard / Norges / GIC / Temasek + 16 more) | **21+ labels** | — raw filings only | — raw filings only | — registry data only |
+| English-first docstrings (LLM-friendly) | **All tools** | Korean primary, English secondary | Korean primary | Yes |
+| Korean industry news (etnews / 한국경제 RSS, EN translated) | **16 industries** | — | — | — |
+| KRX OHLCV (daily prices) | — out of scope | **Yes** (KOSPI / KOSDAQ / KONEX) | — | — |
+| XBRL financial statements | — out of scope | **Yes** | **Yes** | — |
+| HWP / PDF attachment → markdown | — out of scope | — | **Yes** | — |
+| **Multi-user architecture** (one endpoint, N AI agents in parallel) | **N→1 hosted** (~9,500 MAU on a single DART key, ~19,000 at 85% cache hit) | 1:1 (one process per user on user's machine) | 1:1 (one process per user on user's machine) | Hosted |
+| **DART API key required from end user** | **No** (free tools use our shared key) | Yes (each user signs up) | Yes (each user signs up) | No |
+| Pricing | Free 5 tools · Solo $29 · Analyst $79 · Desk $249/mo | Free OSS (BYO API keys) | Free OSS (BYO API keys) | Free anonymous tier |
 
 Other servers in the space (different scope or smaller install base):
 [SongT-50/korean-stock-mcp](https://github.com/SongT-50/korean-stock-mcp),

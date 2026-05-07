@@ -182,8 +182,19 @@ export default function Home() {
             </code>{" "}
             as a custom connector in ChatGPT or Claude.ai — no{" "}
             <code className="text-xs">npx</code> install, no JSON config, no
-            local secrets. Latest MCP Streamable HTTP transport, OAuth-ready,
-            actively maintained.
+            local secrets, no DART API key needed for the free tools. Latest
+            MCP Streamable HTTP transport, OAuth-ready, actively maintained.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-zinc-400">
+            <strong className="text-zinc-200">Built to scale.</strong> One
+            hosted endpoint serves many AI agents in parallel — Cloudflare
+            Workers auto-scale on the cache + license + daily-digest path,
+            async uvicorn handles concurrent MCP sessions on the back end, and
+            our DART quota math (~9,500 MAU at 70% cache hit, ~19,000 MAU at
+            85%) is sized for thousands of paying users on a single key.
+            Stdio competitors run one process per user on the user's own
+            machine — fine for a single hacker, structurally wrong for
+            agentic workloads.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -300,12 +311,13 @@ export default function Home() {
           </p>
 
           <div className="mt-6 overflow-x-auto rounded-md border border-zinc-800">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[760px] text-sm">
               <thead className="bg-zinc-900/60 text-xs uppercase tracking-wide text-zinc-400">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Capability</th>
                   <th className="px-4 py-3 text-left font-semibold">koreanpulse</th>
                   <th className="px-4 py-3 text-left font-semibold">korea-stock-mcp</th>
+                  <th className="px-4 py-3 text-left font-semibold">korean-dart-mcp</th>
                   <th className="px-4 py-3 text-left font-semibold">openregistry</th>
                 </tr>
               </thead>
@@ -314,9 +326,10 @@ export default function Home() {
                   <td className="px-4 py-3 font-medium text-zinc-200">Transport</td>
                   <td className="px-4 py-3">
                     <span className="text-emerald-400">✓</span> Streamable HTTP +
-                    SSE (latest MCP spec)
+                    SSE
                   </td>
-                  <td className="px-4 py-3 text-zinc-500">stdio only (npx install)</td>
+                  <td className="px-4 py-3 text-zinc-500">stdio only (npx)</td>
+                  <td className="px-4 py-3 text-zinc-500">stdio only (npx)</td>
                   <td className="px-4 py-3">
                     <span className="text-emerald-400">✓</span> Streamable HTTP
                   </td>
@@ -328,9 +341,10 @@ export default function Home() {
                     <code className="text-xs">mcp.koreanpulse.dev/mcp</code>
                   </td>
                   <td className="px-4 py-3 text-zinc-500">— (self-install)</td>
+                  <td className="px-4 py-3 text-zinc-500">— (self-install)</td>
                   <td className="px-4 py-3">
                     <span className="text-emerald-400">✓</span>{" "}
-                    <code className="text-xs">openregistry.sophymarine.com/mcp</code>
+                    <code className="text-xs">openregistry.sophymarine.com</code>
                   </td>
                 </tr>
                 <tr>
@@ -340,9 +354,8 @@ export default function Home() {
                   <td className="px-4 py-3">
                     <span className="text-emerald-400">✓</span> Yes
                   </td>
-                  <td className="px-4 py-3 text-zinc-500">
-                    No (stdio not supported by remote connectors)
-                  </td>
+                  <td className="px-4 py-3 text-zinc-500">No (stdio)</td>
+                  <td className="px-4 py-3 text-zinc-500">No (stdio)</td>
                   <td className="px-4 py-3">
                     <span className="text-emerald-400">✓</span> Yes
                   </td>
@@ -359,6 +372,7 @@ export default function Home() {
                     <span className="text-emerald-400">✓</span> 10+ labels
                   </td>
                   <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
+                  <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
                   <td className="px-4 py-3 text-zinc-500">— registry data only</td>
                 </tr>
                 <tr>
@@ -372,6 +386,7 @@ export default function Home() {
                     <span className="text-emerald-400">✓</span> 21+ labels
                   </td>
                   <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
+                  <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
                   <td className="px-4 py-3 text-zinc-500">— registry data only</td>
                 </tr>
                 <tr>
@@ -381,18 +396,20 @@ export default function Home() {
                   <td className="px-4 py-3">
                     <span className="text-emerald-400">✓</span> All tools
                   </td>
-                  <td className="px-4 py-3 text-zinc-500">Korean primary, English secondary</td>
+                  <td className="px-4 py-3 text-zinc-500">Korean primary</td>
+                  <td className="px-4 py-3 text-zinc-500">Korean primary</td>
                   <td className="px-4 py-3">
                     <span className="text-emerald-400">✓</span>
                   </td>
                 </tr>
                 <tr>
                   <td className="px-4 py-3 font-medium text-zinc-200">
-                    Korean industry news (etnews / 한국경제 RSS, EN translated)
+                    Korean industry news (etnews / 한국경제 RSS, EN)
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-emerald-400">✓</span> 16 industries
                   </td>
+                  <td className="px-4 py-3 text-zinc-500">—</td>
                   <td className="px-4 py-3 text-zinc-500">—</td>
                   <td className="px-4 py-3 text-zinc-500">—</td>
                 </tr>
@@ -400,27 +417,81 @@ export default function Home() {
                   <td className="px-4 py-3 font-medium text-zinc-200">
                     KRX OHLCV (daily prices)
                   </td>
-                  <td className="px-4 py-3 text-zinc-500">— (out of scope)</td>
+                  <td className="px-4 py-3 text-zinc-500">— out of scope</td>
                   <td className="px-4 py-3">
-                    <span className="text-emerald-400">✓</span> KOSPI / KOSDAQ / KONEX
+                    <span className="text-emerald-400">✓</span> KOSPI / KOSDAQ
                   </td>
+                  <td className="px-4 py-3 text-zinc-500">—</td>
                   <td className="px-4 py-3 text-zinc-500">—</td>
                 </tr>
                 <tr>
                   <td className="px-4 py-3 font-medium text-zinc-200">
                     XBRL financial statements
                   </td>
-                  <td className="px-4 py-3 text-zinc-500">— (out of scope)</td>
+                  <td className="px-4 py-3 text-zinc-500">— out of scope</td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span>
+                  </td>
                   <td className="px-4 py-3">
                     <span className="text-emerald-400">✓</span>
                   </td>
                   <td className="px-4 py-3 text-zinc-500">—</td>
                 </tr>
                 <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">
+                    HWP / PDF attachment → markdown
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">— out of scope</td>
+                  <td className="px-4 py-3 text-zinc-500">—</td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span>
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">—</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">
+                    Multi-user architecture
+                    <div className="text-xs font-normal text-zinc-500">
+                      One endpoint, N AI agents in parallel
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span> N→1 hosted
+                    (~9,500 MAU on a single DART key)
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">
+                    1:1 (one process per user on user&apos;s machine)
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">
+                    1:1 (one process per user on user&apos;s machine)
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span> Hosted
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">
+                    DART API key required from end user
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">
+                    No (free tools use our shared key)
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-amber-400">Yes</span> (each user signs up)
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-amber-400">Yes</span> (each user signs up)
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">
+                    No
+                  </td>
+                </tr>
+                <tr>
                   <td className="px-4 py-3 font-medium text-zinc-200">Pricing</td>
                   <td className="px-4 py-3">
                     Free 5 tools · Solo $29 · Analyst $79 · Desk $249/mo
                   </td>
+                  <td className="px-4 py-3">Free OSS (BYO API keys)</td>
                   <td className="px-4 py-3">Free OSS (BYO API keys)</td>
                   <td className="px-4 py-3">Free anonymous tier</td>
                 </tr>
