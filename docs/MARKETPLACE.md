@@ -1,28 +1,32 @@
 # Marketplace listing checklist
 
-Five marketplaces, one repo. Each listing's exact copy lives in `docs/listings/`.
+One repo, multiple listing surfaces. Each listing's exact copy lives in `docs/listings/`.
 
-## Submission status
+## Submission status (verified 2026-05-07)
 
-| Marketplace | Listing file | URL | Submitted | Live |
-|---|---|---|---|---|
-| Smithery | [SMITHERY.md](listings/SMITHERY.md) | https://smithery.ai | ☐ | ☐ |
-| PulseMCP | [PULSEMCP.md](listings/PULSEMCP.md) | https://www.pulsemcp.com | ☐ | ☐ |
-| Glama | [GLAMA.md](listings/GLAMA.md) | https://glama.ai/mcp | ☐ | ☐ |
-| MCP Market | [MCPMARKET.md](listings/MCPMARKET.md) | https://mcpmarket.com | ☐ | ☐ |
-| Awesome MCP (GH) | [AWESOME_MCP.md](listings/AWESOME_MCP.md) | https://github.com/punkpeye/awesome-mcp-servers | ☐ | ☐ |
+| # | Marketplace / surface | Listing file | URL | Submitted | Live |
+|---|---|---|---|---|---|
+| 1 | **Smithery** | [SMITHERY.md](listings/SMITHERY.md) | https://smithery.ai/servers/whdrnr2583/koreanpulse | ☑ | ☑ remote=true, 7 tools, description PATCH applied |
+| 2 | **Glama** | [GLAMA.md](listings/GLAMA.md) | https://glama.ai/mcp/servers/whdrnr2583-cmd/koreanpulse | ☑ (auto-discovered) | ☑ score badge live |
+| 3 | **MCP Market** | [MCPMARKET.md](listings/MCPMARKET.md) | https://mcpmarket.com/ko/server/koreanpulse | ☑ (auto-discovered) | ☑ AI-generated description |
+| 4 | **mcp.so** | — | https://mcp.so/server/koreanpulse | ☑ (manual submit) | ☑ all 4 axes in metadata |
+| 5 | **MCP Registry** (Anthropic official) | — | https://registry.modelcontextprotocol.io/v0.1/servers?search=koreanpulse | ☑ (`mcp-publisher publish`) | ☑ active, isLatest |
+| 6 | **PulseMCP** | [PULSEMCP.md](listings/PULSEMCP.md) | https://www.pulsemcp.com | ☐ | ☐ |
+| 7 | **punkpeye/awesome-mcp-servers** PR | [AWESOME_MCP.md](listings/AWESOME_MCP.md) | [PR #5893](https://github.com/punkpeye/awesome-mcp-servers/pull/5893) | ☑ (Glama badge added 2026-05-07) | ☐ awaiting maintainer merge |
+| 8 | **jmanhype/awesome-claude-code** PR | — | [PR #42](https://github.com/jmanhype/awesome-claude-code/pull/42) | ☑ (qodo bot resolved) | ☐ awaiting maintainer merge |
 
-Tick boxes manually as you submit and as listings go live.
+Continue.dev hub — explicitly skipped 2026-05-07 after audit (GitHub App permissions too broad for the marginal discovery value; OAuth revoked).
 
-## Submission order (recommended)
+## Submission order (taken)
 
-1. **Smithery first** — auto-detects `smithery.yaml` in repo root. Once the
-   file is in `main` and the repo is public, just submit the URL on their site.
-2. **PulseMCP** — manual review, hand-curated. Highest signal-to-noise listing
-   surface in the ecosystem (~12k servers, all reviewed).
-3. **Glama** — largest by volume (~21k). Auto-imports from public repos.
-4. **MCP Market** — newer, growing. Submit URL.
-5. **Awesome MCP** (GitHub) — open a PR adding your row to README.md.
+1. ✅ **Smithery** — auto-discovered then `npx @smithery/cli mcp publish` for remote registration; metadata PATCH via API key.
+2. ✅ **Glama** — auto-discovered from public repo, score badge auto-issued.
+3. ✅ **MCP Market** (mcpmarket.com) — auto-discovered (we never submitted, the site fetched our GitHub repo and produced a description).
+4. ✅ **mcp.so** — manual submit form filled (Smithery + Glama don't auto-feed mcp.so).
+5. ✅ **MCP Registry** (registry.modelcontextprotocol.io) — `mcp-publisher publish` with `server.json` (remote-only entry pointing at `mcp.koreanpulse.dev/mcp`).
+6. ⏳ **PulseMCP** — manual review surface, deferred. Highest signal-to-noise listing surface in the ecosystem (~12k servers, all hand-reviewed).
+7. ✅ **punkpeye/awesome-mcp-servers** — PR #5893 with Glama score badge embed.
+8. ✅ **jmanhype/awesome-claude-code** — PR #42, qodo bot review resolved.
 
 ## Pre-submission checklist
 

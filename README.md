@@ -67,7 +67,7 @@ The free daily snapshot at [`/today`](https://koreanpulse.dev/today) (no login, 
 
 Annual billing: **−20%** at launch. 30-day refund.
 
-**Subscribe**: [buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB](https://buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB) — single hosted Polar checkout covering all three tiers (Polar acts as Merchant of Record; sales tax / VAT / refunds handled).
+**Subscribe**: [koreanpulse.dev/#pricing](https://koreanpulse.dev/#pricing) — per-tier Polar checkouts (Solo / Analyst / Desk), each covered by Polar as Merchant of Record (sales tax / VAT / refunds handled). The license key is emailed by the webhook worker on `subscription.created`.
 
 > **Enterprise / SLA**: contact us. No published price.
 

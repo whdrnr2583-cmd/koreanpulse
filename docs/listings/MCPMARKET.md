@@ -1,12 +1,22 @@
 # MCP Market listing copy
 
-https://mcpmarket.com — newer, growing marketplace.
+https://mcpmarket.com — Korean-friendly MCP marketplace (knoxgraeme operates).
 
-## Submission
+> **Status (2026-05-07)**: ✅ Auto-discovered. We did not submit manually —
+> the site fetched our public GitHub repo and produced an AI-generated
+> description. Live page: https://mcpmarket.com/ko/server/koreanpulse.
+>
+> Submitting the URL via https://mcpmarket.com/ko/submit returned
+> `"이미 MCP 마켓에 등록되어 있습니다"` ("already registered"), confirming
+> the auto-discovery path. Ownership claim / description override is
+> available via dashboard once logged in (OAuth already authorised in
+> `Authorized OAuth Apps` as `MCP Market`).
+
+## Submission (manual fallback, only if auto-discovery skipped a repo)
 1. Public repo prerequisite
-2. Visit https://mcpmarket.com → submit
-3. They typically ask for: name, repo URL, description, install command,
-   tags, env vars, screenshot
+2. Visit https://mcpmarket.com/ko/submit → paste GitHub URL → Submit
+3. The form is now repo-URL only — no name, description, tags, etc. The
+   site auto-extracts metadata from README + repository fields.
 
 ## Name
 koreanpulse
