@@ -7,6 +7,8 @@ const PRICING = [
     name: "Cloud Solo",
     price: "$29/mo",
     audience: "Individual traders, solo analysts",
+    checkoutUrl:
+      "https://buy.polar.sh/polar_cl_ETpLepEvpGkGBXAOJjQhi7gwizO8GkOW3YaHw4IgHAr",
     features: [
       "Unlocks 2 paid MCP tools: monitor_activist_investors + monitor_foreign_holders",
       "Korean activist filer match — KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform / ValueAct / Elliott",
@@ -24,6 +26,8 @@ const PRICING = [
     price: "$79/mo",
     audience: "Boutique fund analysts, paid-research-budget retail",
     highlighted: true,
+    checkoutUrl:
+      "https://buy.polar.sh/polar_cl_PmbLKURPhVZ1wuh6vqEKOXx4UNcii3bDqtFg62komUR",
     features: [
       "Everything in Solo (2 paid MCP tools + classification)",
       "~15,000 queries/mo (live today)",
@@ -39,6 +43,8 @@ const PRICING = [
     name: "Cloud Desk",
     price: "$249/mo",
     audience: "Small research teams, boutique long/short desks",
+    checkoutUrl:
+      "https://buy.polar.sh/polar_cl_l6B5yiFOQqWIkyFpHtkTl93YzaEGWnzHtxDQ4393h7j",
     features: [
       "Everything in Analyst (2 paid MCP tools + classification)",
       "~100,000 queries/mo (live today)",
@@ -385,7 +391,7 @@ filers (KCGI, Align Partners, Truston, Anda, VIP, Cha, Life, Platform,
 ValueAct, Elliott, etc.) is a paid-tier feature ($29/mo Solo plan).
 This classification work isn't available from raw DART filings alone.
 
-To subscribe: https://buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB
+To subscribe: https://buy.polar.sh/polar_cl_ETpLepEvpGkGBXAOJjQhi7gwizO8GkOW3YaHw4IgHAr
 
 Once you have a license key, I can fetch Samsung Electronics' recent
 activist filings from this week. Would you like to sign up?`}
@@ -419,18 +425,22 @@ activist filings from this week. Would you like to sign up?`}
                     </li>
                   ))}
                 </ul>
+                <a
+                  href={p.checkoutUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={
+                    p.highlighted
+                      ? "mt-5 block rounded-md bg-accent px-4 py-2.5 text-center text-sm font-semibold text-ink hover:opacity-90"
+                      : "mt-5 block rounded-md border border-accent/60 px-4 py-2.5 text-center text-sm font-semibold text-accent hover:bg-accent/5"
+                  }
+                >
+                  Subscribe to {p.name.replace("Cloud ", "")} {p.price} →
+                </a>
               </div>
             ))}
           </div>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <a
-              href="https://buy.polar.sh/polar_cl_dopobJlg7fyaa0Qj9noMyDOmDsFlUJOPBOwFL2JCOUB"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-ink hover:opacity-90"
-            >
-              Subscribe via Polar →
-            </a>
             <a
               href="#waitlist"
               className="rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-medium text-zinc-200 hover:bg-zinc-900"
