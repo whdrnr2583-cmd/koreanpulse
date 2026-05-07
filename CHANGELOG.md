@@ -1,5 +1,67 @@
 # Changelog
 
+## 0.1.4 — 2026-05-07 (positioning + paywall + LS dormant verbiage)
+
+PyPI release that re-syncs the package long-description with the post-Polar
+README. The 0.1.3 publish predated the Lemon Squeezy → Polar pivot, so
+`pypi.org/project/koreanpulse/0.1.3/` rendered LS as the active billing
+provider — confusing for prospects who arrived via PyPI search instead of
+landing or Smithery. 0.1.4 ships the corrected README + supporting cleanups.
+
+Code:
+- `_paid_gate` returns `Optional[str]` instead of raising `RuntimeError`.
+  Paywall reaches the user as a normal tool result (`isError=False`), so
+  ChatGPT / Claude.ai connector clients hand the subscribe URL straight to
+  the user instead of treating it as an internal failure (`adc5ac8`).
+- `monitor_activist_investors` and `monitor_foreign_holders` now return
+  `list[Model] | str` so the schema matches the runtime behaviour.
+- Replaced the dead Polar fallback URL (`polar_cl_dopobJ…`, 302→polar.sh
+  homepage) embedded in four tool docstrings with the canonical
+  `koreanpulse.dev/pricing` redirect (`50448a4`).
+
+Docs / positioning:
+- README: explicit `## Billing (Polar — active provider)` heading with a
+  block stating LS is dormant and that any LS reference below the section
+  is documentation-only. Replaces the soft "kept dormant for future
+  re-application" wording that auto-fetchers (Glama, mcpmarket) were
+  catching as an active-provider signal.
+- `docs/LEMONSQUEEZY.md`: top-of-file 🚧 DORMANT banner so the file is
+  read as historical reference even when discovered out of context.
+- `docs/MARKETPLACE.md`: refresh from a 5-row to-do checklist into an
+  8-row submission status table reflecting Smithery / Glama / MCP Market
+  / mcp.so / MCP Registry / PyPI / punkpeye-PR / awesome-claude-code-PR.
+- `docs/listings/MCPMARKET.md`: record the auto-discovery (the manual
+  submit form returned "이미 등록되어 있습니다").
+
+Distribution:
+- Submitted to MCP Registry (`registry.modelcontextprotocol.io`) via
+  `mcp-publisher publish`. server.json description hard-capped at 92
+  chars to satisfy registry validation.
+- Submitted to mcp.so manually with full metadata + Server Config JSON.
+- Smithery republished + description PATCH applied twice (positioning
+  refresh after the competitor audit added "for ChatGPT / Claude.ai" +
+  N→1 multi-user framing).
+- punkpeye/awesome-mcp-servers PR #5893: Glama score badge committed to
+  the head branch so the glama-check bot stops blocking.
+- Skipped Continue.dev hub after permission audit (GitHub App scope too
+  broad for marginal discovery; OAuth revoked).
+
+Landing:
+- New hero eyebrow + sub-paragraph naming the 1-click connector URL
+  (`mcp.koreanpulse.dev/mcp`) and the N→1 hosted scaling story
+  (~9,500 MAU on a single DART key at 70% cache hit).
+- New "How koreanpulse compares" section with a four-column matrix vs
+  korea-stock-mcp / korean-dart-mcp / openregistry, including honest
+  out-of-scope rows (KRX OHLCV, XBRL, HWP/PDF) so the wrong-fit user
+  is steered to the right server.
+- `/pricing` route added so the paywall message URL stops 404'ing
+  (`e4d8172`).
+- Vercel Web Analytics enabled; Caddy access log activated on
+  mcp.koreanpulse.dev so external traffic can finally be attributed to
+  ChatGPT (`openai-mcp/1.0.0`) vs Claude.ai (Cloudflare DC OAuth path).
+
+
+
 All notable changes to koreanpulse, in version order. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) loosely.
 

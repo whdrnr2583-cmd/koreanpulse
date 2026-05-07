@@ -226,9 +226,13 @@ Cache hits are the entire reason a $29/mo Solo plan can sustain healthy gross ma
 - **Not investment advice.** koreanpulse provides translated and classified primary-source data. It is not investment advice and does not constitute a recommendation to buy, sell, or hold any security. The service performs no individualized analysis or personalized recommendation. All output is general data routing intended for informational purposes only. Korea Capital Markets Act §101 (유사투자자문업): we provide general informational data without individualized investment judgement, falling outside the registration scope (제공하는 정보가 단순히 금융관련 지식 등을 제공하는 수준).
 - Privacy + data protection: see [https://koreanpulse.dev/privacy](https://koreanpulse.dev/privacy) — covers Korea PIPA, EU GDPR, US CCPA. Terms of service: [https://koreanpulse.dev/terms](https://koreanpulse.dev/terms).
 
-## Billing (Polar webhook on Cloudflare D1)
+## Billing (Polar — active provider)
 
-Billing runs on the [`webhook-worker/`](webhook-worker/README.md) Cloudflare Worker + D1 (SQLite). The operator runs **zero servers**. **Polar** ([polar.sh](https://polar.sh)) is the active Merchant of Record as of 2026-05-06 — it handles VAT / sales tax / refunds / chargebacks. The Lemon Squeezy handler is kept dormant for future re-application once paid traction exists.
+Billing runs on the [`webhook-worker/`](webhook-worker/README.md) Cloudflare Worker + D1 (SQLite). The operator runs **zero servers**.
+
+**Active provider: Polar** ([polar.sh](https://polar.sh)) — Merchant of Record since 2026-05-06. Handles VAT / sales tax / refunds / chargebacks for all subscriptions. License keys are emailed automatically on `subscription.created` via the webhook worker.
+
+**Lemon Squeezy: dormant.** No LS variant secrets configured in production, no LS webhook deliveries accepted. The handler code remains in the repo as a historical reference and as the re-application path once paid traction reaches the threshold their store reviewers ask for. Anywhere this README mentions Lemon Squeezy below, treat it as documentation-only — Polar is what serves real customers.
 
 See [`webhook-worker/README.md`](webhook-worker/README.md) for the full deploy + secrets walkthrough; the short version:
 
