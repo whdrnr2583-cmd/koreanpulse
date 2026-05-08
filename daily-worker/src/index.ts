@@ -41,6 +41,7 @@ export interface Env {
   SITE_URL: string;
   HISTORY_DAYS: string;
   DISCORD_WEBHOOK_URL?: string;
+  KOREANPULSE_ADMIN_SECRET?: string;
 }
 
 const KV_HTML_LATEST = "daily:html:latest";
@@ -61,6 +62,27 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/health") {
       return json({ status: "ok" });
+    }
+
+    // Manual rebuild trigger for ops / first-time setup. POST + dedicated
+    // KOREANPULSE_ADMIN_SECRET so DART_API_KEY (used to call the upstream
+    // regulator API) doesn't double as a write-side auth secret. Branch
+    // before the GET-only guard so POST reaches us here.
+    if (url.pathname === "/admin/rebuild") {
+      if (request.method !== "POST") {
+        return json({ error: "method not allowed; use POST" }, 405);
+      }
+      const provided = request.headers.get("x-admin-key") ?? "";
+      if (!env.KOREANPULSE_ADMIN_SECRET || provided !== env.KOREANPULSE_ADMIN_SECRET) {
+        return json({ error: "forbidden" }, 403);
+      }
+      try {
+        const result = await buildDaily(env);
+        return json({ ok: true, ...result });
+      } catch (exc) {
+        const message = exc instanceof Error ? exc.message : String(exc);
+        return json({ ok: false, error: message }, 500);
+      }
     }
 
     if (request.method !== "GET") {
@@ -98,22 +120,6 @@ export default {
       const html = await env.DAILY.get(`daily:html:${date}`);
       if (!html) return new Response(renderEmptyState(`No snapshot for ${date}.`), { status: 404, headers: htmlHeaders(300) });
       return new Response(html, { status: 200, headers: htmlHeaders(86400) });
-    }
-
-    // Manual trigger for ops / first-time setup. Protected by SHARED secret
-    // header so casual visitors can't spam OpenAI from our key.
-    if (url.pathname === "/admin/rebuild") {
-      const provided = request.headers.get("x-admin-key") ?? "";
-      if (!env.DART_API_KEY || provided !== env.DART_API_KEY) {
-        return json({ error: "forbidden" }, 403);
-      }
-      try {
-        const result = await buildDaily(env);
-        return json({ ok: true, ...result });
-      } catch (exc) {
-        const message = exc instanceof Error ? exc.message : String(exc);
-        return json({ ok: false, error: message }, 500);
-      }
     }
 
     return json({ error: "not found" }, 404);
