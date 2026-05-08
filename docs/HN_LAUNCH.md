@@ -33,9 +33,10 @@ What koreanpulse will do, in one sentence: you give it your KRX tickers
 and it pings you in English the moment a 5%-rule filing or material DART
 event hits one of them. Watchlist in, English alert out. Honest status
 note up front: queries + the hosted English translation cache are live
-today; the watchlist polling loop and alert dispatch ship Q3 2026 — this
-is a waitlist post, not a "buy today" post. The MCP plumbing is an
-implementation detail.
+today and Cloud subscription is open for early supporters; the
+watchlist polling loop and alert dispatch ship Q3 2026, so today's
+value is the on-demand query + English layer, not the alerting cron.
+The MCP plumbing is an implementation detail.
 
 - Late April: Hana Securities x Futu (3.3M HK retail accounts) went live on
   Korean stocks.
@@ -83,9 +84,14 @@ What runs under the hood (7 MCP tools):
 
 - track_korean_filings — DART filings, EN-translated on demand
 - monitor_foreign_holders — 20 global passive holders tagged (BlackRock,
-  Vanguard, Norges Bank, GIC, Temasek, Capital Group, Matthews, etc.)
-- monitor_activist_investors — KCGI, Align, Truston, Anda, Cha, VIP,
-  ValueAct, Elliott
+  Vanguard, State Street, Fidelity, Capital Group, T. Rowe Price,
+  Wellington, Matthews Asia, Templeton, Aberdeen, Schroders, Norges
+  Bank, GIC, Temasek, Goldman, JPMorgan, Morgan Stanley, Citadel,
+  Millennium, Bridgewater)
+- monitor_activist_investors — 10 Korean activists tagged (KCGI, Align
+  Partners, Anda Asset, Cha Partners, Truston Asset, Life Asset,
+  Platform Partners, VIP Asset, plus international ValueAct + Elliott
+  when they file in Korea)
 - lookup_corp_code / resolve_stock_code — 117K Korean entities, with
   auto-translated English names
 - search_korean_industry_news — etnews + 한국경제, 16 industry tags
@@ -100,9 +106,9 @@ so an end user has to npx-install them and edit a JSON config before
 they work. Koreanpulse runs the latest Streamable HTTP transport at
 mcp.koreanpulse.dev/mcp, so a ChatGPT or Claude.ai user adds it as a
 custom connector with one URL paste — no install, no config. Pair
-that with 21+ named-entity classification (KCGI/Align activists +
-BlackRock/Norges/GIC foreign holders) that raw DART feeds can't
-derive, and that's the lane we're in. If you actually need raw KRX
+that with 30 named-entity classification (10 Korean activists +
+20 global passive holders) that raw DART feeds can't derive, and
+that's the lane we're in. If you actually need raw KRX
 OHLCV or XBRL financial statements, korea-stock-mcp is excellent for
 that and we'll keep that out of scope.
 

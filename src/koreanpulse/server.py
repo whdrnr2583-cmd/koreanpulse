@@ -198,6 +198,7 @@ async def track_korean_filings(
     Returns:
         Filings ordered by most recent first.
     """
+    logger.info("tool_call: track_korean_filings days=%d limit=%d translate=%s summarize=%s", days, limit, translate, summarize)
     await _gate(license_key, units=1 + (1 if summarize else 0))
 
     days = max(1, min(days, 30))
@@ -257,6 +258,7 @@ async def lookup_corp_code(
     Returns:
         List of CorpEntry. Use the `corp_code` field as input to other tools.
     """
+    logger.info("tool_call: lookup_corp_code query=%s listed_only=%s limit=%d", str(query)[:30], listed_only, limit)
     await _gate(license_key, units=1)
     return await lookup_by_name(query, listed_only=listed_only, limit=limit)
 
@@ -267,6 +269,7 @@ async def resolve_stock_code(
     license_key: Optional[str] = None,
 ) -> Optional[CorpEntry]:
     """Resolve a 6-digit KRX stock code to its DART corp entry."""
+    logger.info("tool_call: resolve_stock_code stock_code=%s", str(stock_code)[:10])
     await _gate(license_key, units=1)
     return await lookup_by_stock_code(stock_code)
 
@@ -294,6 +297,7 @@ async def search_korean_industry_news(
     Returns:
         Articles sorted by published_at desc.
     """
+    logger.info("tool_call: search_korean_industry_news industries=%s sources=%s limit=%d translate=%s", industries, sources, limit, translate)
     await _gate(license_key, units=1)
 
     articles = await fetch_industry_news(
@@ -354,6 +358,7 @@ async def monitor_activist_investors(
     Returns:
         ActivistFiling rows ordered by filing date desc.
     """
+    logger.info("tool_call: monitor_activist_investors days=%d activist_only=%s limit=%d corp_code=%s license_key_set=%s", days, activist_only, limit, company_corp_code, license_key is not None)
     paywall = await _paid_gate(
         license_key,
         units=1 + (1 if activist_only else 0),
@@ -459,6 +464,7 @@ async def monitor_foreign_holders(
         ForeignHolderFiling rows ordered by filing date desc. Each row
         carries `holder_label` (canonical English) and `holder_origin`.
     """
+    logger.info("tool_call: monitor_foreign_holders days=%d limit=%d corp_code=%s license_key_set=%s", days, limit, company_corp_code, license_key is not None)
     paywall = await _paid_gate(
         license_key,
         units=1,
@@ -513,7 +519,12 @@ async def monitor_foreign_holders(
 
 @mcp.tool()
 async def koreanpulse_about() -> dict:
-    """Return basic info about this MCP server (version, available tools, sources, pricing)."""
+    """Return basic info about this MCP server (version, available tools, sources, pricing).
+
+    First-time clients: call this with no args to see the tool catalog,
+    pricing, and example queries before guessing arguments for other tools.
+    """
+    logger.info("tool_call: koreanpulse_about")
     n_corp = 0
     try:
         n_corp = await ensure_index_loaded()
@@ -524,7 +535,9 @@ async def koreanpulse_about() -> dict:
         "version": __version__,
         "description": (
             "Korean industry intelligence MCP for foreign fund analysts. "
-            "Real-time DART filings + Korean industry news, translated to English on-demand."
+            "Real-time DART filings + Korean industry news, translated to English on-demand. "
+            "30 named-entity classifiers (10 Korean activists + 20 global passive holders) "
+            "that the raw DART feed does not derive."
         ),
         "tools_free": [
             "track_korean_filings",
@@ -542,6 +555,17 @@ async def koreanpulse_about() -> dict:
             "get_ma_pipeline",
             "track_government_policy",
             "summarize_korean_earnings_call",
+        ],
+        "classifier_counts": {
+            "korean_activists": 10,
+            "foreign_holders": 20,
+            "industry_tags": 16,
+        },
+        "example_queries": [
+            "What 5%-rule filings hit Samsung Electronics this week?",
+            "Are KCGI or Align Partners filing on any KOSPI names today?",
+            "Show me last 7 days of foreign-holder 5%-rule filings (BlackRock, Vanguard).",
+            "Any Korean semiconductor industry news in the last 24 hours?",
         ],
         "paid_tier": {
             "starting_at_usd_per_month": 29,

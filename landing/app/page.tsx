@@ -85,7 +85,7 @@ const TOOLS_PAID = [
   {
     name: "monitor_activist_investors",
     blurb:
-      "Activist 5%-rule filings auto-tagged for KCGI / Align / Truston / Anda / Cha / VIP / ValueAct / Elliott.",
+      "Activist 5%-rule filings auto-tagged for KCGI / Align / Anda / Cha / Truston / Life / Platform / VIP, plus international ValueAct + Elliott.",
   },
 ];
 
@@ -369,7 +369,7 @@ export default function Home() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-emerald-400">✓</span> 10+ labels
+                    <span className="text-emerald-400">✓</span> 10 labels
                   </td>
                   <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
                   <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
@@ -379,11 +379,11 @@ export default function Home() {
                   <td className="px-4 py-3 font-medium text-zinc-200">
                     Foreign-holder 5%-rule allowlist
                     <div className="text-xs font-normal text-zinc-500">
-                      BlackRock, Vanguard, Norges, GIC, Temasek + 16 more
+                      BlackRock, Vanguard, Norges, GIC, Temasek + 15 more
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-emerald-400">✓</span> 21+ labels
+                    <span className="text-emerald-400">✓</span> 20 labels
                   </td>
                   <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
                   <td className="px-4 py-3 text-zinc-500">— raw filings only</td>

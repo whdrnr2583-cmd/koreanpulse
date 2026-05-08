@@ -136,8 +136,8 @@ do that better.
 | Transport | **Streamable HTTP + SSE** | stdio only (`npx`) | stdio only (`npx`) | Streamable HTTP |
 | Hosted endpoint | **`mcp.koreanpulse.dev/mcp`** | — (self-install) | — (self-install) | `openregistry.sophymarine.com/mcp` |
 | 1-click connect (ChatGPT / Claude.ai) | **Yes** | No (stdio) | No (stdio) | Yes |
-| Activist filer classification (KCGI / Align / Truston / Anda / Cha / VIP / Life / Platform / ValueAct / Elliott) | **10+ labels** | — raw filings only | — raw filings only | — registry data only |
-| Foreign-holder 5%-rule allowlist (BlackRock / Vanguard / Norges / GIC / Temasek + 16 more) | **21+ labels** | — raw filings only | — raw filings only | — registry data only |
+| Activist filer classification (KCGI / Align / Truston / Anda / Cha / VIP / Life / Platform / ValueAct / Elliott) | **10 labels** | — raw filings only | — raw filings only | — registry data only |
+| Foreign-holder 5%-rule allowlist (BlackRock / Vanguard / Norges / GIC / Temasek + 15 more) | **20 labels** | — raw filings only | — raw filings only | — registry data only |
 | English-first docstrings (LLM-friendly) | **All tools** | Korean primary, English secondary | Korean primary | Yes |
 | Korean industry news (etnews / 한국경제 RSS, EN translated) | **16 industries** | — | — | — |
 | KRX OHLCV (daily prices) | — out of scope | **Yes** (KOSPI / KOSDAQ / KONEX) | — | — |
