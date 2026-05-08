@@ -287,6 +287,94 @@ async def aget_default_store() -> LicenseStore:
         return _default_store
 
 
+async def _validate_via_webhook(
+    license_key: str,
+    validate_url: str,
+    shared_secret: str,
+    cost_units: int,
+) -> License:
+    """Validate + charge against webhook-worker /v1/validate (D1 source of truth).
+
+    Hosted MCP path: webhook-worker is the only process that writes to D1
+    when Polar issues a license, so the only correct way for the Python
+    `paid_gate` to validate that key is to ask the same Worker over HTTP.
+    Authentication mirrors cache-worker: HMAC-SHA256 over the JSON body
+    using KOREANPULSE_CACHE_SHARED_SECRET, sent in `X-Cache-Signature`.
+
+    Response contract (webhook-worker/src/license.ts validateAndCharge):
+      success: { ok: true,  plan: "solo"|"analyst"|"desk", period_calls: <int> }
+      failure: { ok: false, code: "missing"|"invalid"|"inactive"|"quota_exceeded", reason: <str> }
+
+    Raises LicenseError with the same code semantics as the in-process path.
+    """
+    import hashlib
+    import hmac
+    import json as _json
+    import httpx
+
+    body = _json.dumps({"license_key": license_key.strip()}, separators=(",", ":"))
+    signature = hmac.new(
+        shared_secret.encode("utf-8"),
+        body.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                validate_url,
+                content=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Cache-Signature": signature,
+                },
+            )
+    except (httpx.HTTPError, OSError) as exc:
+        raise LicenseError(
+            "config",
+            f"webhook validate transport failed ({validate_url}): {exc}",
+        ) from exc
+
+    if resp.status_code != 200:
+        raise LicenseError(
+            "config",
+            f"webhook validate returned HTTP {resp.status_code}: {resp.text[:200]}",
+        )
+
+    try:
+        result = resp.json()
+    except ValueError as exc:
+        raise LicenseError(
+            "config",
+            f"webhook validate returned non-JSON: {resp.text[:200]}",
+        ) from exc
+
+    if not result.get("ok"):
+        code = result.get("code", "invalid")
+        reason = result.get("reason", "license invalid")
+        raise LicenseError(code, reason)
+
+    plan_str = result.get("plan", "solo")
+    try:
+        plan = Plan(plan_str)
+    except ValueError:
+        # Unknown plan from webhook — treat as invalid rather than crash.
+        raise LicenseError("invalid", f"unknown plan from webhook: {plan_str}")
+
+    # Build a partial License object — webhook path doesn't surface
+    # email/created_at/metadata but callers (paid_gate) only read .plan
+    # and .key, and the webhook already charged usage so we set the
+    # returned period_calls to whatever the webhook reports.
+    return License(
+        key=license_key.strip(),
+        plan=plan,
+        customer_email="",
+        active=True,
+        period_calls=int(result.get("period_calls", 0)),
+        metadata={"source": "webhook_validate", "cost_units": cost_units},
+    )
+
+
 async def validate_license_or_raise(
     license_key: Optional[str],
     *,
@@ -294,6 +382,15 @@ async def validate_license_or_raise(
     cost_units: int = 1,
 ) -> License:
     """Validate the key, charge `cost_units` calls against the period counter.
+
+    Resolution order:
+      1. If KOREANPULSE_VALIDATE_URL + KOREANPULSE_CACHE_SHARED_SECRET set
+         → HTTP-validate against webhook-worker (D1 source of truth).
+         This is the production path on the hosted MCP — D1 is the only
+         license store that the Polar webhook writes to.
+      2. Else if `store` arg passed (or default store wired) → in-process
+         (Postgres if DATABASE_URL, InMemory otherwise). Used by BYOK
+         self-host and unit tests.
 
     Raises:
         LicenseError("missing"|"invalid"|"inactive"|"quota_exceeded"|"config")
@@ -304,6 +401,16 @@ async def validate_license_or_raise(
             "Missing license key. Subscribe at https://koreanpulse.dev/pricing.",
         )
 
+    # (1) Hosted webhook validate path — D1 source of truth.
+    validate_url = os.environ.get("KOREANPULSE_VALIDATE_URL", "").strip()
+    shared_secret = os.environ.get("KOREANPULSE_CACHE_SHARED_SECRET", "").strip()
+    if validate_url and shared_secret:
+        return await _validate_via_webhook(
+            license_key, validate_url, shared_secret, cost_units
+        )
+
+    # (2) In-process store path — Postgres for self-host with DATABASE_URL,
+    # InMemory for dev/tests. Same semantics as before this commit.
     store = store or await aget_default_store()
     lic = await store.get(license_key)
     if lic is None:
