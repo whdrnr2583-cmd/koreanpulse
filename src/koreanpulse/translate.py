@@ -410,6 +410,21 @@ class Translator:
         labels: dict[str, str],
     ) -> str:
         async def _call() -> dict:
+            payload: dict = {
+                "model": self._model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                # GPT-5 series uses max_completion_tokens, not max_tokens.
+                "max_completion_tokens": max_tokens,
+            }
+            # Match cache-worker hardening: gpt-5* burns the entire budget on
+            # internal reasoning when reasoning_effort defaults to "high",
+            # leaving content="". Force minimal so translation tokens reach
+            # output. See feedback_cf_worker_openai_gateway.md.
+            if self._model.startswith("gpt-5"):
+                payload["reasoning_effort"] = "minimal"
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(
                     f"{self._api_base}/chat/completions",
@@ -417,15 +432,7 @@ class Translator:
                         "Authorization": f"Bearer {self._api_key}",
                         "Content-Type": "application/json",
                     },
-                    json={
-                        "model": self._model,
-                        "messages": [
-                            {"role": "system", "content": system},
-                            {"role": "user", "content": user},
-                        ],
-                        # GPT-5 series uses max_completion_tokens, not max_tokens.
-                        "max_completion_tokens": max_tokens,
-                    },
+                    json=payload,
                 )
                 resp.raise_for_status()
                 return resp.json()
@@ -436,6 +443,17 @@ class Translator:
             text = data["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
             raise TranslationError(f"unexpected OpenAI response shape: {exc}") from exc
+
+        # gpt-5 family can return finish_reason="length" with content="" when
+        # reasoning consumed the budget. Treat that as a translation failure
+        # so callers can retry / fall back instead of silently caching "".
+        if not (text or "").strip():
+            finish = (data.get("choices") or [{}])[0].get("finish_reason", "")
+            usage = data.get("usage") or {}
+            raise TranslationError(
+                f"empty content from {self._model} "
+                f"(finish_reason={finish}, usage={usage})"
+            )
 
         if self._cost is not None:
             usage = data.get("usage", {})

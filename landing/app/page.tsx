@@ -700,13 +700,13 @@ activist filings from this week. Would you like to sign up?`}
             <p>
               <strong className="text-zinc-200">After subscribing.</strong>{" "}
               Polar emails your license key (format{" "}
-              <code className="text-accent">koreanpulse_live_…</code>) to the
+              <code className="text-accent">kp_…</code>) to the
               checkout email. Pass it as a tool argument when calling{" "}
               <code className="text-accent">monitor_activist_investors</code> or{" "}
               <code className="text-accent">monitor_foreign_holders</code> in
               Claude.ai, ChatGPT, Cursor, or the OpenAI Responses API — e.g.{" "}
               <code className="text-accent">
-                {"{license_key: \"koreanpulse_live_…\", ticker: \"005930\"}"}
+                {"{license_key: \"kp_…\", ticker: \"005930\"}"}
               </code>
               . Stdio env-var fallback (
               <code className="text-accent">KOREANPULSE_LICENSE_KEY</code>) and
