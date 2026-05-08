@@ -16,7 +16,17 @@ host into a browser see what to do next instead of a 404.
 """
 from __future__ import annotations
 
+import logging
 import os
+
+# uvicorn configures its own access logger; we still need basicConfig so
+# `logger.info(...)` calls inside koreanpulse.server (per-tool tool_call
+# instrumentation) actually reach stderr / mcp.log instead of being
+# swallowed by the default WARNING-level root logger.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s: %(message)s",
+)
 
 from starlette.applications import Starlette
 from starlette.responses import PlainTextResponse

@@ -6,6 +6,6 @@ from koreanpulse._env import load_env_once
 
 load_env_once()
 
-__version__ = "0.1.3"
+__version__ = "0.1.6"
 
 __all__ = ["__version__", "load_env_once"]
