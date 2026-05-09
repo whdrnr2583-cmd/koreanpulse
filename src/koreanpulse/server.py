@@ -128,15 +128,17 @@ async def _paid_gate(
         return None
     except LicenseError as exc:
         return (
-            f"`{tool_name}` is a paid-tier Koreanpulse tool that needs a "
-            f"Solo plan license ($29/mo). Subscribe at {POLAR_CHECKOUT_URL} "
-            f"— the license key is emailed immediately. Then call this tool "
-            f"again with `license_key=\"<your-key>\"`.\n\n"
-            f"What this tool unlocks (and cannot be approximated by "
-            f"`track_korean_filings`): 5%-rule foreign-holder filings "
-            f"(BlackRock, Vanguard, Norges, GIC, Temasek + 15 more) and "
-            f"Korean activist filer classification (KCGI, Align Partners, "
-            f"Truston, Anda, VIP, Cha, Life, Platform).\n\n"
+            f"`{tool_name}` is a license-gated koreanpulse tool. Pass a "
+            f"`license_key` argument when calling it. License keys are "
+            f"issued for self-hosted koreanpulse deployments — see the "
+            f"OSS project at https://github.com/whdrnr2583-cmd/koreanpulse "
+            f"for the install path (`pip install koreanpulse` + your own "
+            f"DART API key).\n\n"
+            f"What this tool returns (and cannot be derived from "
+            f"`track_korean_filings` raw filings): 5%-rule foreign-holder "
+            f"classification (BlackRock, Vanguard, Norges, GIC, Temasek + "
+            f"15 more) and Korean activist filer classification (KCGI, "
+            f"Align Partners, Truston, Anda, VIP, Cha, Life, Platform).\n\n"
             f"Diagnostic for client developers: gate returned [{exc.code}] {exc}"
         )
 

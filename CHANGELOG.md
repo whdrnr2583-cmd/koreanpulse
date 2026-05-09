@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.9 — 2026-05-09 (Apps Directory commerce-policy compliance)
+
+The OpenAI Apps Directory submission form explicitly states "We can
+only support physical good sales at this time" and asks publishers to
+"verify that no digital goods (e.g., subscriptions, in-app purchases,
+digital content) are offered." The previous paywall response in
+`_paid_gate` directed users to a Polar checkout URL with a Solo
+$29/mo price line — that is precisely the digital-goods sales path
+the policy refuses.
+
+This release reworks the paywall response to satisfy the policy:
+- Removes the price ($29/mo) and the Polar checkout URL.
+- Frames the gate around the OSS self-host path. The license_key
+  argument is still required, but the message routes the user to
+  github.com/whdrnr2583-cmd/koreanpulse and `pip install koreanpulse`
+  rather than to a hosted subscription.
+- The license-gating logic itself is unchanged; only the user-facing
+  string is reworded.
+
+Existing paying customers are unaffected: a valid `license_key` still
+short-circuits the paywall before this string is ever returned. The
+landing page at koreanpulse.dev/pricing — which is outside the App
+Directory surface — continues to host the full Polar checkout flow.
+
+Code: `src/koreanpulse/server.py:128-141` only.
+Tests: 181 pass, 1 skip.
+
 ## 0.1.8 — 2026-05-09 (Apps Directory pre-submission compliance)
 
 ChatGPT Apps Directory submission readiness — meets two specific
