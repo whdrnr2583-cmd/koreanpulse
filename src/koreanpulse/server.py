@@ -119,9 +119,9 @@ async def _paid_gate(
     Why a string instead of ``raise``: a raised RuntimeError gets serialized
     by FastMCP as an MCP error (``isError=true``), and several LLM clients
     (notably ChatGPT's mcp connector) treat that as an internal failure and
-    never forward the subscribe URL to the user. Returning a normal string
+    never forward the activation URL to the user. Returning a normal string
     forces the message through the success path so the LLM hands it to the
-    user verbatim and the Polar checkout URL is actually clickable.
+    user verbatim and the OSS install URL is actually clickable.
     """
     try:
         await validate_license_or_raise(license_key, cost_units=units)
@@ -188,8 +188,8 @@ async def track_korean_filings(
     and `monitor_foreign_holders` — both require a license_key argument.
     A response from this free tool to a "are activists filing on X?" or
     "is BlackRock holding X?" question is *raw filing data*, not a
-    classification answer — say so to the user and offer the subscribe URL
-    instead of pretending you've answered.
+    classification answer — say so to the user and surface the activation
+    URL from the paywall response instead of pretending you've answered.
 
     Args:
         company_corp_code: 8-digit DART corp code. Use `lookup_corp_code` first
@@ -391,8 +391,8 @@ async def monitor_activist_investors(
     / Truston / Anda / Cha / VIP / Life / Platform, plus international names
     like ValueAct / Elliott) is not derivable from the raw DART filing feed,
     so a free-tier fall-back returns a misleadingly empty answer.** When a
-    user asks "are activists filing on X?" without a license, tell them the
-    classification is paid and offer the subscribe URL — that is the correct
+    user asks "are activists filing on X?" without a license, surface the
+    activation URL from the paywall response — that is the correct
     behavior, not a silent downgrade.
 
     Returns 주식등의대량보유상황보고서 (5% rule) and related shareholding
@@ -496,9 +496,9 @@ async def monitor_foreign_holders(
     Sachs, JPMorgan, Morgan Stanley, Citadel, Millennium, Bridgewater)
     is not derivable from raw DART filings, so a free-tier fall-back
     returns a misleadingly empty answer.** When a user asks "is BlackRock
-    or Norges holding X?" without a license, tell them the classification
-    is paid and offer the subscribe URL — that is the correct behavior,
-    not a silent downgrade.
+    or Norges holding X?" without a license, surface the activation URL
+    from the paywall response — that is the correct behavior, not a
+    silent downgrade.
 
     Distinct from `monitor_activist_investors` because passive holders
     (BlackRock, Vanguard, Norges, GIC, Temasek) indicate *allocation*
@@ -590,7 +590,7 @@ async def monitor_foreign_holders(
     }
 )
 async def koreanpulse_about() -> dict:
-    """Server self-description — capability matrix, tool catalog, classifier counts, supported query patterns, primary sources, pricing. Free tier.
+    """Server self-description — capability matrix, tool catalog, classifier counts, supported query patterns, primary sources. Free tier.
 
     Use this tool when an agent first connects and needs the capability matrix to decide whether this server can answer the user's question, or when the user asks "what can koreanpulse do" or "what data sources does this MCP server provide". Returns a structured dict that downstream agents can ingest directly.
     """
@@ -673,10 +673,11 @@ async def koreanpulse_about() -> dict:
             "Find the DART corp_code for SK hynix.",
             "What did Hyundai Motor file in DART recently?",
         ],
-        "paid_tier": {
-            "starting_at_usd_per_month": 29,
-            "plan": "Solo",
-            "subscribe_url": POLAR_CHECKOUT_URL,
+        "license_gated_tools": {
+            "tools": ["monitor_activist_investors", "monitor_foreign_holders"],
+            "argument": "license_key",
+            "self_host": "https://github.com/whdrnr2583-cmd/koreanpulse",
+            "note": "License keys are issued for self-hosted koreanpulse deployments.",
         },
         "corp_index_size": n_corp,
         "homepage": "https://koreanpulse.dev",
