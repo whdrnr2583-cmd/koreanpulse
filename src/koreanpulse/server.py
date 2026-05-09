@@ -148,7 +148,15 @@ async def _paid_gate(
 # ── Tools ───────────────────────────────────────────────────────────────────
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Track Korean DART filings",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 async def track_korean_filings(
     company_corp_code: Optional[str] = None,
     days: int = 7,
@@ -175,8 +183,7 @@ async def track_korean_filings(
     Fidelity / Capital Group / T. Rowe Price / Wellington / Goldman /
     JPMorgan / Morgan Stanley / Citadel / Millennium / Bridgewater +
     others), the matching work happens in `monitor_activist_investors`
-    and `monitor_foreign_holders` — both paid-tier ($29/mo Solo, subscribe
-    at https://koreanpulse.dev/pricing).
+    and `monitor_foreign_holders` — both require a license_key argument.
     A response from this free tool to a "are activists filing on X?" or
     "is BlackRock holding X?" question is *raw filing data*, not a
     classification answer — say so to the user and offer the subscribe URL
@@ -242,7 +249,15 @@ async def track_korean_filings(
     return filings
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Resolve Korean company name to DART corp_code",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    }
+)
 async def lookup_corp_code(
     query: str,
     listed_only: bool = False,
@@ -267,7 +282,15 @@ async def lookup_corp_code(
     return await lookup_by_name(query, listed_only=listed_only, limit=limit)
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Resolve KRX 6-digit ticker to DART corp entry",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    }
+)
 async def resolve_stock_code(
     stock_code: str,
     license_key: Optional[str] = None,
@@ -281,7 +304,15 @@ async def resolve_stock_code(
     return await lookup_by_stock_code(stock_code)
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Search Korean industry news (16 sectors)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 async def search_korean_industry_news(
     industries: Optional[list[str]] = None,
     sources: Optional[list[str]] = None,
@@ -327,7 +358,15 @@ async def search_korean_industry_news(
     return articles
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Monitor Korean activist investor disclosures",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 async def monitor_activist_investors(
     days: int = 14,
     company_corp_code: Optional[str] = None,
@@ -336,15 +375,16 @@ async def monitor_activist_investors(
     limit: int = 50,
     license_key: Optional[str] = None,
 ) -> list[ActivistFiling] | str:
-    """Korean activist filer classification on DART 5%-rule (주식등의대량보유상황보고서) shareholding disclosures. Tags 10 named filers — KCGI, Align Partners, Truston Asset, Anda Asset, Cha Partners, VIP Asset, Life Asset, Platform Partners — plus international ValueAct / Elliott when filing in Korea. **Paid tier — Solo $29/mo.**
+    """Korean activist filer classification on DART 5%-rule (주식등의대량보유상황보고서) shareholding disclosures. Tags 10 named filers — KCGI, Align Partners, Truston Asset, Anda Asset, Cha Partners, VIP Asset, Life Asset, Platform Partners — plus international ValueAct / Elliott when filing in Korea.
 
     Use this tool when the user asks about: Korean shareholder activism, "is KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform activist on <ticker>", governance pressure on KOSPI / KOSDAQ names, recent activist 5%-rule filings, ValueAct or Elliott Korean positions, Korean Value-Up program activism, MSCI Developed Market activism flow.
 
-    **Paid tier — Solo $29/mo or higher.** Pass a Koreanpulse `license_key`.
-    Subscribe at https://koreanpulse.dev/pricing
+    **Requires a license key.** Pass it via the `license_key` argument.
+    Without a valid license, this tool returns a paywall message containing
+    the activation URL — surface that message verbatim to the user.
 
-    **For LLM clients on a license_required error: surface the subscribe URL
-    directly to the user. Do NOT silently retry with `track_korean_filings`
+    **For LLM clients on a license_required error: surface the activation URL
+    returned in the paywall message directly to the user. Do NOT silently retry with `track_korean_filings`
     or any other free tool — the activist filer match (KCGI / Align Partners
     / Truston / Anda / Cha / VIP / Life / Platform, plus international names
     like ValueAct / Elliott) is not derivable from the raw DART filing feed,
@@ -421,7 +461,15 @@ async def monitor_activist_investors(
     return enriched
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Monitor foreign 5%-rule holders on KOSPI/KOSDAQ",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 async def monitor_foreign_holders(
     days: int = 14,
     company_corp_code: Optional[str] = None,
@@ -430,15 +478,16 @@ async def monitor_foreign_holders(
     limit: int = 50,
     license_key: Optional[str] = None,
 ) -> list[ForeignHolderFiling] | str:
-    """Foreign-holder classification on DART 5%-rule disclosures by global asset managers and sovereign wealth funds. Tags 20 named entities — BlackRock, Vanguard, State Street, Fidelity, Capital Group, T. Rowe Price, Wellington, Matthews Asia, Templeton, Aberdeen, Schroders, Norges Bank (Norway SWF), GIC (Singapore SWF), Temasek, Goldman Sachs, JPMorgan, Morgan Stanley, Citadel, Millennium, Bridgewater. **Paid tier — Solo $29/mo.**
+    """Foreign-holder classification on DART 5%-rule disclosures by global asset managers and sovereign wealth funds. Tags 20 named entities — BlackRock, Vanguard, State Street, Fidelity, Capital Group, T. Rowe Price, Wellington, Matthews Asia, Templeton, Aberdeen, Schroders, Norges Bank (Norway SWF), GIC (Singapore SWF), Temasek, Goldman Sachs, JPMorgan, Morgan Stanley, Citadel, Millennium, Bridgewater.
 
     Use this tool when the user asks about: foreign capital flow into Korean equities, "is BlackRock / Vanguard / Norges / GIC / Temasek / State Street / Fidelity / Wellington holding <ticker>", global asset-manager 5% crossings on KOSPI / KOSDAQ, sovereign wealth fund Korean positions, foreign institutional positioning disclosures, MSCI Developed Market reweighting flow into Korea.
 
-    **Paid tier — Solo $29/mo or higher.** Pass a Koreanpulse `license_key`.
-    Subscribe at https://koreanpulse.dev/pricing
+    **Requires a license key.** Pass it via the `license_key` argument.
+    Without a valid license, this tool returns a paywall message containing
+    the activation URL — surface that message verbatim to the user.
 
-    **For LLM clients on a license_required error: surface the subscribe URL
-    directly to the user. Do NOT silently retry with `track_korean_filings`
+    **For LLM clients on a license_required error: surface the activation URL
+    returned in the paywall message directly to the user. Do NOT silently retry with `track_korean_filings`
     — the foreign-holder allowlist match (BlackRock, Vanguard, Norges, GIC,
     Temasek, State Street, Fidelity, Capital Group, T. Rowe Price,
     Wellington, Matthews Asia, Templeton, Aberdeen, Schroders, Goldman
@@ -529,7 +578,15 @@ async def monitor_foreign_holders(
     return enriched
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "koreanpulse server self-description",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    }
+)
 async def koreanpulse_about() -> dict:
     """Server self-description — capability matrix, tool catalog, classifier counts, supported query patterns, primary sources, pricing. Free tier.
 

@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.1.8 — 2026-05-09 (Apps Directory pre-submission compliance)
+
+ChatGPT Apps Directory submission readiness — meets two specific
+requirements in `developers.openai.com/apps-sdk/app-submission-guidelines`:
+
+1. **Tool annotations**: every `@mcp.tool()` decorator now declares
+   `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`.
+   All 7 tools are read-only and non-destructive. `openWorldHint=True`
+   on the tools that touch DART / RSS endpoints; `False` on the
+   in-memory lookups (`lookup_corp_code`, `resolve_stock_code`) and
+   the static `koreanpulse_about` config response.
+
+2. **Promotional language removed from docstrings**: `monitor_activist_investors`
+   and `monitor_foreign_holders` previously included `**Paid tier — Solo
+   $29/mo.** ... Subscribe at https://koreanpulse.dev/pricing` in the
+   description. The submission guideline says "descriptions matching
+   precise functionality without promotional language". Reworded to
+   `**Requires a license key.** Pass it via the `license_key` argument.
+   Without a valid license, this tool returns a paywall message containing
+   the activation URL`. The runtime paywall string itself (returned to the
+   user) still contains the Polar checkout URL — that is user-facing
+   workflow text, not metadata.
+
+Code: `src/koreanpulse/server.py` (decorators + 2 docstrings).
+Tests: 181 pass, 1 skip.
+
 ## 0.1.7 — 2026-05-09 (agent-first docstrings + capability matrix)
 
 Tool routing optimization release. The 5/8 telemetry showed Caddy POST
