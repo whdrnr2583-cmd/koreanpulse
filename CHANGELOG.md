@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.1.7 — 2026-05-09 (agent-first docstrings + capability matrix)
+
+Tool routing optimization release. The 5/8 telemetry showed Caddy POST
+/mcp at 479 (200 OK) but only 3 actual `tool_call:` lines in mcp.log
+over the same 10.5-hour window — agents were reaching the server,
+listing tools, and then *not* calling them. The bottleneck was the
+tool docstrings themselves: written for human reviewers, not for the
+LLM-side retrieval / tool-selection step.
+
+This release rewrites all 7 tool docstrings to lead with a
+capability-statement first line and a `Use this tool when...`
+trigger-pattern paragraph dense with the keywords agents actually see
+in user queries (KOSPI / KOSDAQ / KRX / DART / 5%-rule / KCGI /
+BlackRock / Norges / GIC / Samsung / Hyundai / NAVER / Kakao / 셀트리온
+/ 한국경제 / 전자신문 / etc.).
+
+The `koreanpulse_about` response also gains four new fields aimed at
+agent-side capability discovery:
+- `capability_tags` (15 tags — kospi, kosdaq, dart-filings, 5-percent-rule, ...)
+- `supported_query_patterns` (10 patterns LLMs can match against user prompts)
+- `primary_sources` (canonical source list)
+- `endpoint` + `transport` (so an agent can ingest connection metadata
+  in a single fetch instead of guessing from the URL)
+
+Code:
+- `src/koreanpulse/server.py`: 7 docstrings rewritten, `koreanpulse_about`
+  return dict extended.
+
+Docs:
+- `README.md`: new "What this server answers (capability vector for
+  agent retrieval)" paragraph after the Claude.ai/ChatGPT callout —
+  same keyword set as the docstrings, so an LLM crawling the README
+  for indexing sees the same surface as an agent calling
+  `koreanpulse_about`.
+
+Out of scope (deliberately):
+- No new tools, no new arguments, no new pricing tier — PMF gate.
+- Marketplace metadata (Smithery API description, mcp.so listing) is
+  PATCHed separately at deploy time, not version-bumped.
+
+Tests: 181 pass, 1 skipped — same as 0.1.6 (no test depended on
+docstring text or about-response shape).
+
 ## 0.1.5 — 2026-05-07 (LS rejected, not dormant — verbiage correction)
 
 Doc-only release that re-syncs the PyPI long_description with the

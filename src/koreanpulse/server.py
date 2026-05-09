@@ -158,7 +158,9 @@ async def track_korean_filings(
     summarize: bool = False,
     license_key: Optional[str] = None,
 ) -> list[Filing]:
-    """Fetch recent DART filings for Korean listed companies (free tier).
+    """Korean DART (전자공시) filings retrieval for KOSPI / KOSDAQ / KONEX / KRX listed companies — 5%-rule disclosures, M&A, periodic reports, capital issuance, insider trading, audit reports. Free tier.
+
+    Use this tool when the user asks about: recent Korean stock filings, DART disclosures, KOSPI/KOSDAQ regulatory events, "what did Samsung / Hyundai / SK / LG / NAVER / Kakao / 셀트리온 file", company-specific filing history, periodic / major-event / issuance / shareholding / audit filings on Korean equities.
 
     **Free tier — no license required.** Returns raw DART filings exactly
     as the regulator surfaces them (filer name in Korean, filing type code,
@@ -247,7 +249,9 @@ async def lookup_corp_code(
     limit: int = 10,
     license_key: Optional[str] = None,
 ) -> list[CorpEntry]:
-    """Resolve a Korean company name (or partial name) to its DART corp code.
+    """Korean company name → DART corp_code resolver. 117K+ entities indexed (KOSPI + KOSDAQ + KONEX + unlisted). Free tier.
+
+    Use this tool when the user mentions a Korean company by name (Korean characters or English/romanized) and you need the DART corp_code as a precondition for `track_korean_filings`, `monitor_activist_investors`, or `monitor_foreign_holders`. Also use to disambiguate same-name listed vs unlisted entities.
 
     Args:
         query: substring of the Korean corp name. Examples: "삼성전자", "현대차", "셀트리온".
@@ -268,7 +272,10 @@ async def resolve_stock_code(
     stock_code: str,
     license_key: Optional[str] = None,
 ) -> Optional[CorpEntry]:
-    """Resolve a 6-digit KRX stock code to its DART corp entry."""
+    """KRX 6-digit ticker → DART corp entry resolver. Free tier.
+
+    Use this tool when the user provides a 6-digit Korean stock code (e.g. 005930 for Samsung Electronics, 000660 for SK hynix, 035420 for NAVER, 035720 for Kakao, 005380 for Hyundai Motor) and you need the company name + corp_code for downstream filings or industry-news lookups.
+    """
     logger.info("tool_call: resolve_stock_code stock_code=%s", str(stock_code)[:10])
     await _gate(license_key, units=1)
     return await lookup_by_stock_code(stock_code)
@@ -282,7 +289,9 @@ async def search_korean_industry_news(
     translate: bool = True,
     license_key: Optional[str] = None,
 ) -> list[Article]:
-    """Search recent Korean industry news from licensed RSS feeds.
+    """Korean industry news search across 16 sectors with on-demand English translation. Sources: 전자신문 (etnews) + 한국경제 (hankyung). Free tier.
+
+    Use this tool when the user asks about: Korean industry trends, sector-specific news on Korean equities (Korean semiconductors / K-battery / K-shipbuilding / K-biotech / K-defense / Korean auto / EV charging / Korean AI / steel / petrochem / construction / fintech / gaming / e-commerce / telco / energy), recent corporate developments not yet captured in DART filings, English summaries of Korean industry coverage. Industry tags listed below — pass them in `industries` to filter.
 
     Args:
         industries: filter to one or more industry tags. Available:
@@ -327,7 +336,9 @@ async def monitor_activist_investors(
     limit: int = 50,
     license_key: Optional[str] = None,
 ) -> list[ActivistFiling] | str:
-    """Watch DART shareholding disclosures (filing type D) for activist moves.
+    """Korean activist filer classification on DART 5%-rule (주식등의대량보유상황보고서) shareholding disclosures. Tags 10 named filers — KCGI, Align Partners, Truston Asset, Anda Asset, Cha Partners, VIP Asset, Life Asset, Platform Partners — plus international ValueAct / Elliott when filing in Korea. **Paid tier — Solo $29/mo.**
+
+    Use this tool when the user asks about: Korean shareholder activism, "is KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform activist on <ticker>", governance pressure on KOSPI / KOSDAQ names, recent activist 5%-rule filings, ValueAct or Elliott Korean positions, Korean Value-Up program activism, MSCI Developed Market activism flow.
 
     **Paid tier — Solo $29/mo or higher.** Pass a Koreanpulse `license_key`.
     Subscribe at https://koreanpulse.dev/pricing
@@ -419,8 +430,9 @@ async def monitor_foreign_holders(
     limit: int = 50,
     license_key: Optional[str] = None,
 ) -> list[ForeignHolderFiling] | str:
-    """Watch DART 5%-rule disclosures (filing type D) by global asset
-    managers and sovereign wealth funds.
+    """Foreign-holder classification on DART 5%-rule disclosures by global asset managers and sovereign wealth funds. Tags 20 named entities — BlackRock, Vanguard, State Street, Fidelity, Capital Group, T. Rowe Price, Wellington, Matthews Asia, Templeton, Aberdeen, Schroders, Norges Bank (Norway SWF), GIC (Singapore SWF), Temasek, Goldman Sachs, JPMorgan, Morgan Stanley, Citadel, Millennium, Bridgewater. **Paid tier — Solo $29/mo.**
+
+    Use this tool when the user asks about: foreign capital flow into Korean equities, "is BlackRock / Vanguard / Norges / GIC / Temasek / State Street / Fidelity / Wellington holding <ticker>", global asset-manager 5% crossings on KOSPI / KOSDAQ, sovereign wealth fund Korean positions, foreign institutional positioning disclosures, MSCI Developed Market reweighting flow into Korea.
 
     **Paid tier — Solo $29/mo or higher.** Pass a Koreanpulse `license_key`.
     Subscribe at https://koreanpulse.dev/pricing
@@ -519,10 +531,9 @@ async def monitor_foreign_holders(
 
 @mcp.tool()
 async def koreanpulse_about() -> dict:
-    """Return basic info about this MCP server (version, available tools, sources, pricing).
+    """Server self-description — capability matrix, tool catalog, classifier counts, supported query patterns, primary sources, pricing. Free tier.
 
-    First-time clients: call this with no args to see the tool catalog,
-    pricing, and example queries before guessing arguments for other tools.
+    Use this tool when an agent first connects and needs the capability matrix to decide whether this server can answer the user's question, or when the user asks "what can koreanpulse do" or "what data sources does this MCP server provide". Returns a structured dict that downstream agents can ingest directly.
     """
     logger.info("tool_call: koreanpulse_about")
     n_corp = 0
@@ -534,11 +545,45 @@ async def koreanpulse_about() -> dict:
         "name": "koreanpulse",
         "version": __version__,
         "description": (
-            "Korean industry intelligence MCP for foreign fund analysts. "
+            "Korean industry intelligence MCP for foreign fund analysts and AI agents. "
             "Real-time DART filings + Korean industry news, translated to English on-demand. "
             "30 named-entity classifiers (10 Korean activists + 20 global passive holders) "
             "that the raw DART feed does not derive."
         ),
+        "capability_tags": [
+            "korean-equity",
+            "kospi",
+            "kosdaq",
+            "konex",
+            "krx",
+            "dart-filings",
+            "5-percent-rule",
+            "shareholding-disclosure",
+            "activist-investor",
+            "foreign-holder",
+            "sovereign-wealth-fund",
+            "korean-industry-news",
+            "english-translation",
+            "msci-developed-market",
+            "korea-value-up",
+        ],
+        "supported_query_patterns": [
+            "5%-rule filings on <ticker or company>",
+            "DART filings on <ticker or company> in last <N> days",
+            "is <activist filer> filing on <ticker>",
+            "is <foreign holder> holding <ticker>",
+            "Korean <industry> news in last <N> days",
+            "resolve KRX 6-digit ticker <code> to company",
+            "find DART corp_code for <Korean company name>",
+            "what did <Korean company> file recently",
+            "foreign 5%-rule disclosures on KOSPI/KOSDAQ",
+            "Korean activist disclosures (KCGI, Align, Truston, Anda)",
+        ],
+        "primary_sources": [
+            "DART (Korea Financial Supervisory Service / 전자공시)",
+            "전자신문 (etnews) RSS",
+            "한국경제 (hankyung) RSS",
+        ],
         "tools_free": [
             "track_korean_filings",
             "lookup_corp_code",
@@ -564,8 +609,10 @@ async def koreanpulse_about() -> dict:
         "example_queries": [
             "What 5%-rule filings hit Samsung Electronics this week?",
             "Are KCGI or Align Partners filing on any KOSPI names today?",
-            "Show me last 7 days of foreign-holder 5%-rule filings (BlackRock, Vanguard).",
+            "Show me last 7 days of foreign-holder 5%-rule filings (BlackRock, Vanguard, Norges, GIC).",
             "Any Korean semiconductor industry news in the last 24 hours?",
+            "Find the DART corp_code for SK hynix.",
+            "What did Hyundai Motor file in DART recently?",
         ],
         "paid_tier": {
             "starting_at_usd_per_month": 29,
@@ -574,6 +621,8 @@ async def koreanpulse_about() -> dict:
         },
         "corp_index_size": n_corp,
         "homepage": "https://koreanpulse.dev",
+        "endpoint": "https://mcp.koreanpulse.dev/mcp",
+        "transport": "streamable-http",
     }
 
 
