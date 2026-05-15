@@ -1,13 +1,22 @@
 /**
- * Polar webhook handling. Standard Webhooks spec
- * (https://www.standardwebhooks.com/) — same envelope every Polar tenant ships.
+ * Polar webhook handling. Polar follows the Standard Webhooks envelope
+ * (https://www.standardwebhooks.com/) but diverges in two places that
+ * Standard Webhooks reference clients (incl. the `standardwebhooks` npm
+ * package) get wrong:
+ *
+ *   - HMAC key = the FULL secret as raw UTF-8 bytes (e.g. `polar_whs_…`).
+ *     Do NOT strip the `polar_whs_` prefix and do NOT base64-decode the
+ *     remainder. Verified empirically via $5 e2e payment in the
+ *     token-meter sibling project (D-032).
+ *   - The dedup / signed event id comes from the `webhook-id` HTTP header,
+ *     not from any `id` field inside the JSON body.
  *
  * Flow per webhook:
- *   1. Verify signature with `webhook-id` / `webhook-timestamp` / `webhook-signature`.
- *      Polar secret format: `polar_whs_<base64>` — strip prefix, base64-decode
- *      to get the raw HMAC key, then HMAC-SHA256 over `${id}.${timestamp}.${body}`,
- *      base64-encode, prefix with `v1,`. Polar may rotate, so the header
- *      contains space-separated `v1,<sig>` entries — match any.
+ *   1. Verify signature with `webhook-id` / `webhook-timestamp` /
+ *      `webhook-signature` headers. HMAC-SHA256 of `${id}.${timestamp}.${body}`
+ *      with the raw-UTF-8 secret as key, base64-encode, prefix `v1,`. Polar
+ *      may rotate, so the header contains space-separated `v1,<sig>` entries —
+ *      match any.
  *   2. JSON parse — payload shape is `{ type, data }` (NOT `data.attributes`
  *      like Lemon Squeezy).
  *   3. Idempotency check via D1 `webhook_events.webhook_id` PK
@@ -93,29 +102,15 @@ export async function verifyPolarSignature(
 }
 
 function decodePolarSecret(secret: string): Uint8Array | null {
-  // `polar_whs_<base64>` — strip prefix.
+  // Polar HMAC key is the full secret as raw UTF-8 — including the
+  // `polar_whs_` prefix. The Standard Webhooks reference clients (incl. the
+  // `standardwebhooks` npm package) base64-decode after stripping the
+  // prefix; that fails against real Polar deliveries. Confirmed by $5 e2e
+  // payment in token-meter (D-032). Do not "fix" by re-introducing strip
+  // or decode without re-running an end-to-end real-payment test.
   const trimmed = secret.trim();
-  const stripped = trimmed.startsWith("polar_whs_")
-    ? trimmed.slice("polar_whs_".length)
-    : trimmed.startsWith("whsec_")
-    ? trimmed.slice("whsec_".length)
-    : trimmed;
-  try {
-    return base64DecodeUrlSafe(stripped);
-  } catch {
-    return null;
-  }
-}
-
-function base64DecodeUrlSafe(s: string): Uint8Array {
-  // Tolerate base64url variants — Polar emits standard base64, but some
-  // tenants/users hand-paste url-safe variants.
-  const normal = s.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = normal.length % 4 === 0 ? "" : "=".repeat(4 - (normal.length % 4));
-  const decoded = atob(normal + pad);
-  const out = new Uint8Array(decoded.length);
-  for (let i = 0; i < decoded.length; i++) out[i] = decoded.charCodeAt(i);
-  return out;
+  if (!trimmed) return null;
+  return new TextEncoder().encode(trimmed);
 }
 
 async function hmacSha256Base64(keyBytes: Uint8Array, message: string): Promise<string> {
