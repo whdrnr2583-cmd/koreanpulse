@@ -5,17 +5,16 @@ build-backend = "hatchling.build"
 [project]
 name = "koreanpulse"
 version = "0.1.9"
-description = "English-first Korean equity intelligence — DART filings, foreign-holder 5%-rule flows, Korean activist filings, industry news. MCP plug for Claude Desktop / Cursor / FastMCP trading agents. Free public daily web snapshot + paid Cloud."
+description = "English-first Korean equity intelligence — DART filings, foreign-holder 5%-rule flows, Korean activist filings, industry news. MCP plug for Claude Desktop / Cursor / FastMCP agents. Free public daily web snapshot + paid Cloud."
 readme = "README.md"
 license = { text = "AGPL-3.0-or-later" }
 requires-python = ">=3.10"
 keywords = [
     "mcp", "korea", "korean", "kospi", "kosdaq",
     "finance", "industry", "intelligence", "hedge-fund", "research",
-    "dart", "activist", "foreign-flow", "diaspora", "fastmcp",
+    "dart", "dart-filings", "activist", "foreign-flow", "fastmcp",
     "mcp-server", "claude-desktop", "cursor",
-    "algotrading", "ai-trading", "llm-trading", "trading-agent",
-    "korean-news", "korean-stocks",
+    "korean-news", "korean-stocks", "korean-disclosures",
     "remote-mcp", "chatgpt", "claude-ai", "streamable-http",
     "openai-apps", "responses-api",
 ]

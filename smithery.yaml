@@ -4,18 +4,15 @@
 name: koreanpulse
 displayName: koreanpulse — English-first Korean Equity Intelligence
 description: |
-  English-first Korean equity intelligence MCP. We watch your KRX
-  tickers in Korean and (Q3 2026) ping you in English when something
-  material moves — foreign-holder 5%-rule flows (BlackRock / Vanguard /
-  Norges / GIC / Temasek + 15 more), Korean activist filings (KCGI /
-  Align / ValueAct / Elliott), and major DART events — translated to
-  English on-demand. Free public daily web snapshot at
-  koreanpulse.dev/today (live today). Cloud waitlist with locked-in
-  launch rate: Solo $29/mo, Analyst $79/mo, Desk $249/mo. OSS
-  self-host available. KRX, ASIFMA, Wellington all on record that
-  English IR flow is structurally inadequate — we anchor on that gap.
-  Beta status: queries + hosted translation cache live today;
-  watchlist polling + alert dispatch ship Q3 2026.
+  English-first Korean equity intelligence as an MCP server. Query
+  Korean DART (전자공시) filings, KOSPI/KOSDAQ disclosures, foreign-holder
+  5%-rule flows (BlackRock / Vanguard / Norges / GIC / Temasek + 15 more)
+  and Korean activist filings (KCGI / Align / ValueAct / Elliott) —
+  translated to English on demand with named-entity classification.
+  Free public daily snapshot at koreanpulse.dev/today. Connect via
+  hosted remote MCP (mcp.koreanpulse.dev/mcp) for ChatGPT / Claude.ai,
+  or pip install for Claude Desktop / Cursor. OSS self-host (AGPL);
+  paid Cloud tiers for the watchlist-to-alert workflow (ships Q3 2026).
 homepage: https://koreanpulse.dev
 repository: https://github.com/whdrnr2583-cmd/koreanpulse
 license: AGPL-3.0
@@ -23,10 +20,14 @@ icon: https://raw.githubusercontent.com/whdrnr2583-cmd/koreanpulse/main/docs/ass
 
 tags:
   - korea
+  - korean-stocks
   - finance
   - hedge-fund
   - dart
   - kospi
+  - kosdaq
+  - activist
+  - disclosures
   - research
   - industry
   - english
@@ -68,9 +69,9 @@ env:
 
   - name: KOREANPULSE_LICENSE_KEY
     description: |
-      Required when KOREANPULSE_CACHE_MODE=hosted. Issued by Lemon
-      Squeezy on subscription (kp_…). Subscribe / join the waitlist
-      at https://koreanpulse.dev/pricing.
+      Required when KOREANPULSE_CACHE_MODE=hosted. Issued by Polar
+      on subscription (kp_…). Subscribe / join the waitlist at
+      https://koreanpulse.dev/pricing.
     required: false
 
   - name: KOREANPULSE_REQUIRE_LICENSE

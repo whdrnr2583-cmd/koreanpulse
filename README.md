@@ -23,6 +23,14 @@
 
 ---
 
+## Why I built this
+
+I'm a Seoul-based developer. I kept watching English-speaking friends miss the Korean disclosure that would have flipped their KOSPI trade — KCGI filing on a value-up target, BlackRock crossing 5% on an HBM name, an activist quietly accumulating. The Korean primary source (DART 전자공시) is unambiguous; English coverage is often hours late or absent. I wanted a thing they could plug into the chat assistant they already use, ask "anything new on Samsung Electronics?", and get the same answer I'd get reading DART directly. That's koreanpulse.
+
+I run it as MCP because that's the shape of stack the people I'd want to use this already have — Claude Desktop, Cursor, the OpenAI Responses API, ChatGPT custom connectors. No new client to install. Free tier is the daily snapshot and the four read-only tools; the two paid tools (5%-rule classification on activists and foreign holders) are the part that takes a Korean speaker hours to do by hand.
+
+---
+
 ## Why this exists
 
 > "Majority of foreign investors find it surprisingly difficult to penetrate the Korean hedge fund market due to its limited accessibility and availability of information in foreign language." — *HedgeVista, 2025*
@@ -177,7 +185,7 @@ See `src/koreanpulse/cache.py`, `src/koreanpulse/dart.py:list_filings_cached`.
 
 ## Roadmap
 
-**Live today**: queries (DART filings, foreign-holder + activist tracking, industry news), hosted translation cache (Cloud `KOREANPULSE_CACHE_MODE=hosted`), `/today` daily snapshot, **Polar → D1 license issuance** (Polar is our sole billing provider and Merchant of Record; the Lemon Squeezy store application was declined 2026-05-06 and LS is not in use), **first-party hosted MCP endpoint at `https://mcp.koreanpulse.dev/mcp`** (Streamable HTTP transport for ChatGPT / Claude.ai / OpenAI Responses API custom connectors — no `pip install`).
+**Live today**: queries (DART filings, foreign-holder + activist tracking, industry news), hosted translation cache (Cloud `KOREANPULSE_CACHE_MODE=hosted`), `/today` daily snapshot, **Polar → D1 license issuance** (Polar is our sole billing provider and Merchant of Record), **first-party hosted MCP endpoint at `https://mcp.koreanpulse.dev/mcp`** (Streamable HTTP transport for ChatGPT / Claude.ai / OpenAI Responses API custom connectors — no `pip install`).
 
 **Q3 2026 ship targets** (waitlist):
 - Watchlist polling loop (Cloudflare cron + `koreanpulse.alerts`)
@@ -187,7 +195,7 @@ See `src/koreanpulse/cache.py`, `src/koreanpulse/dart.py:list_filings_cached`.
 **Earlier milestones**:
 - **W1–2** ✅ project skeleton, FastMCP server, DART client, agentprod integration
 - **W3–4** ✅ MVP: `track_korean_filings`, `lookup_corp_code`, `search_korean_industry_news`, translation layer with cache
-- **W5–6** ✅ Webhook handler skeleton (license auto-issuance) — Lemon Squeezy first, then Polar after LS denied the store application 2026-05-06
+- **W5–6** ✅ Webhook handler skeleton (license auto-issuance) — Polar billing
 - **W5–6** ✅ Cloudflare D1-backed `LicenseStore` (replaces in-memory)
 - **W7–8** ⏳ **Watchlist polling + alert dispatch** (Q3 2026 ship target) — wiring `cache-worker` cron + `daily-worker` cron + `koreanpulse.alerts` module into the watchlist-to-alert workflow that powers Solo / Analyst / Desk. D1 schema and alert-dispatch primitives already shipped; the cron loop is the missing piece.
 - **W7–8** `digest_analyst_reports`, `summarize_korean_earnings_call`
@@ -199,7 +207,7 @@ See `src/koreanpulse/cache.py`, `src/koreanpulse/dart.py:list_filings_cached`.
 - **MCP server** — FastMCP (Python), runs on the user's machine over stdio. Zero hosting cost on our side. Cloud customers still install this locally; switching `KOREANPULSE_CACHE_MODE=hosted` routes translation calls (only) to the Worker.
 - **Cache Worker** ([`cache-worker/`](cache-worker/README.md)) — Cloudflare Workers + KV. Holds our OpenAI key, fronts a global translation cache, gates each call behind a license check. Free tier (100K req/day Workers + 100K read/day KV) covers paid traffic until well past $5K MRR.
 - **Daily Worker** ([`daily-worker/`](daily-worker/README.md)) — Cloudflare Workers + KV. Cron-driven `/today` dashboard build (KST 16:30 weekdays).
-- **Webhook Worker** ([`webhook-worker/`](webhook-worker/README.md)) — Cloudflare Worker + D1 (SQLite). Handles **Polar** billing events (Polar is our sole billing provider, active 2026-05-06+) and `/v1/validate` for the Cache Worker. The Lemon Squeezy store application was declined and LS is not in use; its handler code is retained only as a historical implementation reference. Replaces the old Lightsail/FastAPI/Postgres stack so the operator runs zero servers.
+- **Webhook Worker** ([`webhook-worker/`](webhook-worker/README.md)) — Cloudflare Worker + D1 (SQLite). Handles **Polar** billing events (Polar is our sole billing provider, active 2026-05-06+) and `/v1/validate` for the Cache Worker. Replaces the old Lightsail/FastAPI/Postgres stack so the operator runs zero servers.
 - **Reuses [`agentprod`](../agentprod)** — Throttle, Retry, CostTracker.
 
 ## OSS self-host vs Cloud
@@ -234,7 +242,7 @@ Billing runs on the [`webhook-worker/`](webhook-worker/README.md) Cloudflare Wor
 
 **Active provider: Polar** ([polar.sh](https://polar.sh)) — Merchant of Record since 2026-05-06. Handles VAT / sales tax / refunds / chargebacks for all subscriptions. License keys are emailed automatically on `subscription.created` via the webhook worker.
 
-**Lemon Squeezy: not in use.** Their store application was declined on 2026-05-06; we did not appeal. No LS variant secrets configured in production, no LS webhook deliveries accepted. The handler code remains in the repo only as a historical implementation reference. Anywhere this README mentions Lemon Squeezy below, treat it as documentation-only — Polar is the only billing provider serving real customers.
+**Lemon Squeezy: not in use.** Their store application was declined on 2026-05-06; we did not appeal. No LS variant secrets are configured in production and no LS webhook deliveries are accepted. The `/webhook/lemonsqueezy` handler code remains in the repo only as a historical implementation reference — Polar is the sole billing provider.
 
 See [`webhook-worker/README.md`](webhook-worker/README.md) for the full deploy + secrets walkthrough; the short version:
 
@@ -254,14 +262,6 @@ npx wrangler secret put POLAR_PRODUCT_DESK      # UUID of Cloud Desk product
 # ── Shared ───────────────────────────────────────────────────────────
 npx wrangler secret put KOREANPULSE_CACHE_SHARED_SECRET   # same value cache-worker uses
 
-# ── Lemon Squeezy (not in use — store application declined 2026-05-06) ──
-# Do NOT set these in production. They remain documented only because the
-# handler code is still in the repo as a historical implementation
-# reference; setting them would attempt to dispatch licenses on a
-# provider that no longer holds an MoR relationship with us.
-# npx wrangler secret put LEMONSQUEEZY_WEBHOOK_SECRET
-# npx wrangler secret put LEMONSQUEEZY_VARIANT_SOLO / _ANALYST / _DESK / _LIFETIME
-
 npm run deploy
 ```
 
@@ -269,7 +269,7 @@ Endpoints (deployed to `https://api.koreanpulse.dev` or `https://koreanpulse-web
 
 - `GET /health` → `{"status":"ok"}`
 - `POST /webhook/polar` → Standard Webhooks signature verified (`webhook-id` / `webhook-timestamp` / `webhook-signature`), idempotent on `webhook-id`
-- `POST /webhook/lemonsqueezy` → HMAC-SHA256 (not in use; LS store application declined 2026-05-06, no LS variant secrets configured in production)
+- `POST /webhook/lemonsqueezy` → not in use (handler retained as historical reference — see Billing note above)
 - `POST /v1/validate` → HMAC-signed by the cache-worker, validates license + atomically increments period counter
 
 Polar events handled: `subscription.created` / `.active` / `.updated` / `.canceled` / `.revoked`. Auto-issues license keys, upgrades plans in place, deactivates on cancellation. License rows are tagged with `metadata.provider = "polar"` so the source is traceable per row.
