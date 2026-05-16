@@ -42,6 +42,14 @@ preview_id = "7b1196a4fce84bb39abdca6f3ad74a90"
 [triggers]
 crons = ["30 7 * * 1-5"]
 
+# Workers Logs — persist console.log/error so a cron failure is visible
+# after the fact. The cron runs at 07:30 UTC with nobody tailing live;
+# without this, scheduled() output is ephemeral. Free tier covers this
+# worker's volume (~150 req/day + 1 cron).
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 [vars]
 LLM_MODEL = "gpt-5-mini"
 DART_API_BASE = "https://opendart.fss.or.kr/api"

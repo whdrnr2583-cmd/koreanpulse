@@ -50,11 +50,31 @@ const ATTRIBUTION = "Source: 금융감독원 전자공시시스템 DART (https:/
 
 export default {
   async scheduled(
-    _event: ScheduledController,
+    event: ScheduledController,
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
-    ctx.waitUntil(buildDaily(env));
+    // Observability: scheduled() previously logged nothing, so a failed
+    // cron build vanished silently (the 2026-05-08 + 05-15 Friday misses
+    // left no trace). Log the invocation + wrap buildDaily so a throw is
+    // captured via console.error instead of disappearing inside waitUntil.
+    console.log(
+      `[cron] fired cron="${event.cron}" ` +
+        `scheduledTime=${new Date(event.scheduledTime).toISOString()}`,
+    );
+    ctx.waitUntil(
+      buildDaily(env)
+        .then((result) => {
+          console.log(`[cron] buildDaily ok ${JSON.stringify(result)}`);
+        })
+        .catch((exc) => {
+          const message = exc instanceof Error ? exc.message : String(exc);
+          console.error(
+            `[cron] buildDaily FAILED: ${message}`,
+            exc instanceof Error ? exc.stack : "",
+          );
+        }),
+    );
   },
 
   async fetch(request: Request, env: Env): Promise<Response> {
