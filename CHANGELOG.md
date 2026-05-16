@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.10 — 2026-05-16 (MCP discoverability metadata)
+
+Metadata-only release — no tool, API, or behaviour change. A registry
+keyword probe found koreanpulse listed but buried (last of ten for the
+"korean stocks DART MCP" query), so this release tunes the listing
+metadata that registries and AI clients read:
+
+- `server.json` and `smithery.yaml` descriptions front-load the ICP
+  search terms (KOSPI / KOSDAQ).
+- Drops the trading-tilt keywords (`algotrading`, `ai-trading`,
+  `llm-trading`, `trading-agent`) from `pyproject.toml` — they conflict
+  with the Capital Markets Act §101 "not investment advice" posture and
+  carry no ICP search value.
+- Trims the README's Lemon Squeezy mentions to one canonical
+  "declined / not in use" statement so registry scrapers stop tagging a
+  declined billing provider as an active integration.
+
+The MCP server, its 7 tools, and the license-gating logic are unchanged.
+
 ## 0.1.9 — 2026-05-09 (Apps Directory commerce-policy compliance)
 
 The OpenAI Apps Directory submission form explicitly states "We can

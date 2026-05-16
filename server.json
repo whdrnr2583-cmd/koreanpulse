@@ -3,7 +3,7 @@
   "name": "io.github.whdrnr2583-cmd/koreanpulse",
   "title": "koreanpulse",
   "description": "Korean equity intel (EN): DART filings, KOSPI/KOSDAQ disclosures, activist & foreign-holder flows.",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "repository": {
     "url": "https://github.com/whdrnr2583-cmd/koreanpulse",
     "source": "github"
