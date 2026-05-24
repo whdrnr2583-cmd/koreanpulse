@@ -1,0 +1,60 @@
+# Backstop for the daily-worker cron.
+#
+# Why: the Cloudflare cron ("30 7 * * 1-5") has missed Fridays repeatedly
+# (2026-05-08, 05-15, 05-22 — all left /today/<date> as a 404). This is an
+# INDEPENDENT trigger: ~30 min after the CF cron, POST /admin/rebuild so a
+# build still lands if CF didn't fire. The rebuild is idempotent + cache-safe
+# (translate.ts caches per date+digest), so a double-run on a normal day is
+# cheap and harmless.
+#
+# PREREQUISITES before this can work (see docs / session notes 2026-05-24):
+#   1. /admin/rebuild must be PUBLICLY reachable. Today koreanpulse.dev only
+#      routes /today* to the worker; the root goes to Vercel, so
+#      koreanpulse.dev/admin/rebuild returns 404. Expose it by adding a CF
+#      route `koreanpulse.dev/admin/*` -> koreanpulse-daily worker, OR set
+#      REBUILD_URL below to the worker's *.workers.dev URL.
+#   2. Add repo secret KOREANPULSE_ADMIN_SECRET (same value as the worker's
+#      env.KOREANPULSE_ADMIN_SECRET) in Settings -> Secrets and variables -> Actions.
+#   3. Confirm the Friday miss is a CF no-fire (this backstop fixes it), not an
+#      app throw inside buildDaily (then fix code instead — backstop would fail too).
+#
+# Until secret + reachable URL are set, the job SKIPS cleanly (no failure noise).
+
+name: daily-build-backstop
+
+on:
+  schedule:
+    - cron: "0 8 * * 1-5"   # 08:00 UTC = 17:00 KST, weekdays (CF cron is 07:30 UTC)
+  workflow_dispatch: {}      # manual "Run workflow" button for testing
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-backstop
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ADMIN_KEY: ${{ secrets.KOREANPULSE_ADMIN_SECRET }}
+      REBUILD_URL: "https://koreanpulse.dev/admin/rebuild"
+    steps:
+      - name: POST /admin/rebuild (backstop)
+        run: |
+          if [ -z "$ADMIN_KEY" ]; then
+            echo "::warning::KOREANPULSE_ADMIN_SECRET not set — skipping backstop. Add it in repo Settings -> Secrets -> Actions."
+            exit 0
+          fi
+          code=$(curl -sS -m 60 -o /tmp/resp.json -w "%{http_code}" -X POST \
+            "$REBUILD_URL" -H "x-admin-key: $ADMIN_KEY")
+          echo "HTTP $code"
+          cat /tmp/resp.json 2>/dev/null || true
+          echo
+          if [ "$code" != "200" ]; then
+            echo "::error::rebuild failed (HTTP $code). If 404, /admin/rebuild is not routed publicly yet (see file header)."
+            exit 1
+          fi
+          echo "Backstop rebuild OK."
