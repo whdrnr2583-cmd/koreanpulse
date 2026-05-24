@@ -5,6 +5,8 @@
 
 # koreanpulse
 
+**Korean stock market intelligence for AI assistants.** koreanpulse is an MCP server that connects ChatGPT / Claude / Cursor / FastMCP agents to Korean (KRX / KOSPI / KOSDAQ) equity data — track DART corporate disclosures as they are filed, monitor foreign investor holding changes and activist investor campaigns, and search classified Korean industry news, all in English. Data and intelligence only — not buy/sell recommendations.
+
 > Get pinged in English the moment a 5%-rule filing or DART event hits a stock you care about. **(Beta — watchlist polling + alert dispatch ship Q3 2026.)**
 
 **The pitch**: We'll watch your KRX tickers in Korean and ping you in English when something material moves — foreign-holder 5%-rule disclosures, Korean activist filings, major DART events. KRX itself, ASIFMA, Wellington and Aberdeen all on record — Korean disclosure flow into English is structurally inadequate. Bloomberg costs $24K/yr and still misses the front page of 전자신문. We translate, classify, and route the same Korean primary sources institutional analysts read into your Discord / Telegram / inbox. Free public daily snapshot at `/today` (live today); paid Cloud tiers for the workflow (Solo $29/mo, Analyst $79/mo, Desk $249/mo) — **lock-in pricing for waitlist; queries + hosted translation are live today, watchlist polling + alert dispatch ship Q3 2026**. OSS self-host available for hackers — see [Run it yourself](#run-it-yourself-oss).
@@ -97,7 +99,7 @@ Source is AGPL-3.0. Self-hosters can run the MCP server locally with their own D
 | Support | community only (issues/PRs) | priority support on Analyst / Desk |
 | Best for | hackers, privacy-strict envs, OSS contributors | anyone who'll want the watchlist-to-alert workflow once it ships |
 
-OSS self-host is **not** in the pricing table above — it's a separate lane. See [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) for the install + key wiring. A true HTTP-transport remote MCP (no local install at all) is on the roadmap but not yet shipped.
+OSS self-host is **not** in the pricing table above — it's a separate lane. See [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) for the install + key wiring. Note: the OSS-vs-Cloud table above covers the **pip-install** paths. The **zero-install path is already live** — the hosted remote MCP at `https://mcp.koreanpulse.dev/mcp` answers the 5 free tools (including live DART filings) with no local install and no DART API key of your own; add the URL as a custom connector in ChatGPT / Claude.ai (paid tools take a `license_key` argument).
 
 ## What it does
 
@@ -141,11 +143,12 @@ served as a hosted endpoint your LLM client can connect to in one click.** If
 you need raw KRX OHLCV or Korean-language financial-statement tables, others
 do that better.
 
-| Capability | **koreanpulse** | korea-stock-mcp ([jjlabsio](https://github.com/jjlabsio/korea-stock-mcp), 124★) | korean-dart-mcp ([chrisryugj](https://github.com/chrisryugj/korean-dart-mcp), 35★) | openregistry ([sophymarine](https://github.com/sophymarine/openregistry)) |
+| Capability | **koreanpulse** | korea-stock-mcp ([jjlabsio](https://github.com/jjlabsio/korea-stock-mcp), 137★) | korean-dart-mcp ([chrisryugj](https://github.com/chrisryugj/korean-dart-mcp), 35★) | openregistry ([sophymarine](https://github.com/sophymarine/openregistry)) |
 |---|---|---|---|---|
 | Transport | **Streamable HTTP + SSE** | stdio only (`npx`) | stdio only (`npx`) | Streamable HTTP |
 | Hosted endpoint | **`mcp.koreanpulse.dev/mcp`** | — (self-install) | — (self-install) | `openregistry.sophymarine.com/mcp` |
 | 1-click connect (ChatGPT / Claude.ai) | **Yes** | No (stdio) | No (stdio) | Yes |
+| Your own DART API key to start | **No** — hosted endpoint serves DART for you | Yes (register + configure) | Yes (register + configure) | n/a |
 | Activist filer classification (KCGI / Align / Truston / Anda / Cha / VIP / Life / Platform / ValueAct / Elliott) | **10 labels** | — raw filings only | — raw filings only | — registry data only |
 | Foreign-holder 5%-rule allowlist (BlackRock / Vanguard / Norges / GIC / Temasek + 15 more) | **20 labels** | — raw filings only | — raw filings only | — registry data only |
 | English-first docstrings (LLM-friendly) | **All tools** | Korean primary, English secondary | Korean primary | Yes |
