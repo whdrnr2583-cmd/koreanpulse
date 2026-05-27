@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     "How koreanpulse collects, uses, retains, and discloses personal data, including PIPA (Korea) and GDPR (EU) compliance.",
 };
 
-const LAST_UPDATED = "2026-05-05";
+const LAST_UPDATED = "2026-05-27";
 
 export default function PrivacyPage() {
   return (
@@ -82,6 +82,15 @@ export default function PrivacyPage() {
             We do <strong>not</strong> use cookies for tracking. We do{" "}
             <strong>not</strong> embed third-party analytics, ad pixels, or
             social media trackers on the marketing site.
+          </p>
+          <p>
+            <strong>MCP tool inputs and outputs are stateless.</strong> The
+            license key is the only user-provided identifier and is validated
+            server-side; it is not echoed back in tool responses. Tool
+            responses contain only the requested market or filing data and do
+            not include user identifiers, diagnostic debug codes, or session
+            metadata. We do not collect or retain personally identifiable
+            information through MCP tool invocations.
           </p>
 
           <h2 className="text-xl font-semibold text-zinc-100">

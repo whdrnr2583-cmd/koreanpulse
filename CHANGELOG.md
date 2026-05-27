@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.1.11 — 2026-05-27 (Apps Directory resubmission — remove subscription URL & diagnostic codes from tool responses)
+
+OpenAI Apps Directory rejected the 0.1.9/0.1.10 submission because the
+paywall response in `_paid_gate` still echoed:
+
+- `Subscribe at https://koreanpulse.dev/pricing.` — surfaced via
+  `Diagnostic for client developers: gate returned [{exc.code}] {exc}`,
+  where `exc` was the `LicenseError("missing", "Missing license key.
+  Subscribe at https://koreanpulse.dev/pricing.")` raised from
+  `license.py`. The 0.1.9 scrub removed the URL from the gate string
+  but left the diagnostic line that echoed the underlying exception
+  verbatim — net effect: the URL still reached the user.
+- `gate returned [missing/invalid/expired]` — a per-call diagnostic
+  code echoed in tool responses, which the privacy policy did not
+  disclose as user-related data.
+
+Fixes (MCP-response code paths only — billing logic unchanged):
+- `src/koreanpulse/server.py:_paid_gate` — drop the diagnostic line,
+  the marketing block, and the OSS install URL. Response is now a
+  single sentence: `<tool> requires a license key. Pass a
+  license_key argument...`. No URLs. No exception codes.
+- `src/koreanpulse/server.py` — remove the unused `POLAR_CHECKOUT_URL`
+  constant (dead since 0.1.9; still contained the forbidden URL in
+  source).
+- `src/koreanpulse/license.py` — `LicenseError("missing")` message
+  reduced to `"Missing license key."`. No URL.
+- `src/koreanpulse/translate.py` — `TranslationError` for missing
+  hosted-mode license key no longer mentions the pricing URL.
+- `landing/app/privacy/page.tsx` — new paragraph in §1 stating that
+  MCP tool inputs/outputs are stateless, the license key is not
+  echoed back, and tool responses contain no user identifiers,
+  diagnostic codes, or session metadata. Last-updated 2026-05-27.
+- `_workspace/SCHEDULE.md` §9 — meta-rule entry documenting the
+  0.1.9 oversight (exception-string echo) to prevent recurrence.
+
+Existing paying customers are unaffected: a valid `license_key` still
+short-circuits the paywall before this string is ever returned. The
+landing page at koreanpulse.dev/pricing — outside the App Directory
+surface — continues to host the full Polar checkout flow.
+
+Code: `src/koreanpulse/server.py`, `src/koreanpulse/license.py`,
+`src/koreanpulse/translate.py`, `landing/app/privacy/page.tsx`.
+
 ## 0.1.10 — 2026-05-16 (MCP discoverability metadata)
 
 Metadata-only release — no tool, API, or behaviour change. A registry

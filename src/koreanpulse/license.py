@@ -1,8 +1,12 @@
 """License-key gate for paid tiers.
 
-This is the v0 in-memory implementation. Same interface should map directly
-to a Postgres-backed `LicenseStore` once we wire Lemon Squeezy / PayPal
-webhooks.
+This is the v0 in-memory implementation. License issuance happens in the
+Cloudflare Worker (`webhook-worker/`) via Polar (sole billing provider,
+active since 2026-05-06). The D1 store is the production source of truth;
+this in-memory store is used by tests and as the legacy LicenseStore
+Protocol reference. The Lemon Squeezy store application was declined
+2026-05-06; LS code paths remain in `koreanpulse.billing/` only as
+historical reference.
 
 Each MCP tool that costs money calls `validate_license_or_raise(license_key)`
 at the top. The MCP client passes the key as a tool arg or via a connection
@@ -398,7 +402,7 @@ async def validate_license_or_raise(
     if not license_key:
         raise LicenseError(
             "missing",
-            "Missing license key. Subscribe at https://koreanpulse.dev/pricing.",
+            "Missing license key.",
         )
 
     # (1) Hosted webhook validate path — D1 source of truth.

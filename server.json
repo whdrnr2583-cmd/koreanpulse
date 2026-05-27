@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.whdrnr2583-cmd/koreanpulse",
   "title": "koreanpulse",
-  "description": "Korean equity intel (EN): DART filings, KOSPI/KOSDAQ disclosures, activist & foreign-holder flows.",
-  "version": "0.1.10",
+  "description": "Korean stock market intelligence for AI assistants (EN): track DART filings, foreign & activist investor activity, KOSPI/KOSDAQ disclosures, Korean market data.",
+  "version": "0.1.11",
   "repository": {
     "url": "https://github.com/whdrnr2583-cmd/koreanpulse",
     "source": "github"

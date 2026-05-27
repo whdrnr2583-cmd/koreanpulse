@@ -323,8 +323,7 @@ class Translator:
         if not self._license_key:
             raise TranslationError(
                 "KOREANPULSE_LICENSE_KEY missing — required for "
-                "KOREANPULSE_CACHE_MODE=hosted. Subscribe at "
-                "https://koreanpulse.dev/pricing or set "
+                "KOREANPULSE_CACHE_MODE=hosted. Set "
                 "KOREANPULSE_CACHE_MODE=local for BYOK."
             )
 

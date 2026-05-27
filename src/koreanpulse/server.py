@@ -78,15 +78,6 @@ def _require_license() -> bool:
     return os.environ.get("KOREANPULSE_REQUIRE_LICENSE", "0").strip() == "1"
 
 
-# Polar checkout link surfaced in paid-tier error messages so the LLM client
-# can render it directly to the user. Override via env if a future migration
-# changes the URL — keeps this single source of truth out of git.
-POLAR_CHECKOUT_URL = os.environ.get(
-    "KOREANPULSE_POLAR_CHECKOUT_URL",
-    "https://koreanpulse.dev/pricing",
-)
-
-
 async def _gate(license_key: Optional[str], *, units: int = 1) -> None:
     """Free-tier gate — only enforces when KOREANPULSE_REQUIRE_LICENSE=1.
 
@@ -126,20 +117,12 @@ async def _paid_gate(
     try:
         await validate_license_or_raise(license_key, cost_units=units)
         return None
-    except LicenseError as exc:
+    except LicenseError:
         return (
-            f"`{tool_name}` is a license-gated koreanpulse tool. Pass a "
-            f"`license_key` argument when calling it. License keys are "
-            f"issued for self-hosted koreanpulse deployments — see the "
-            f"OSS project at https://github.com/whdrnr2583-cmd/koreanpulse "
-            f"for the install path (`pip install koreanpulse` + your own "
-            f"DART API key).\n\n"
-            f"What this tool returns (and cannot be derived from "
-            f"`track_korean_filings` raw filings): 5%-rule foreign-holder "
-            f"classification (BlackRock, Vanguard, Norges, GIC, Temasek + "
-            f"15 more) and Korean activist filer classification (KCGI, "
-            f"Align Partners, Truston, Anda, VIP, Cha, Life, Platform).\n\n"
-            f"Diagnostic for client developers: gate returned [{exc.code}] {exc}"
+            f"`{tool_name}` requires a license key. Pass a `license_key` "
+            f"argument when calling this tool. License keys are issued for "
+            f"self-hosted koreanpulse deployments via the OSS project "
+            f"(`pip install koreanpulse` + your own DART API key)."
         )
 
 
@@ -168,9 +151,9 @@ async def track_korean_filings(
     summarize: bool = False,
     license_key: Optional[str] = None,
 ) -> list[Filing]:
-    """Korean DART (전자공시) filings retrieval for KOSPI / KOSDAQ / KONEX / KRX listed companies — 5%-rule disclosures, M&A, periodic reports, capital issuance, insider trading, audit reports. Free tier.
+    """Track Korean DART (전자공시) stock filings in English — real-time corporate disclosures for KOSPI / KOSDAQ / KONEX / KRX listed companies: 5%-rule shareholding disclosures, M&A, periodic reports, capital issuance, insider trading, audit reports. Free tier.
 
-    Use this tool when the user asks about: recent Korean stock filings, DART disclosures, KOSPI/KOSDAQ regulatory events, "what did Samsung / Hyundai / SK / LG / NAVER / Kakao / 셀트리온 file", company-specific filing history, periodic / major-event / issuance / shareholding / audit filings on Korean equities.
+    Use this tool when the user asks about: recent Korean stock filings, DART disclosures, Korean market data, KOSPI/KOSDAQ regulatory events, "track Korean DART filings", "what did Samsung / Hyundai / SK / LG / NAVER / Kakao / 셀트리온 file", company-specific filing history, periodic / major-event / issuance / shareholding / audit filings on Korean equities.
 
     **Free tier — no license required.** Returns raw DART filings exactly
     as the regulator surfaces them (filer name in Korean, filing type code,
@@ -377,9 +360,9 @@ async def monitor_activist_investors(
     limit: int = 50,
     license_key: Optional[str] = None,
 ) -> list[ActivistFiling] | str:
-    """Korean activist filer classification on DART 5%-rule (주식등의대량보유상황보고서) shareholding disclosures. Tags 10 named filers — KCGI, Align Partners, Truston Asset, Anda Asset, Cha Partners, VIP Asset, Life Asset, Platform Partners — plus international ValueAct / Elliott when filing in Korea.
+    """Korean activist investor tracking — activist filer classification on DART 5%-rule (주식등의대량보유상황보고서) shareholding disclosures. Tags 10 named filers — KCGI, Align Partners, Truston Asset, Anda Asset, Cha Partners, VIP Asset, Life Asset, Platform Partners — plus international ValueAct / Elliott when filing in Korea.
 
-    Use this tool when the user asks about: Korean shareholder activism, "is KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform activist on <ticker>", governance pressure on KOSPI / KOSDAQ names, recent activist 5%-rule filings, ValueAct or Elliott Korean positions, Korean Value-Up program activism, MSCI Developed Market activism flow.
+    Use this tool when the user asks about: Korean activist investor tracking, Korean shareholder activism, "is KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform activist on <ticker>", governance pressure on KOSPI / KOSDAQ names, recent activist 5%-rule filings, ValueAct or Elliott Korean positions, Korean Value-Up program activism, MSCI Developed Market activism flow.
 
     **Requires a license key.** Pass it via the `license_key` argument.
     Without a valid license, this tool returns a paywall message containing
@@ -480,9 +463,9 @@ async def monitor_foreign_holders(
     limit: int = 50,
     license_key: Optional[str] = None,
 ) -> list[ForeignHolderFiling] | str:
-    """Foreign-holder classification on DART 5%-rule disclosures by global asset managers and sovereign wealth funds. Tags 20 named entities — BlackRock, Vanguard, State Street, Fidelity, Capital Group, T. Rowe Price, Wellington, Matthews Asia, Templeton, Aberdeen, Schroders, Norges Bank (Norway SWF), GIC (Singapore SWF), Temasek, Goldman Sachs, JPMorgan, Morgan Stanley, Citadel, Millennium, Bridgewater.
+    """Monitor foreign investor activity in Korean stocks — foreign-holder classification on DART 5%-rule disclosures by global asset managers and sovereign wealth funds. Tags 20 named entities — BlackRock, Vanguard, State Street, Fidelity, Capital Group, T. Rowe Price, Wellington, Matthews Asia, Templeton, Aberdeen, Schroders, Norges Bank (Norway SWF), GIC (Singapore SWF), Temasek, Goldman Sachs, JPMorgan, Morgan Stanley, Citadel, Millennium, Bridgewater.
 
-    Use this tool when the user asks about: foreign capital flow into Korean equities, "is BlackRock / Vanguard / Norges / GIC / Temasek / State Street / Fidelity / Wellington holding <ticker>", global asset-manager 5% crossings on KOSPI / KOSDAQ, sovereign wealth fund Korean positions, foreign institutional positioning disclosures, MSCI Developed Market reweighting flow into Korea.
+    Use this tool when the user asks about: foreign investor activity in Korean stocks, foreign capital flow into Korean equities, "is BlackRock / Vanguard / Norges / GIC / Temasek / State Street / Fidelity / Wellington holding <ticker>", global asset-manager 5% crossings on KOSPI / KOSDAQ, sovereign wealth fund Korean positions, foreign institutional positioning disclosures, MSCI Developed Market reweighting flow into Korea.
 
     **Requires a license key.** Pass it via the `license_key` argument.
     Without a valid license, this tool returns a paywall message containing
@@ -604,10 +587,14 @@ async def koreanpulse_about() -> dict:
         "name": "koreanpulse",
         "version": __version__,
         "description": (
-            "Korean industry intelligence MCP for foreign fund analysts and AI agents. "
-            "Real-time DART filings + Korean industry news, translated to English on-demand. "
-            "30 named-entity classifiers (10 Korean activists + 20 global passive holders) "
-            "that the raw DART feed does not derive."
+            "Korean stock market intelligence MCP for AI assistants and agents. "
+            "Connects ChatGPT / Claude / Cursor / FastMCP agents to Korean (KRX / "
+            "KOSPI / KOSDAQ) equity data: real-time DART corporate disclosures, "
+            "foreign investor holding changes, activist investor campaigns, and "
+            "classified Korean industry news — all in English. "
+            "30 named-entity classifiers (10 Korean activists + 20 global passive "
+            "holders) that the raw DART feed does not derive. "
+            "Data and intelligence only — not buy/sell recommendations."
         ),
         "capability_tags": [
             "korean-equity",
