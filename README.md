@@ -5,6 +5,8 @@
 
 # koreanpulse
 
+Korean stock disclosures, activist filings & foreign-holder flows in English — for AI agents via MCP.
+
 **Korean stock market intelligence for AI assistants.** koreanpulse is an MCP server that connects ChatGPT / Claude / Cursor / FastMCP agents to Korean (KRX / KOSPI / KOSDAQ) equity data — track DART corporate disclosures as they are filed, monitor foreign investor holding changes and activist investor campaigns, and search classified Korean industry news, all in English. Data and intelligence only — not buy/sell recommendations.
 
 > Get pinged in English the moment a 5%-rule filing or DART event hits a stock you care about. **(Beta — watchlist polling + alert dispatch ship Q3 2026.)**
@@ -301,6 +303,28 @@ Crypto-native rotators want pings, not dashboards. `koreanpulse.alerts.send_aler
 - Telegram bots (shortcut `tg://<bot_token>/<chat_id>` or full `sendMessage` URL)
 
 Fire-and-forget — transport / formatting failures return `AlertResult(ok=False)` instead of raising, so an outage in one channel never breaks a tool call. See `src/koreanpulse/alerts.py`.
+
+## Example prompts
+
+Copy-paste these into Claude.ai, ChatGPT, or any MCP client connected to `https://mcp.koreanpulse.dev/mcp`:
+
+```
+Ask Claude: "What DART filings were submitted for Samsung Electronics in the last 7 days?"
+```
+```
+Ask Claude: "Look up the DART corp code for Kakao and show me its latest disclosures."
+```
+```
+Ask Claude: "Any Korean semiconductor news this week from 전자신문?"
+```
+```
+Ask Claude: "Which activist investors filed 5%-rule disclosures on KOSPI stocks this month? [license_key: YOUR_KEY]"
+```
+```
+Ask Claude: "Show me recent foreign-holder 5%-rule filings — has BlackRock or Norges Bank crossed any thresholds? [license_key: YOUR_KEY]"
+```
+
+The first three prompts use free tools (no signup). The last two unlock the activist and foreign-holder classification and require a Solo $29/mo license key — the server returns a structured error with the Polar checkout link if `license_key` is missing.
 
 ## License
 
