@@ -159,21 +159,34 @@ export default function Home() {
 
         <section className="mt-16">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/5 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-accent">
-            The Korean equity MCP for ChatGPT, Claude.ai, Cursor
+            Live today — activist &amp; foreign-holder filing classifier for KRX
           </div>
           <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
-            Get pinged in English the moment a 5%-rule filing or DART event hits a stock you care about.
+            When KCGI or Elliott files a 5%-rule disclosure on a Korean stock, your AI assistant sees it in English — classified, not raw.
           </h1>
-          <p className="mt-6 max-w-2xl text-lg text-zinc-300">
-            We watch your KRX tickers in Korean and ping you in English when
-            something material moves — foreign-holder 5%-rule disclosures,
-            Korean activist filings, major DART events. KRX itself, ASIFMA,
-            Wellington, Aberdeen, and Matthews Asia are all on record that the
-            English flow off Korean primary sources is structurally inadequate.
-            Bloomberg charges $24K/yr and still misses the front page of
-            전자신문. We translate, classify, and route the same data into
-            your Discord / Telegram / inbox — or call it as MCP tools from
-            Claude, Cursor, or your own AI agent.
+          <p className="mt-5 max-w-2xl text-base font-medium text-zinc-200">
+            koreanpulse is a hosted MCP server that classifies Korean DART
+            filings by known activist investors (KCGI, Align Partners, Elliott,
+            ValueAct, Truston, Anda, Cha, VIP…) and global foreign holders
+            (BlackRock, Vanguard, Norges Bank, GIC, Temasek…) — translated
+            to English, available today from Claude.ai, ChatGPT, or Cursor in
+            one click.
+          </p>
+          <p className="mt-4 max-w-2xl text-zinc-300">
+            DART publishes activist 5% disclosures in hours, but the raw feed
+            is Korean text with no entity tagging. Identifying whether a filing
+            is KCGI or a passive retail holder requires a maintained Korean-name
+            allowlist and filer-of-record disambiguation that the raw API does
+            not provide. That classification is what koreanpulse ships.
+          </p>
+          <p className="mt-4 max-w-2xl text-zinc-300">
+            The same endpoint also surfaces foreign 5%-rule entries from
+            sovereign wealth funds, global asset managers, and event-driven
+            hedge funds — the kind of filing that signals a position change
+            before it hits English-language news. Bloomberg charges $24K/yr
+            and still misses the front page of 전자신문. koreanpulse routes
+            the same primary-source data to your AI workflow at a fraction of
+            the cost.
           </p>
           <p className="mt-4 max-w-2xl text-sm text-zinc-400">
             <strong className="text-zinc-200">1-click connect.</strong> Add{" "}
@@ -182,19 +195,7 @@ export default function Home() {
             </code>{" "}
             as a custom connector in ChatGPT or Claude.ai — no{" "}
             <code className="text-xs">npx</code> install, no JSON config, no
-            local secrets, no DART API key needed for the free tools. Latest
-            MCP Streamable HTTP transport, OAuth-ready, actively maintained.
-          </p>
-          <p className="mt-3 max-w-2xl text-sm text-zinc-400">
-            <strong className="text-zinc-200">Built to scale.</strong> One
-            hosted endpoint serves many AI agents in parallel — Cloudflare
-            Workers auto-scale on the cache + license + daily-digest path,
-            async uvicorn handles concurrent MCP sessions on the back end, and
-            our DART quota math (~9,500 MAU at 70% cache hit, ~19,000 MAU at
-            85%) is sized for thousands of paying users on a single key.
-            Stdio competitors run one process per user on the user's own
-            machine — fine for a single hacker, structurally wrong for
-            agentic workloads.
+            local secrets, no DART API key needed for the 5 free tools.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -202,24 +203,60 @@ export default function Home() {
               href="#pricing"
               className="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-ink hover:opacity-90"
             >
-              Join the waitlist →
+              Subscribe — Solo $29/mo →
             </a>
             <a
               href="/today"
               className="rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-medium text-zinc-200 hover:border-zinc-500"
             >
-              Preview the daily digest
+              See today&apos;s classified filings
             </a>
           </div>
           <p className="mt-4 text-xs text-zinc-500">
-            🚧 Beta — queries + hosted translation are live today; watchlist
-            polling and alert dispatch ship Q3 2026. Join the waitlist to lock
-            in the launch rate.
+            Beta — activist + foreign-holder classification and DART queries
+            are live today. Watchlist polling and alert dispatch ship Q3 2026.
+          </p>
+        </section>
+
+        {/* Activist filing scenario — concrete ICP moment */}
+        <section className="mt-16 rounded-md border border-amber-700/50 bg-amber-500/5 p-6">
+          <div className="flex items-baseline gap-3">
+            <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-300">
+              What this looks like in practice
+            </span>
+          </div>
+          <p className="mt-3 text-sm text-zinc-300">
+            Ask Claude.ai:{" "}
+            <em>&quot;What activist filings appeared on Samsung Electronics
+            in the last 7 days?&quot;</em>
+          </p>
+          <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded bg-black/60 p-4 text-xs text-zinc-200">
+{`koreanpulse returned 2 filings:
+
+1. Samsung C&T (028260)
+   Filer: 국민연금공단 — classified as PASSIVE (National Pension Service)
+   Type: 주식등의대량보유상황보고서 (일반)
+         → "Report on Large Holdings of Stocks, Etc. (General)"
+   Filed: 2026-05-04 | Stake change: 9.81% → 10.02%
+
+2. Samsung Electronics (005930)
+   Filer: Ha Ji-hoon — classified as ACTIVIST (independent)
+   Type: 임원ㆍ주요주주특정증권등소유상황보고서
+         → "Report on Ownership of Specific Securities by Officers / Major Shareholders"
+   Filed: 2026-04-29
+
+The raw DART feed lists both as the same filing type.
+Only koreanpulse distinguishes passive institutional from activist filers.`}
+          </pre>
+          <p className="mt-3 text-xs text-zinc-500">
+            Actual output from a live Claude.ai session, 2026-05-06. Company
+            names translated automatically; no Korean reading required.
+            Not investment advice.
           </p>
         </section>
 
         {/* Timing — recent regulatory inflection makes the audience addressable */}
-        <section className="mt-24 rounded-md border border-emerald-800/40 bg-emerald-500/5 p-6">
+        <section className="mt-12 rounded-md border border-emerald-800/40 bg-emerald-500/5 p-6">
           <div className="flex items-baseline gap-3">
             <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300">
               2026 inflection
@@ -264,6 +301,14 @@ export default function Home() {
             Why people are paying attention to KRX
           </h2>
           <ul className="mt-6 space-y-3 text-zinc-300">
+            <li>
+              <strong className="text-zinc-100">The activist signal is in the filing, but the entity is not.</strong>{" "}
+              DART 5%-rule filings name the filer in Korean only. Whether
+              &ldquo;국내투자자&rdquo; is KCGI building a position or a retail
+              investor crossing a reporting threshold is not labelled anywhere
+              in the raw feed. koreanpulse maintains the allowlist and
+              disambiguates on every pull.
+            </li>
             <li>
               <strong className="text-zinc-100">English IR gap is structural.</strong>{" "}
               KRX itself, ASIFMA, Wellington, Aberdeen, Matthews Asia all on
@@ -550,28 +595,27 @@ export default function Home() {
           <div className="mb-6 rounded-md border border-amber-700/50 bg-amber-500/5 p-4">
             <div className="flex items-baseline gap-2">
               <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-300">
-                🚧 Beta
+                Beta
               </span>
               <span className="text-sm font-medium text-amber-200">
-                Solo trial opens Q3 2026
+                Activist + foreign-holder classification is live today
               </span>
             </div>
             <p className="mt-2 text-xs text-zinc-300">
-              Queries + hosted translation cache are live today. Watchlist
-              polling, alert dispatch, seat enforcement, and per-tier
-              retention windows ship Q3 2026. Today the <em>only</em>{" "}
-              runtime-enforced difference between tiers is the monthly query
-              cap (2K / 15K / 100K). Watchlist counts, alert-channel limits,
-              seat caps, and archive retention are paper limits until the
-              polling/dispatch loop lands. Join the waitlist and you keep
-              the launch rate — no auto-charge until the workflow ships.
+              The two paid MCP tools ({" "}
+              <code>monitor_activist_investors</code> and{" "}
+              <code>monitor_foreign_holders</code>) are callable today via
+              Claude.ai, ChatGPT, or the OpenAI Responses API. Watchlist
+              polling, alert dispatch, and per-tier retention windows ship
+              Q3 2026. Today the only runtime-enforced difference between
+              tiers is the monthly query cap (2K / 15K / 100K).
             </p>
           </div>
           <h2 className="text-2xl font-semibold">Pricing</h2>
           <p className="mt-2 text-sm text-zinc-400 max-w-2xl">
-            Lock-in pricing — early supporters keep the launch rate. Pick the
-            tier that matches how many tickers you&apos;ll watch and how many
-            channels you&apos;ll want pinged once polling/dispatch ships.
+            Solo $29/mo unlocks the two classification tools (activist +
+            foreign-holder) today. Watchlist polling and alert dispatch ship
+            Q3 2026 — early subscribers keep the launch rate when they land.
           </p>
 
           {/* 3b — Free vs Paid comparison box (clarify what subscribing actually unlocks) */}
@@ -942,6 +986,35 @@ activist filings from this week. Would you like to sign up?`}
             자료를 영어로 번역·분류하여 제공하는 데이터 서비스이며,
             투자자문 또는 투자권유에 해당하지 않습니다.
           </p>
+        </section>
+
+        {/* Guides — internal links so the GEO content is crawlable from home */}
+        <section className="mt-16 border-t border-zinc-800 pt-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
+            Guides
+          </h2>
+          <ul className="mt-3 space-y-2 text-sm text-zinc-300">
+            <li>
+              <a
+                href="/track-korean-dart-filings-with-ai"
+                className="text-accent hover:underline"
+              >
+                How to track Korean DART filings with an AI assistant
+              </a>{" "}
+              — what DART is, which filings carry signal, and how to wire an
+              MCP server into ChatGPT, Claude, or Cursor.
+            </li>
+            <li>
+              <a
+                href="/korean-stock-filings-in-english"
+                className="text-accent hover:underline"
+              >
+                How to get Korean stock filings (DART) in English
+              </a>{" "}
+              — four ways to access KOSPI/KOSDAQ disclosures in English,
+              compared.
+            </li>
+          </ul>
         </section>
 
         <footer className="mt-12 text-xs text-zinc-500">
