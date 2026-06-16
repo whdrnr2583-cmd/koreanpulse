@@ -120,9 +120,11 @@ async def _paid_gate(
     except LicenseError:
         return (
             f"`{tool_name}` requires a license key. Pass a `license_key` "
-            f"argument when calling this tool. License keys are issued for "
-            f"self-hosted koreanpulse deployments via the OSS project "
-            f"(`pip install koreanpulse` + your own DART API key)."
+            f"argument when calling this tool. License keys are emailed to "
+            f"subscribers on the hosted koreanpulse service — visit "
+            f"koreanpulse.dev for details. OSS self-host "
+            f"(github.com/whdrnr2583-cmd/koreanpulse + your own DART API key) "
+            f"is free but does not include activist/foreign-holder classifiers."
         )
 
 
@@ -663,8 +665,15 @@ async def koreanpulse_about() -> dict:
         "license_gated_tools": {
             "tools": ["monitor_activist_investors", "monitor_foreign_holders"],
             "argument": "license_key",
-            "self_host": "https://github.com/whdrnr2583-cmd/koreanpulse",
-            "note": "License keys are issued for self-hosted koreanpulse deployments.",
+            "info": "https://koreanpulse.dev",
+            "note": (
+                "License keys are emailed to subscribers on the hosted koreanpulse "
+                "service (koreanpulse.dev). The classifiers (activist filer matching, "
+                "foreign-holder allowlist) run server-side and are not available via "
+                "OSS self-host (github.com/whdrnr2583-cmd/koreanpulse) — self-hosted "
+                "deployments require your own DART API key and do not include the "
+                "named-entity classifiers."
+            ),
         },
         "corp_index_size": n_corp,
         "homepage": "https://koreanpulse.dev",
