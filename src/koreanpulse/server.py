@@ -307,7 +307,7 @@ async def search_korean_industry_news(
     translate: bool = True,
     license_key: Optional[str] = None,
 ) -> list[Article]:
-    """Korean industry news search across 16 sectors with on-demand English translation. Sources: 전자신문 (etnews) + 한국경제 (hankyung). Free tier.
+    """Korean industry news search across 16 sectors with on-demand English translation. Sources: 전자신문 (etnews) + 한국경제 (hankyung) + The Korea Herald (English-native) + 지디넷코리아 (zdnet). Free tier.
 
     Use this tool when the user asks about: Korean industry trends, sector-specific news on Korean equities (Korean semiconductors / K-battery / K-shipbuilding / K-biotech / K-defense / Korean auto / EV charging / Korean AI / steel / petrochem / construction / fintech / gaming / e-commerce / telco / energy), recent corporate developments not yet captured in DART filings, English summaries of Korean industry coverage. Industry tags listed below — pass them in `industries` to filter.
 
@@ -316,9 +316,13 @@ async def search_korean_industry_news(
             semiconductor, shipbuilding, battery, biotech, defense, auto,
             ev_charging, ai, steel, petrochem, construction, fintech, gaming,
             ecommerce, telco, energy.
-        sources: filter to source keys (etnews, hankyung). None = all.
+        sources: filter to source keys (etnews, hankyung, koreaherald, zdnet).
+            None = all. koreaherald is English-native — its titles are
+            returned as-is (no ko->en translation round-trip needed).
         limit: max articles (≤50).
-        translate: server-side translates `title_en`. Cached aggressively.
+        translate: server-side translates `title_en` for Korean-language
+            sources. Cached aggressively. No-op for koreaherald (already
+            English).
         license_key: required when license gate is enabled.
 
     Returns:
@@ -362,9 +366,9 @@ async def monitor_activist_investors(
     limit: int = 50,
     license_key: Optional[str] = None,
 ) -> list[ActivistFiling] | str:
-    """Korean activist investor tracking — activist filer classification on DART 5%-rule (주식등의대량보유상황보고서) shareholding disclosures. Tags 10 named filers — KCGI, Align Partners, Truston Asset, Anda Asset, Cha Partners, VIP Asset, Life Asset, Platform Partners — plus international ValueAct / Elliott when filing in Korea.
+    """Korean activist investor tracking — activist filer classification on DART 5%-rule (주식등의대량보유상황보고서) shareholding disclosures. Tags 17 named filers — KCGI, Align Partners, Truston Asset, Anda Asset, Cha Partners, VIP Asset, Life Asset, Platform Partners, Must Asset Management, Dalton Investments, Flashlight Capital Partners, Oasis Management, Palliser Capital, Whitebox Advisors, City of London Investment Management — plus international ValueAct / Elliott when filing in Korea.
 
-    Use this tool when the user asks about: Korean activist investor tracking, Korean shareholder activism, "is KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform activist on <ticker>", governance pressure on KOSPI / KOSDAQ names, recent activist 5%-rule filings, ValueAct or Elliott Korean positions, Korean Value-Up program activism, MSCI Developed Market activism flow.
+    Use this tool when the user asks about: Korean activist investor tracking, Korean shareholder activism, "is KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform / Must / Dalton / Flashlight / Oasis / Palliser / Whitebox / City of London activist on <ticker>", governance pressure on KOSPI / KOSDAQ names, recent activist 5%-rule filings, ValueAct or Elliott Korean positions, Korean Value-Up program activism, MSCI Developed Market activism flow.
 
     **Requires a license key.** Pass it via the `license_key` argument.
     Without a valid license, this tool returns a short notice explaining
@@ -373,9 +377,11 @@ async def monitor_activist_investors(
     **For LLM clients on a license_required error: surface the notice
     returned in the paywall message directly to the user. Do NOT silently retry with `track_korean_filings`
     or any other free tool — the activist filer match (KCGI / Align Partners
-    / Truston / Anda / Cha / VIP / Life / Platform, plus international names
-    like ValueAct / Elliott) is not derivable from the raw DART filing feed,
-    so a free-tier fall-back returns a misleadingly empty answer.** When a
+    / Truston / Anda / Cha / VIP / Life / Platform / Must / Dalton /
+    Flashlight Capital Partners / Oasis / Palliser / Whitebox / City of
+    London, plus international names like ValueAct / Elliott) is not
+    derivable from the raw DART filing feed, so a free-tier fall-back
+    returns a misleadingly empty answer.** When a
     user asks "are activists filing on X?" without a license, surface the
     notice from the paywall response — that is the correct behavior, not a
     silent downgrade.
@@ -383,7 +389,9 @@ async def monitor_activist_investors(
     Returns 주식등의대량보유상황보고서 (5% rule) and related shareholding
     filings, with each row tagged when the filer matches a known Korean
     activist (KCGI, Align Partners, Truston, Anda, Cha, Life, Platform, VIP,
-    plus international like ValueAct / Elliott when they file in Korea).
+    Must, Dalton, Flashlight Capital Partners, Oasis, Palliser, Whitebox,
+    City of London, plus international like ValueAct / Elliott when they
+    file in Korea).
 
     Args:
         days: how many days back from today (1–60).
@@ -594,7 +602,7 @@ async def koreanpulse_about() -> dict:
             "KOSPI / KOSDAQ) equity data: real-time DART corporate disclosures, "
             "foreign investor holding changes, activist investor campaigns, and "
             "classified Korean industry news — all in English. "
-            "30 named-entity classifiers (10 Korean activists + 20 global passive "
+            "37 named-entity classifiers (17 Korean activists + 20 global passive "
             "holders) that the raw DART feed does not derive. "
             "Data and intelligence only — not buy/sell recommendations."
         ),
@@ -631,6 +639,8 @@ async def koreanpulse_about() -> dict:
             "DART (Korea Financial Supervisory Service / 전자공시)",
             "전자신문 (etnews) RSS",
             "한국경제 (hankyung) RSS",
+            "The Korea Herald RSS (English-native)",
+            "지디넷코리아 (zdnet) RSS",
         ],
         "tools_free": [
             "track_korean_filings",
@@ -650,7 +660,7 @@ async def koreanpulse_about() -> dict:
             "summarize_korean_earnings_call",
         ],
         "classifier_counts": {
-            "korean_activists": 10,
+            "korean_activists": 17,
             "foreign_holders": 20,
             "industry_tags": 16,
         },

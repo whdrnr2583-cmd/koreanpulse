@@ -1,5 +1,71 @@
 # Changelog
 
+## 0.1.12 — 2026-07-08 (quality pass — activist/foreign-holder allowlist refresh, 2 new news sources, robustness)
+
+Product-quality hardening within the existing 7-tool surface. No new MCP
+tools, no commerce strings added to MCP-facing surfaces.
+
+### Activist allowlist refresh (`src/koreanpulse/activists.py`)
+
+Verified via 2024-2026 Korean press (citations inline as per-entry
+comments). `KOREAN_ACTIVISTS` grows from 10 to 17 named filers — 7 new
+entries, each grounded in an active 2025-2026 Korean campaign or 5%-rule
+crossing: Must Asset Management (영풍/파마리서치/리파인), Dalton
+Investments (콜마홀딩스 board seat, 슈프리마), Flashlight Capital
+Partners (KT&G, 에스원), Oasis Management (KT&G), Palliser Capital
+(삼성물산/SK스퀘어/LG화학), Whitebox Advisors (삼성물산), City of
+London Investment Management (삼성물산). `FOREIGN_HOLDERS` (20 entries)
+spot-checked and unchanged — BlackRock confirmed still actively crossing
+5% on Samsung Electronics / POSCO / Hyundai Rotem as of April 2026.
+Mirrored into `daily-worker/src/activists.ts` (kept in sync per that
+file's existing contract) and every count/name reference in
+`server.py` docstrings, `koreanpulse_about`, README, and the two
+discovery files (`mcp.json`, `llms.txt`).
+
+### Two new news sources (`src/koreanpulse/sources.py`, `news.py`)
+
+- **The Korea Herald** (`koreaherald`, English-native, Business RSS) —
+  verified live; no RSS-specific commercial/AI-training restriction found
+  (only the generic site copyright notice already accepted for
+  etnews/hankyung). New `NewsSource.language` field (default `"ko"`,
+  backward-compatible) lets `fetch_industry_news` pre-fill `title_en`
+  with the original English headline instead of round-tripping it
+  through the ko->en translator.
+- **지디넷코리아 / ZDNet Korea** (`zdnet`, IT industry RSS) — verified
+  live, standard WordPress feed, no RSS-specific restriction found.
+- **Rejected** (documented in `sources.py` module docstring so this
+  doesn't get re-litigated): 아시아경제, 서울경제, 연합뉴스 — each
+  publishes an RSS-specific ToS clause barring commercial and/or
+  multi-user and/or AI-training use, which koreanpulse's MCP-response
+  fan-out to many end users would violate even under a title+link+
+  attribution-only fair-use posture.
+- `INDUSTRY_KEYWORDS` gained English-language keyword variants across
+  all 16 industry tags (semiconductor, defense, shipbuilding, etc.) so
+  the classifier has real recall on English-native articles, not just
+  Korean text.
+
+### Robustness
+
+- `src/koreanpulse/corp_code.py` — new `CorpCodeError` wraps the two
+  previously-unhandled failure modes in `_download_corp_code`
+  (`zipfile.BadZipFile`, `StopIteration` on a ZIP with no `.xml`
+  member) plus generic network/HTTP failures. DART returns a small
+  error body instead of the corp-index ZIP when `DART_API_KEY` is
+  invalid or the daily quota is exhausted — this previously surfaced a
+  raw Python traceback to MCP clients instead of an actionable message.
+  `_api_key()` error message now matches `dart.py`'s style (points to
+  the signup URL).
+
+### Tests
+
+181 -> 221 passing (40 new: `tests/test_corp_code.py` new file — 16
+tests covering the CorpCodeError paths + lookups; `tests/test_sources.py`
+new file — 6 tests including a regression guard that the three rejected
+source keys never silently reappear; `tests/test_activists.py` +9 for
+the 7 new funds; `tests/test_news.py` +8 for the language-aware
+title_en prefill, the new English keywords, and RSS timeout/5xx/
+malformed-XML robustness). Zero regressions.
+
 ## 0.1.11 — 2026-05-27 (Apps Directory resubmission — remove subscription URL & diagnostic codes from tool responses)
 
 OpenAI Apps Directory rejected the 0.1.9/0.1.10 submission because the

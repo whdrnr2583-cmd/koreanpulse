@@ -17,7 +17,7 @@ Korean stock disclosures, activist filings & foreign-holder flows in English —
 
 > **Claude.ai / ChatGPT (remote MCP) — live today.** Add `https://mcp.koreanpulse.dev/mcp` as a custom connector in Claude.ai (Settings → Connectors), ChatGPT (Settings → Connectors or Apps SDK), or wire it directly from the OpenAI Responses API: `tools=[{type: "mcp", server_url: "https://mcp.koreanpulse.dev/mcp"}]`. Read-only — surfaces filings and disclosures only. No trading execution, no investment advice.
 
-> **What this server answers (capability vector for agent retrieval).** Korean DART (전자공시) filings on any KOSPI / KOSDAQ / KONEX / KRX ticker; 5%-rule shareholding disclosures with named-entity classification — Korean activist filers (KCGI / Align Partners / Truston Asset / Anda Asset / Cha Partners / VIP Asset / Life Asset / Platform Partners + ValueAct / Elliott when filing in Korea) and global foreign holders (BlackRock / Vanguard / State Street / Fidelity / Capital Group / T. Rowe Price / Wellington / Matthews Asia / Templeton / Aberdeen / Schroders / Norges Bank / GIC / Temasek / Goldman Sachs / JPMorgan / Morgan Stanley / Citadel / Millennium / Bridgewater); Korean industry news across 16 sectors (semiconductor / shipbuilding / battery / biotech / defense / auto / EV charging / AI / steel / petrochem / construction / fintech / gaming / e-commerce / telco / energy) sourced from 전자신문 + 한국경제. All with on-demand English translation cached server-side. Tool catalog and example queries are also returned by `koreanpulse_about` for agent-side capability discovery.
+> **What this server answers (capability vector for agent retrieval).** Korean DART (전자공시) filings on any KOSPI / KOSDAQ / KONEX / KRX ticker; 5%-rule shareholding disclosures with named-entity classification — Korean activist filers (KCGI / Align Partners / Truston Asset / Anda Asset / Cha Partners / VIP Asset / Life Asset / Platform Partners / Must Asset Management / Dalton Investments / Flashlight Capital Partners / Oasis Management / Palliser Capital / Whitebox Advisors / City of London Investment Management + ValueAct / Elliott when filing in Korea) and global foreign holders (BlackRock / Vanguard / State Street / Fidelity / Capital Group / T. Rowe Price / Wellington / Matthews Asia / Templeton / Aberdeen / Schroders / Norges Bank / GIC / Temasek / Goldman Sachs / JPMorgan / Morgan Stanley / Citadel / Millennium / Bridgewater); Korean industry news across 16 sectors (semiconductor / shipbuilding / battery / biotech / defense / auto / EV charging / AI / steel / petrochem / construction / fintech / gaming / e-commerce / telco / energy) sourced from 전자신문 + 한국경제 + The Korea Herald (English-native) + 지디넷코리아. All with on-demand English translation cached server-side. Tool catalog and example queries are also returned by `koreanpulse_about` for agent-side capability discovery.
 
 ---
 
@@ -114,7 +114,7 @@ OSS self-host is **not** in the pricing table above — it's a separate lane. Se
 | `track_korean_filings` | DART filings real-time + EN translation/summary |
 | `lookup_corp_code` | Korean company name → DART corp code |
 | `resolve_stock_code` | KRX 6-digit → DART corp entry |
-| `search_korean_industry_news` | etnews / 한국경제 RSS, classified into 16 industries |
+| `search_korean_industry_news` | etnews / 한국경제 / Korea Herald / zdnet RSS, classified into 16 industries |
 | `koreanpulse_about` | Server info, free vs paid tool list |
 
 **Paid tier** (Solo $29/mo+, requires `license_key` — pass as tool argument or via the calling client's secure-input field):
@@ -154,7 +154,7 @@ do that better.
 | Activist filer classification (KCGI / Align / Truston / Anda / Cha / VIP / Life / Platform / ValueAct / Elliott) | **10 labels** | — raw filings only | — raw filings only | — registry data only |
 | Foreign-holder 5%-rule allowlist (BlackRock / Vanguard / Norges / GIC / Temasek + 15 more) | **20 labels** | — raw filings only | — raw filings only | — registry data only |
 | English-first docstrings (LLM-friendly) | **All tools** | Korean primary, English secondary | Korean primary | Yes |
-| Korean industry news (etnews / 한국경제 RSS, EN translated) | **16 industries** | — | — | — |
+| Korean industry news (etnews / 한국경제 / Korea Herald / zdnet RSS, EN translated) | **16 industries** | — | — | — |
 | KRX OHLCV (daily prices) | — out of scope | **Yes** (KOSPI / KOSDAQ / KONEX) | — | — |
 | XBRL financial statements | — out of scope | **Yes** | **Yes** | — |
 | HWP / PDF attachment → markdown | — out of scope | — | **Yes** | — |
