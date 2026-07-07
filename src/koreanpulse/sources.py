@@ -6,6 +6,29 @@ entry declares attribution requirements and known ToS notes.
 Adding a source: bump `version`, document robots.txt and any rate-limit you
 observed in production. Anything not in this file is not supposed to be
 fetched in v0.
+
+## Candidates evaluated 2026-07-08 and REJECTED — do not add without a fresh
+## ToS review, these three publish RSS-feed-specific (not just generic
+## copyright-page) restrictions that go beyond the fair-use posture we rely
+## on for etnews/hankyung/koreaherald/zdnet:
+
+- 아시아경제 (Asia Economy, asiae.co.kr/rss/) — feed page states explicitly:
+  "RSS 서비스는 비상업적 사용만 허용하고 있으며, 상업적 활용은 금지하고
+  있습니다" (non-commercial use only, commercial use prohibited).
+- 서울경제 (Seoul Economic Daily, sedaily.com/rss) — feed page states:
+  "RSS 서비스를 활용한 다수 이용자 대상의 상업적 활용 및 AI학습 이용을
+  금지합니다" (commercial use for multiple users AND AI-training use both
+  explicitly prohibited).
+- 연합뉴스 (Yonhap) — RSS terms restrict use to personal subscription in a
+  single individual's own reader; republishing/exposing the feed to
+  "다수의 이용자" (multiple users) through a website/service — which is
+  exactly what an MCP tool response does — requires separate permission
+  from the copyright holder.
+
+koreanpulse is a commercial product surfaced to many end users through MCP
+tool calls, so all three fail this bar even under a title+link+attribution-
+only fair-use posture (no full-text republish). Revisit if any of these
+publishers ships a syndication/API program with different terms.
 """
 from __future__ import annotations
 
@@ -37,6 +60,10 @@ class NewsSource:
     attribution: str
     robots_check: str
     rate_limit_hint: float
+    language: Literal["ko", "en"] = "ko"
+    """Origin language of the feed's title/description text. "en" sources
+    (e.g. koreaherald) publish English-native headlines — callers should
+    skip the ko->en translation step for these and use the title as-is."""
 
 
 # Industry-focused press. Order matters only for tie-breaks in display.
@@ -79,6 +106,36 @@ NEWS_SOURCES: tuple[NewsSource, ...] = (
         base_url="https://www.hankyung.com",
         attribution="Source: 한국경제 (hankyung.com)",
         robots_check="2026-05-04",
+        rate_limit_hint=1.0,
+    ),
+    NewsSource(
+        key="koreaherald",
+        name_ko="코리아헤럴드",
+        name_en="The Korea Herald",
+        # Verified live 2026-07-08: real Business-category items (not an
+        # empty/redirect stub — /rss/kh_Business, unlike /rss/Business
+        # which 200s but returns 0 items). English-native, no RSS-specific
+        # ToS restriction found (only the generic site copyright notice
+        # that etnews/hankyung also carry) — robots.txt allows all crawlers.
+        rss_url="https://www.koreaherald.com/rss/kh_Business",
+        base_url="https://www.koreaherald.com",
+        attribution="Source: The Korea Herald (koreaherald.com)",
+        robots_check="2026-07-08",
+        rate_limit_hint=1.0,
+        language="en",
+    ),
+    NewsSource(
+        key="zdnet",
+        name_ko="지디넷코리아",
+        name_en="ZDNet Korea",
+        # Verified live 2026-07-08: standard WordPress feed at /feed/, IT
+        # industry coverage. robots.txt Allow: / for all UAs; no RSS-
+        # specific commercial/AI-training restriction found (only a
+        # generic "Copyright (c) meganews" notice in the feed itself).
+        rss_url="https://zdnet.co.kr/feed/",
+        base_url="https://zdnet.co.kr",
+        attribution="Source: 지디넷코리아 (zdnet.co.kr)",
+        robots_check="2026-07-08",
         rate_limit_hint=1.0,
     ),
 )

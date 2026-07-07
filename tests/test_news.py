@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import httpx
+import pytest
 
-from koreanpulse.news import classify_industries
+from koreanpulse.news import classify_industries, fetch_industry_news
 
 
 class TestClassifyIndustries:
@@ -32,3 +34,128 @@ class TestClassifyIndustries:
         # Both AI and semiconductor keywords present
         assert "ai" in tags
         assert "semiconductor" in tags
+
+    def test_english_keywords_added_2026_07_08(self):
+        """English-native sources (koreaherald/zdnet) need English keyword
+        recall — Korean-only keywords miss most of their vocabulary."""
+        tags = classify_industries("Hanwha Ocean loses submarine bid to German shipbuilder")
+        assert "shipbuilding" in tags
+
+        defense_tags = classify_industries("Hanwha Aerospace signs new fighter jet arms deal")
+        assert "defense" in defense_tags
+
+    def test_english_semiconductor_keyword(self):
+        tags = classify_industries("Local chipmaker posts record semiconductor exports")
+        assert "semiconductor" in tags
+
+    def test_english_no_match_still_empty(self):
+        assert classify_industries("The weather is nice today") == []
+
+
+# RSS fixtures keyed by host so a single MockTransport handler can serve
+# per-source canned feeds in the fetch_industry_news integration tests below.
+_KOREAHERALD_RSS = b"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+<item>
+<title><![CDATA[Samsung posts record semiconductor profit]]></title>
+<link>https://www.koreaherald.com/article/1</link>
+<pubDate>Tue, 07 Jul 2026 10:00:00 +0900</pubDate>
+<description><![CDATA[chipmaker earnings]]></description>
+</item>
+</channel></rss>"""
+
+_ETNEWS_RSS = b"""<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"><channel>
+<item>
+<title>\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90 HBM \xea\xb3\xb5\xea\xb8\x89 \xed\x99\x95\xeb\x8c\x80</title>
+<link>https://www.etnews.com/article/1</link>
+<pubDate>Tue, 07 Jul 2026 10:00:00 +0900</pubDate>
+<description></description>
+</item>
+</channel></rss>"""
+
+
+class TestFetchIndustryNewsLanguageAware:
+    """Added 2026-07-08 alongside the koreaherald/zdnet English-native
+    sources — verifies the title_en pre-fill shortcut and that a Korean
+    source's title_en still comes back empty for the translator to fill."""
+
+    @pytest.mark.asyncio
+    async def test_english_source_prefills_title_en_without_translation(self):
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=_KOREAHERALD_RSS)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            articles = await fetch_industry_news(source_keys=["koreaherald"], client=client)
+        finally:
+            await client.aclose()
+
+        assert len(articles) == 1
+        a = articles[0]
+        assert a.title_ko == "Samsung posts record semiconductor profit"
+        # title_en pre-filled with the original — no ko->en round trip needed.
+        assert a.title_en == a.title_ko
+        assert "semiconductor" in a.industries
+
+    @pytest.mark.asyncio
+    async def test_korean_source_leaves_title_en_empty_for_translator(self):
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=_ETNEWS_RSS)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            articles = await fetch_industry_news(source_keys=["etnews"], client=client)
+        finally:
+            await client.aclose()
+
+        assert len(articles) == 1
+        assert articles[0].title_en == ""  # left for the caller's translator
+
+
+class TestFetchIndustryNewsRobustness:
+    """A single source failing (timeout / 5xx / malformed XML) must not
+    block the other sources' results — task 3 robustness sweep, 2026-07-08."""
+
+    @pytest.mark.asyncio
+    async def test_one_source_500_does_not_block_the_others(self):
+        async def handler(request: httpx.Request) -> httpx.Response:
+            if "etnews" in request.url.host:
+                return httpx.Response(500, content=b"internal error")
+            return httpx.Response(200, content=_KOREAHERALD_RSS)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            articles = await fetch_industry_news(
+                source_keys=["etnews", "koreaherald"], client=client
+            )
+        finally:
+            await client.aclose()
+
+        # etnews failed silently (logged + skipped); koreaherald's item survives.
+        assert len(articles) == 1
+        assert articles[0].source_key == "koreaherald"
+
+    @pytest.mark.asyncio
+    async def test_source_timeout_does_not_raise(self):
+        async def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectTimeout("simulated timeout", request=request)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            articles = await fetch_industry_news(source_keys=["etnews"], client=client)
+        finally:
+            await client.aclose()
+        assert articles == []
+
+    @pytest.mark.asyncio
+    async def test_malformed_xml_does_not_raise(self):
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=b"<not-even-close-to-xml")
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            articles = await fetch_industry_news(source_keys=["etnews"], client=client)
+        finally:
+            await client.aclose()
+        assert articles == []

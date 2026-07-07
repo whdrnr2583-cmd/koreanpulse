@@ -33,24 +33,34 @@ logger = logging.getLogger(__name__)
 _throttle = Throttle(capacity=2, refill_per_sec=2, jitter_ms=(50, 200))
 
 
-# Industry keyword classifier — Korean keywords. Multi-label.
+# Industry keyword classifier — Korean keywords plus English variants (added
+# 2026-07-08 for the koreaherald/zdnet English-native sources — Korean-only
+# keywords miss most vocabulary in English-language articles). Multi-label.
 INDUSTRY_KEYWORDS: dict[str, tuple[str, ...]] = {
-    "semiconductor": ("반도체", "메모리", "파운드리", "HBM", "DRAM", "낸드", "EUV", "ASML", "TSMC"),
-    "shipbuilding": ("조선", "LNG선", "컨테이너선", "VLCC", "수주", "도크", "선박", "현대중공업", "삼성중공업", "한화오션"),
-    "battery": ("배터리", "이차전지", "전고체", "LFP", "양극재", "음극재", "분리막", "전해질", "LG에너지솔루션", "삼성SDI", "SK온"),
-    "biotech": ("바이오", "신약", "임상", "FDA 승인", "셀트리온", "삼성바이오로직스", "유한양행", "한미약품", "CDMO"),
-    "defense": ("방산", "K-방산", "K2 전차", "FA-50", "K9 자주포", "한화에어로스페이스", "KAI", "현대로템", "LIG넥스원"),
-    "auto": ("자동차", "현대차", "기아", "전기차", "수소차", "EV", "자율주행"),
-    "ev_charging": ("충전소", "충전기", "전기차 충전", "급속충전"),
-    "ai": ("AI", "인공지능", "LLM", "생성형", "데이터센터", "엔비디아", "GPU"),
-    "steel": ("철강", "POSCO", "포스코", "현대제철", "고로", "전기로"),
-    "petrochem": ("석유화학", "에틸렌", "프로필렌", "LG화학", "롯데케미칼", "한화솔루션"),
-    "construction": ("건설", "분양", "수주잔고", "현대건설", "GS건설", "DL이앤씨"),
-    "fintech": ("핀테크", "토스", "카카오페이", "네이버페이", "마이데이터"),
-    "gaming": ("게임", "넥슨", "엔씨소프트", "크래프톤", "카카오게임즈"),
-    "ecommerce": ("이커머스", "쿠팡", "네이버쇼핑", "당근", "물류센터"),
-    "telco": ("통신", "5G", "6G", "SKT", "KT", "LG유플러스"),
-    "energy": ("원전", "SMR", "한전", "한수원", "에너지", "태양광", "풍력"),
+    "semiconductor": ("반도체", "메모리", "파운드리", "HBM", "DRAM", "낸드", "EUV", "ASML", "TSMC",
+                       "semiconductor", "chipmaker"),
+    "shipbuilding": ("조선", "LNG선", "컨테이너선", "VLCC", "수주", "도크", "선박", "현대중공업", "삼성중공업", "한화오션",
+                      "shipbuilder", "shipyard", "submarine"),
+    "battery": ("배터리", "이차전지", "전고체", "LFP", "양극재", "음극재", "분리막", "전해질", "LG에너지솔루션", "삼성SDI", "SK온",
+                "ev battery", "battery maker"),
+    "biotech": ("바이오", "신약", "임상", "FDA 승인", "셀트리온", "삼성바이오로직스", "유한양행", "한미약품", "CDMO",
+                "biotech", "biosimilar", "clinical trial"),
+    "defense": ("방산", "K-방산", "K2 전차", "FA-50", "K9 자주포", "한화에어로스페이스", "KAI", "현대로템", "LIG넥스원",
+                "defense industry", "defence industry", "fighter jet", "arms deal"),
+    "auto": ("자동차", "현대차", "기아", "전기차", "수소차", "EV", "자율주행",
+             "automaker", "electric vehicle", "self-driving"),
+    "ev_charging": ("충전소", "충전기", "전기차 충전", "급속충전", "ev charging", "charging station"),
+    "ai": ("AI", "인공지능", "LLM", "생성형", "데이터센터", "엔비디아", "GPU",
+           "artificial intelligence", "data center"),
+    "steel": ("철강", "POSCO", "포스코", "현대제철", "고로", "전기로", "steelmaker"),
+    "petrochem": ("석유화학", "에틸렌", "프로필렌", "LG화학", "롯데케미칼", "한화솔루션", "petrochemical"),
+    "construction": ("건설", "분양", "수주잔고", "현대건설", "GS건설", "DL이앤씨", "homebuilder"),
+    "fintech": ("핀테크", "토스", "카카오페이", "네이버페이", "마이데이터", "fintech"),
+    "gaming": ("게임", "넥슨", "엔씨소프트", "크래프톤", "카카오게임즈", "video game", "gaming industry"),
+    "ecommerce": ("이커머스", "쿠팡", "네이버쇼핑", "당근", "물류센터", "e-commerce", "online retail"),
+    "telco": ("통신", "5G", "6G", "SKT", "KT", "LG유플러스", "telecom", "telecommunications"),
+    "energy": ("원전", "SMR", "한전", "한수원", "에너지", "태양광", "풍력",
+               "nuclear power", "renewable energy", "solar power"),
 }
 
 
@@ -152,7 +162,14 @@ async def fetch_industry_news(
                 all_items.append(
                     Article(
                         title_ko=r["title"],
-                        title_en="",  # filled by translator if caller asks
+                        # English-native sources (koreaherald) pre-fill
+                        # title_en with the original headline — no LLM
+                        # round-trip needed, and it avoids feeding English
+                        # text into a ko->en translation prompt. `title_ko`
+                        # then holds the original-language title regardless
+                        # of source language (kept as `title_ko` rather than
+                        # a new field to preserve the stable public schema).
+                        title_en=r["title"] if src.language == "en" else "",
                         source_key=src.key,
                         source_name=src.name_ko,
                         url=r["link"],
