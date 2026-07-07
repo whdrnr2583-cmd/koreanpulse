@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 import httpx
 import pytest
 
-from koreanpulse.news import classify_industries, fetch_industry_news
+from koreanpulse.news import _parse_pub_date, classify_industries, fetch_industry_news
 
 
 class TestClassifyIndustries:
@@ -52,6 +54,51 @@ class TestClassifyIndustries:
         assert classify_industries("The weather is nice today") == []
 
 
+class TestParsePubDate:
+    """Regression tests for a bug found via live verification 2026-07-08:
+    Korea Herald's RSS uses a colon-separated UTC offset ("+09:00") that
+    `email.utils.parsedate_to_datetime` silently parses as *naive*
+    (tzinfo=None) instead of raising — verified directly against
+    cpython's stdlib behavior. Mixed with the tz-aware datetimes every
+    other source produces, `sorted(articles, key=lambda a: a.published_at)`
+    then raised `TypeError: can't compare offset-naive and offset-aware
+    datetimes` — reproduced live against mcp.koreanpulse.dev before this
+    fix (search_korean_industry_news 500'd on `sources=["koreaherald"]`).
+    """
+
+    def test_bare_offset_is_timezone_aware(self):
+        dt = _parse_pub_date("Wed, 8 Jul 2026 01:33:13 +0900")
+        assert dt.tzinfo is not None
+        assert dt.utcoffset() == timedelta(hours=9)
+
+    def test_colon_offset_is_recovered_as_timezone_aware(self):
+        """The actual koreaherald bug case."""
+        dt = _parse_pub_date("Tue, 07 Jul 2026 21:37:00 +09:00")
+        assert dt.tzinfo is not None
+        assert dt.hour == 21 and dt.minute == 37  # wall-clock value preserved
+        assert dt.utcoffset().total_seconds() == 9 * 3600
+
+    def test_negative_colon_offset(self):
+        dt = _parse_pub_date("Tue, 07 Jul 2026 21:37:00 -05:00")
+        assert dt.tzinfo is not None
+        assert dt.utcoffset().total_seconds() == -5 * 3600
+
+    def test_empty_value_falls_back_to_utc_now(self):
+        dt = _parse_pub_date("")
+        assert dt.tzinfo is not None
+
+    def test_garbage_value_falls_back_to_utc_now(self):
+        dt = _parse_pub_date("not a date at all")
+        assert dt.tzinfo is not None
+
+    def test_mixed_offset_styles_are_mutually_sortable(self):
+        """The actual failure mode: sorting a bare-offset dt against a
+        colon-offset dt must not raise."""
+        a = _parse_pub_date("Wed, 8 Jul 2026 01:33:13 +0900")
+        b = _parse_pub_date("Tue, 07 Jul 2026 21:37:00 +09:00")
+        assert sorted([a, b], reverse=True) == [a, b]
+
+
 # RSS fixtures keyed by host so a single MockTransport handler can serve
 # per-source canned feeds in the fetch_industry_news integration tests below.
 _KOREAHERALD_RSS = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -59,10 +106,14 @@ _KOREAHERALD_RSS = b"""<?xml version="1.0" encoding="UTF-8"?>
 <item>
 <title><![CDATA[Samsung posts record semiconductor profit]]></title>
 <link>https://www.koreaherald.com/article/1</link>
-<pubDate>Tue, 07 Jul 2026 10:00:00 +0900</pubDate>
+<pubDate>Tue, 07 Jul 2026 10:00:00 +09:00</pubDate>
 <description><![CDATA[chipmaker earnings]]></description>
 </item>
 </channel></rss>"""
+# Note: real koreaherald pubDate uses a colon-separated offset ("+09:00")
+# — this is deliberate, it reproduces the naive/aware sort bug fixed
+# alongside these tests (see TestParsePubDate + the mixed-source test
+# below) rather than a bare "+0900" offset like every other source.
 
 _ETNEWS_RSS = b"""<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0"><channel>
@@ -159,3 +210,27 @@ class TestFetchIndustryNewsRobustness:
         finally:
             await client.aclose()
         assert articles == []
+
+    @pytest.mark.asyncio
+    async def test_mixed_offset_styles_across_sources_do_not_crash_sort(self):
+        """End-to-end reproduction of the live 2026-07-08 bug: etnews uses
+        a bare "+0900" pubDate offset, koreaherald a colon "+09:00" one.
+        `fetch_industry_news` sorts all_items by published_at across
+        sources — this must not raise even when the two feeds mix offset
+        styles (it did, live, before the `_parse_pub_date` fix)."""
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            if "etnews" in request.url.host:
+                return httpx.Response(200, content=_ETNEWS_RSS)
+            return httpx.Response(200, content=_KOREAHERALD_RSS)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            articles = await fetch_industry_news(
+                source_keys=["etnews", "koreaherald"], client=client
+            )
+        finally:
+            await client.aclose()
+
+        assert len(articles) == 2
+        assert {a.source_key for a in articles} == {"etnews", "koreaherald"}

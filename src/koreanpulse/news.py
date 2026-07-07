@@ -14,7 +14,8 @@ recall. Replace with a fine-tuned classifier later if precision matters.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Optional
 
@@ -108,13 +109,37 @@ async def _fetch_rss(source: NewsSource, client: httpx.AsyncClient) -> list[dict
     return items
 
 
+# RFC 2822 pubDate strings normally use a bare "+0900" offset, but some
+# feeds (Korea Herald, observed live 2026-07-08) use a colon-separated
+# "+09:00" instead. `email.utils.parsedate_to_datetime` doesn't recognize
+# that form and, instead of raising, silently returns a *naive* datetime
+# with the offset dropped. Mixing that with the tz-aware datetimes every
+# other source produces then crashes `sorted(..., key=published_at)` with
+# "can't compare offset-naive and offset-aware datetimes". Recover the
+# offset ourselves whenever parsedate_to_datetime hands back a naive dt.
+_TZ_OFFSET_RE = re.compile(r"([+-])(\d{2}):?(\d{2})\s*$")
+
+
 def _parse_pub_date(value: str) -> datetime:
     if not value:
         return datetime.now(timezone.utc)
     try:
-        return parsedate_to_datetime(value)
+        dt = parsedate_to_datetime(value)
     except (TypeError, ValueError):
         return datetime.now(timezone.utc)
+    if dt.tzinfo is None:
+        match = _TZ_OFFSET_RE.search(value)
+        if match:
+            sign, hh, mm = match.groups()
+            offset = timedelta(hours=int(hh), minutes=int(mm))
+            if sign == "-":
+                offset = -offset
+            dt = dt.replace(tzinfo=timezone(offset))
+        else:
+            # No recoverable offset — assume UTC rather than leaving the
+            # datetime naive (and un-sortable against the tz-aware rows).
+            dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 async def fetch_industry_news(
