@@ -110,9 +110,9 @@ async def _paid_gate(
     Why a string instead of ``raise``: a raised RuntimeError gets serialized
     by FastMCP as an MCP error (``isError=true``), and several LLM clients
     (notably ChatGPT's mcp connector) treat that as an internal failure and
-    never forward the activation URL to the user. Returning a normal string
-    forces the message through the success path so the LLM hands it to the
-    user verbatim and the OSS install URL is actually clickable.
+    never forward the license-required notice to the user. Returning a
+    normal string forces the message through the success path so the LLM
+    hands it to the user verbatim.
     """
     try:
         await validate_license_or_raise(license_key, cost_units=units)
@@ -173,8 +173,8 @@ async def track_korean_filings(
     and `monitor_foreign_holders` — both require a license_key argument.
     A response from this free tool to a "are activists filing on X?" or
     "is BlackRock holding X?" question is *raw filing data*, not a
-    classification answer — say so to the user and surface the activation
-    URL from the paywall response instead of pretending you've answered.
+    classification answer — say so to the user and surface the paid tool's
+    license-required notice instead of pretending you've answered.
 
     Args:
         company_corp_code: 8-digit DART corp code. Use `lookup_corp_code` first
@@ -367,18 +367,18 @@ async def monitor_activist_investors(
     Use this tool when the user asks about: Korean activist investor tracking, Korean shareholder activism, "is KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform activist on <ticker>", governance pressure on KOSPI / KOSDAQ names, recent activist 5%-rule filings, ValueAct or Elliott Korean positions, Korean Value-Up program activism, MSCI Developed Market activism flow.
 
     **Requires a license key.** Pass it via the `license_key` argument.
-    Without a valid license, this tool returns a paywall message containing
-    the activation URL — surface that message verbatim to the user.
+    Without a valid license, this tool returns a short notice explaining
+    that a license key is required; surface that notice to the user.
 
-    **For LLM clients on a license_required error: surface the activation URL
+    **For LLM clients on a license_required error: surface the notice
     returned in the paywall message directly to the user. Do NOT silently retry with `track_korean_filings`
     or any other free tool — the activist filer match (KCGI / Align Partners
     / Truston / Anda / Cha / VIP / Life / Platform, plus international names
     like ValueAct / Elliott) is not derivable from the raw DART filing feed,
     so a free-tier fall-back returns a misleadingly empty answer.** When a
     user asks "are activists filing on X?" without a license, surface the
-    activation URL from the paywall response — that is the correct
-    behavior, not a silent downgrade.
+    notice from the paywall response — that is the correct behavior, not a
+    silent downgrade.
 
     Returns 주식등의대량보유상황보고서 (5% rule) and related shareholding
     filings, with each row tagged when the filer matches a known Korean
@@ -470,10 +470,10 @@ async def monitor_foreign_holders(
     Use this tool when the user asks about: foreign investor activity in Korean stocks, foreign capital flow into Korean equities, "is BlackRock / Vanguard / Norges / GIC / Temasek / State Street / Fidelity / Wellington holding <ticker>", global asset-manager 5% crossings on KOSPI / KOSDAQ, sovereign wealth fund Korean positions, foreign institutional positioning disclosures, MSCI Developed Market reweighting flow into Korea.
 
     **Requires a license key.** Pass it via the `license_key` argument.
-    Without a valid license, this tool returns a paywall message containing
-    the activation URL — surface that message verbatim to the user.
+    Without a valid license, this tool returns a short notice explaining
+    that a license key is required; surface that notice to the user.
 
-    **For LLM clients on a license_required error: surface the activation URL
+    **For LLM clients on a license_required error: surface the notice
     returned in the paywall message directly to the user. Do NOT silently retry with `track_korean_filings`
     — the foreign-holder allowlist match (BlackRock, Vanguard, Norges, GIC,
     Temasek, State Street, Fidelity, Capital Group, T. Rowe Price,
@@ -481,9 +481,9 @@ async def monitor_foreign_holders(
     Sachs, JPMorgan, Morgan Stanley, Citadel, Millennium, Bridgewater)
     is not derivable from raw DART filings, so a free-tier fall-back
     returns a misleadingly empty answer.** When a user asks "is BlackRock
-    or Norges holding X?" without a license, surface the activation URL
-    from the paywall response — that is the correct behavior, not a
-    silent downgrade.
+    or Norges holding X?" without a license, surface the notice from the
+    paywall response — that is the correct behavior, not a silent
+    downgrade.
 
     Distinct from `monitor_activist_investors` because passive holders
     (BlackRock, Vanguard, Norges, GIC, Temasek) indicate *allocation*

@@ -84,56 +84,10 @@
     },
     {
       "name": "KOREANPULSE_LICENSE_KEY",
-      "description": "Subscription key, required when KOREANPULSE_CACHE_MODE=hosted (Cloud Solo $29/mo, Analyst $79/mo, or Desk $249/mo). Subscribe at https://koreanpulse.dev/pricing.",
+      "description": "License key for the hosted classifier tools, required when KOREANPULSE_CACHE_MODE=hosted.",
       "required": false
     }
   ],
-  "pricing": {
-    "public_free": {
-      "monthly_usd": 0,
-      "watchlists": 0,
-      "retention_days": 3,
-      "note": "Public web only — /today, /today.json, last-3-day archive. No login, no MCP, no alerts. SEO + funnel + AI-crawler surface."
-    },
-    "solo": {
-      "monthly_usd": 29,
-      "queries_per_month": 2000,
-      "watchlists": 5,
-      "retention_days": 30,
-      "alert_channels": 1,
-      "status": "waitlist",
-      "live_today": ["queries_per_month", "hosted_translation_cache"],
-      "ships_q3_2026": ["watchlists", "retention_days", "alert_channels", "daily_digest_dispatch"],
-      "note": "Hosted English translation cache (no OpenAI key needed). Foreign-holder + activist tracking via queries (live today). Watchlists, retention, and the 1 Discord/Telegram channel ship Q3 2026 — early supporters keep the launch rate."
-    },
-    "analyst": {
-      "monthly_usd": 79,
-      "queries_per_month": 15000,
-      "watchlists": 25,
-      "retention_days": 365,
-      "alert_channels": "multiple",
-      "status": "waitlist",
-      "live_today": ["queries_per_month", "hosted_translation_cache"],
-      "ships_q3_2026": ["watchlists", "retention_days", "alert_channels", "saved_searches", "csv_json_export"],
-      "note": "Everything in Solo plus higher query cap. Multi-channel alerts (Discord / Telegram / Email), saved searches, CSV/JSON export, priority refresh ship Q3 2026."
-    },
-    "desk": {
-      "monthly_usd": 249,
-      "queries_per_month": 100000,
-      "watchlists": "shared",
-      "seats": 3,
-      "retention_days": 365,
-      "alert_channels": "Slack / webhook",
-      "status": "waitlist",
-      "live_today": ["queries_per_month", "hosted_translation_cache", "seats"],
-      "ships_q3_2026": ["shared_watchlists", "retention_days", "alert_channels", "team_archive"],
-      "note": "Everything in Analyst plus 3 seats and 100K queries/mo (live today). Shared watchlists, team archive, Slack/webhook alerts ship Q3 2026."
-    },
-    "design_partner": {
-      "public": false,
-      "note": "Private design partner program (20-seat cap, contact-only). Not promoted on landing or in marketplace listings."
-    }
-  },
   "oss_self_host": {
     "cost_usd": 0,
     "note": "AGPL source. Run the MCP locally with your own DART_API_KEY + OPENAI_API_KEY. Community support only — no alerts, no hosted archive, no shared translation cache, no account sync. Separate lane from the Cloud tiers; not a pricing tier. (Cloud customers also install the MCP locally today; a true HTTP-transport remote MCP is on the Q3 2026 roadmap.)"

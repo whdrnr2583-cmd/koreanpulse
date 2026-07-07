@@ -422,7 +422,7 @@ async def validate_license_or_raise(
     if not lic.active:
         raise LicenseError(
             "inactive",
-            f"License inactive (plan={lic.plan.value}). Renew at https://koreanpulse.dev/billing.",
+            f"License inactive (plan={lic.plan.value}). Your license has expired.",
         )
 
     limits = PLAN_LIMITS[lic.plan]

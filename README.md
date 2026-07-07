@@ -115,7 +115,7 @@ OSS self-host is **not** in the pricing table above — it's a separate lane. Se
 | `lookup_corp_code` | Korean company name → DART corp code |
 | `resolve_stock_code` | KRX 6-digit → DART corp entry |
 | `search_korean_industry_news` | etnews / 한국경제 RSS, classified into 16 industries |
-| `koreanpulse_about` | Server info, free vs paid tool list, current Polar checkout URL |
+| `koreanpulse_about` | Server info, free vs paid tool list |
 
 **Paid tier** (Solo $29/mo+, requires `license_key` — pass as tool argument or via the calling client's secure-input field):
 
@@ -124,7 +124,7 @@ OSS self-host is **not** in the pricing table above — it's a separate lane. Se
 | `monitor_activist_investors` | Activist 5%-rule filings auto-tagged (KCGI / Align / Truston / Anda / Cha / VIP / ValueAct / Elliott) |
 | `monitor_foreign_holders` | Foreign 5%-rule disclosures (BlackRock / Vanguard / Norges / GIC / Temasek + 15 more) |
 
-When a paid tool is called without a license, the server returns a structured error message that surfaces the Polar checkout URL — ChatGPT / Claude.ai render that link inline so the user can subscribe in one click.
+When a paid tool is called without a license, the server returns a short notice explaining that a license key is required. No checkout link is included in the tool response.
 
 4 more planned (`docs/SPEC.md`): `digest_analyst_reports`, `get_ma_pipeline`, `track_government_policy`, `summarize_korean_earnings_call`.
 
@@ -324,7 +324,7 @@ Ask Claude: "Which activist investors filed 5%-rule disclosures on KOSPI stocks 
 Ask Claude: "Show me recent foreign-holder 5%-rule filings — has BlackRock or Norges Bank crossed any thresholds? [license_key: YOUR_KEY]"
 ```
 
-The first three prompts use free tools (no signup). The last two unlock the activist and foreign-holder classification and require a Solo $29/mo license key — the server returns a structured error with the Polar checkout link if `license_key` is missing.
+The first three prompts use free tools (no signup). The last two unlock the activist and foreign-holder classification and require a Solo $29/mo license key — the server returns a short notice explaining that a license key is required if `license_key` is missing (no checkout link in the response).
 
 ## License
 
