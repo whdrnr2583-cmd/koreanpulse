@@ -9,7 +9,9 @@ Maintenance: these lists go stale. Add entries as new activist funds
 emerge or as more foreign managers begin filing Korean 5%-rule
 disclosures. Refresh quarterly by scanning recent type-D filer names.
 
-Sources for the activist list (verified active 2025–2026 in Korean filings):
+Sources for the activist list (verified active 2025–2026 in Korean filings —
+refreshed 2026-07-08, see per-entry comments below for the news citation
+that grounds each addition):
 - KCGI (Korea Corporate Governance Improvement) — Hanjin / Kumho disputes
 - 얼라인파트너스 (Align Partners) — bank governance push
 - 안다자산운용 (Anda Asset)
@@ -21,9 +23,19 @@ Sources for the activist list (verified active 2025–2026 in Korean filings):
 - 강성부펀드 (KCGI sister vehicle)
 - ValueAct Capital (occasional Korean filings)
 - Elliott Management (rare Korean filings, kept for completeness)
+- 머스트자산운용 (Must Asset Management) — 영풍/파마리서치/리파인 campaigns 2024–2026
+- 달튼인베스트먼트 (Dalton Investments) — 콜마홀딩스 board seat 2025, 슈프리마 5% stake 2026
+- 플래시라이트캐피탈파트너스 (Flashlight Capital Partners / FCP) — KT&G, 에스원 campaigns 2025
+- 오아시스매니지먼트 (Oasis Management) — KT&G stake, building out a Korea desk 2025
+- 팰리서캐피탈 (Palliser Capital) — 삼성물산/SK스퀘어/LG화학 campaigns 2023–2025
+- 화이트박스 / Whitebox Advisors — 삼성물산 shareholder proposal campaign
+- 시티오브런던 (City of London Investment Management / CLIM) — 삼성물산 campaign 2024
 
 Sources for the foreign-holder list — top-30 global asset managers and
-sovereign wealth funds known to file Korean 5%-rule disclosures.
+sovereign wealth funds known to file Korean 5%-rule disclosures. Spot-checked
+2026-07-08: BlackRock confirmed still actively crossing 5% on Samsung
+Electronics / POSCO Holdings / Hyundai Rotem as of April 2026 — no changes
+needed to this list this cycle.
 """
 from __future__ import annotations
 
@@ -126,6 +138,71 @@ KOREAN_ACTIVISTS: tuple[InvestorRecord, ...] = (
         origin="us",
         aliases_ko=("엘리엇", "Elliott"),
         aliases_en=("elliott",),
+    ),
+    # Added 2026-07-08 — verified via 2024-2026 Korean press (Herald Biz,
+    # Newsis, Edaily) that each of the below ran an active campaign or
+    # crossed a 5%-rule disclosure on a KOSPI/KOSDAQ name in 2025-2026.
+    InvestorRecord(
+        canonical="Must Asset Management",
+        klass=InvestorClass.ACTIVIST,
+        origin="kr",
+        # 영풍 (2024, treasury-share cancellation demand), 파마리서치 (spin-off
+        # pushback), 리파인 (9.85% stake, 2026 capital-reserve campaign).
+        aliases_ko=("머스트자산운용", "머스트 자산운용"),
+        aliases_en=("must asset management", "must asset"),
+    ),
+    InvestorRecord(
+        canonical="Dalton Investments",
+        klass=InvestorClass.ACTIVIST,
+        origin="us",
+        # 콜마홀딩스 board seat won at 2025-03-31 AGM after converting to
+        # "management participation" purpose; 슈프리마 5.05% stake 2026-05-26.
+        aliases_ko=("달튼인베스트먼트", "달튼인베스트먼트코리아", "달튼 인베스트먼트"),
+        aliases_en=("dalton investments",),
+    ),
+    InvestorRecord(
+        canonical="Flashlight Capital Partners",
+        klass=InvestorClass.ACTIVIST,
+        origin="other",  # Singapore-registered; Korea-focused campaigns
+        # KT&G stake + 에스원 (S-1) governance campaign, both active 2025.
+        aliases_ko=("플래시라이트캐피탈파트너스", "플래시라이트캐피탈"),
+        aliases_en=("flashlight capital",),
+    ),
+    InvestorRecord(
+        canonical="Oasis Management",
+        klass=InvestorClass.ACTIVIST,
+        origin="other",  # Hong Kong-based
+        # KT&G's first Korean position (~1.5%); stood up a Korea investment
+        # team in 2025 ahead of expected full activist campaigns.
+        aliases_ko=("오아시스매니지먼트", "오아시스 매니지먼트"),
+        aliases_en=("oasis management",),
+    ),
+    InvestorRecord(
+        canonical="Palliser Capital",
+        klass=InvestorClass.ACTIVIST,
+        origin="uk",
+        # 삼성물산 (2023) -> SK스퀘어 (2024) -> LG화학 (2025) shareholder
+        # proposal campaigns; founded by ex-Elliott Hong Kong CIO James Smith.
+        aliases_ko=("팰리서캐피탈", "팰리서 캐피탈"),
+        aliases_en=("palliser capital",),
+    ),
+    InvestorRecord(
+        canonical="Whitebox Advisors",
+        klass=InvestorClass.ACTIVIST,
+        origin="us",
+        # Joined City of London + Palliser on the 2022-2024 삼성물산
+        # buyback/dividend shareholder-proposal campaign.
+        aliases_ko=(),
+        aliases_en=("whitebox advisors",),
+    ),
+    InvestorRecord(
+        canonical="City of London Investment Management",
+        klass=InvestorClass.ACTIVIST,
+        origin="uk",
+        # Paired with Anda Asset on a 삼성물산 dividend/buyback shareholder
+        # proposal at the 2024 AGM.
+        aliases_ko=("시티오브런던",),
+        aliases_en=("city of london investment",),
     ),
 )
 

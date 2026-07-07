@@ -51,6 +51,42 @@ class TestMatchActivist:
         assert match_activist("Norges Bank") is None
 
 
+class TestMatchActivistNewEntries2026_07_08:
+    """Activist allowlist refresh — verified via 2024-2026 Korean press
+    (see activists.py per-entry comments for citations)."""
+
+    def test_must_asset_management(self):
+        assert match_activist("머스트자산운용") == "Must Asset Management"
+        assert match_activist("Must Asset Management LLC") == "Must Asset Management"
+
+    def test_dalton_investments(self):
+        assert match_activist("달튼인베스트먼트코리아") == "Dalton Investments"
+        assert match_activist("Dalton Investments LLC") == "Dalton Investments"
+
+    def test_flashlight_capital_partners(self):
+        assert match_activist("플래시라이트캐피탈파트너스") == "Flashlight Capital Partners"
+        assert match_activist("Flashlight Capital Partners Pte Ltd") == "Flashlight Capital Partners"
+
+    def test_oasis_management(self):
+        assert match_activist("오아시스매니지먼트") == "Oasis Management"
+        assert match_activist("Oasis Management Co Ltd") == "Oasis Management"
+
+    def test_palliser_capital(self):
+        assert match_activist("팰리서캐피탈") == "Palliser Capital"
+        assert match_activist("Palliser Capital (UK) LLP") == "Palliser Capital"
+
+    def test_whitebox_advisors(self):
+        assert match_activist("Whitebox Advisors LLC") == "Whitebox Advisors"
+
+    def test_city_of_london_investment_management(self):
+        assert match_activist("시티오브런던") == "City of London Investment Management"
+        assert match_activist("City of London Investment Management Ltd") == "City of London Investment Management"
+
+    def test_new_entries_do_not_leak_into_foreign_matcher(self):
+        assert match_foreign_holder("머스트자산운용") is None
+        assert match_foreign_holder("Palliser Capital") is None
+
+
 class TestMatchForeignHolder:
     def test_blackrock(self):
         m = match_foreign_holder("BlackRock Fund Advisors")
@@ -142,6 +178,11 @@ class TestRegistries:
         # We documented 20 in marketplace listings; allow some attrition
         # but at least 15 must remain.
         assert len(FOREIGN_HOLDERS) >= 15
+
+    def test_korean_activists_count_at_least_15(self):
+        # Refreshed 2026-07-08: 10 -> 17. Allow some attrition but at
+        # least 15 must remain (regression guard for the 2026-07-08 batch).
+        assert len(KOREAN_ACTIVISTS) >= 15
 
     def test_origins_in_allowed_set(self):
         allowed = {"kr", "us", "uk", "eu", "other"}

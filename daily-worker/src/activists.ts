@@ -35,6 +35,15 @@ export const KOREAN_ACTIVISTS: InvestorRecord[] = [
   { canonical: "VIP Asset Management", klass: "activist", origin: "kr", aliasesKo: ["VIP자산운용", "VIP 자산운용", "브이아이피자산운용"], aliasesEn: ["vip asset"] },
   { canonical: "ValueAct Capital", klass: "activist", origin: "us", aliasesKo: ["밸류액트", "ValueAct"], aliasesEn: ["valueact"] },
   { canonical: "Elliott Management", klass: "activist", origin: "us", aliasesKo: ["엘리엇", "Elliott"], aliasesEn: ["elliott"] },
+  // Added 2026-07-08 — kept in sync with src/koreanpulse/activists.py.
+  // See that file for per-entry news citations.
+  { canonical: "Must Asset Management", klass: "activist", origin: "kr", aliasesKo: ["머스트자산운용", "머스트 자산운용"], aliasesEn: ["must asset management", "must asset"] },
+  { canonical: "Dalton Investments", klass: "activist", origin: "us", aliasesKo: ["달튼인베스트먼트", "달튼인베스트먼트코리아", "달튼 인베스트먼트"], aliasesEn: ["dalton investments"] },
+  { canonical: "Flashlight Capital Partners", klass: "activist", origin: "other", aliasesKo: ["플래시라이트캐피탈파트너스", "플래시라이트캐피탈"], aliasesEn: ["flashlight capital"] },
+  { canonical: "Oasis Management", klass: "activist", origin: "other", aliasesKo: ["오아시스매니지먼트", "오아시스 매니지먼트"], aliasesEn: ["oasis management"] },
+  { canonical: "Palliser Capital", klass: "activist", origin: "uk", aliasesKo: ["팰리서캐피탈", "팰리서 캐피탈"], aliasesEn: ["palliser capital"] },
+  { canonical: "Whitebox Advisors", klass: "activist", origin: "us", aliasesKo: [], aliasesEn: ["whitebox advisors"] },
+  { canonical: "City of London Investment Management", klass: "activist", origin: "uk", aliasesKo: ["시티오브런던"], aliasesEn: ["city of london investment"] },
 ];
 
 /**
