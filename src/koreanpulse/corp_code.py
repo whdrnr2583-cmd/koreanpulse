@@ -47,22 +47,48 @@ _BY_STOCK: dict[str, CorpEntry] = {}
 _BY_CORP: dict[str, CorpEntry] = {}
 
 
+class CorpCodeError(RuntimeError):
+    """Raised when the corp_code index can't be downloaded or parsed."""
+
+
 def _api_key() -> str:
     key = os.environ.get("DART_API_KEY", "").strip()
     if not key:
-        raise RuntimeError("DART_API_KEY env var is missing.")
+        raise CorpCodeError(
+            "DART_API_KEY env var is missing. "
+            "Get one at https://opendart.fss.or.kr/ and set it before calling DART tools."
+        )
     return key
 
 
 async def _download_corp_code() -> bytes:
-    """Fetch corpCode.zip and return the xml bytes inside."""
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.get(CORP_CODE_URL, params={"crtfc_key": _api_key()})
-        resp.raise_for_status()
-        # DART returns a ZIP. Extract the single XML inside.
-        with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
+    """Fetch corpCode.zip and return the xml bytes inside.
+
+    Raises:
+        CorpCodeError: on network failure, non-2xx status, or a response
+            body that isn't the expected ZIP-of-one-XML shape (this is
+            what DART returns for an invalid/quota-exhausted API key —
+            a small error body instead of the corp index ZIP, so we
+            surface a clear message instead of a raw zipfile traceback).
+    """
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.get(CORP_CODE_URL, params={"crtfc_key": _api_key()})
+            resp.raise_for_status()
+            content = resp.content
+    except (httpx.HTTPError, httpx.TimeoutException) as exc:
+        raise CorpCodeError(f"corp_code index download failed: {exc}") from exc
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as zf:
             xml_name = next(n for n in zf.namelist() if n.endswith(".xml"))
             return zf.read(xml_name)
+    except (zipfile.BadZipFile, StopIteration) as exc:
+        raise CorpCodeError(
+            "corp_code index response was not the expected ZIP-of-XML — "
+            "this usually means DART_API_KEY is invalid or the daily DART "
+            "quota is exhausted. Verify the key at https://opendart.fss.or.kr/."
+        ) from exc
 
 
 def _is_cache_fresh() -> bool:
