@@ -1,5 +1,29 @@
 # Changelog
 
+## [Unreleased] — filing `market` + `red_flags` fields (feature pass)
+
+Additive fields on the `Filing` model — surfaced by `track_korean_filings`
+and inherited by `monitor_activist_investors` / `monitor_foreign_holders`.
+Both default to a backward-compatible empty value; no new tools, env vars, or
+commerce strings.
+
+- **`Filing.market`** (`Optional[str]`) — listing venue derived from DART's
+  raw `corp_cls` field: `Y`→"KOSPI", `K`→"KOSDAQ", `N`→"KONEX", `E`→"OTHER";
+  `None` when DART omits `corp_cls`. Confirmed via one read-only live
+  `list.json` probe that `corp_cls` rides on every row. Lets clients state
+  KOSPI vs KOSDAQ instead of guessing from the company name. Pure mapper
+  `dart.market_from_corp_cls`.
+- **`Filing.red_flags`** (`list[str]`) — governance/distress tags inferred
+  from the filing title by the pure function `dart.tag_red_flags`:
+  `cb_issuance` (전환사채권발행), `controlling_shareholder_change` (최대주주변경),
+  `rehabilitation` (회생절차), `audit_opinion` (감사의견·의견거절),
+  `disclosure_violation` (불성실공시), `rights_issue` (유상증자),
+  `capital_reduction` (감자). Empty on no match; each tag emitted at most
+  once. Tag meanings documented one-per-line in the tool docstring.
+- Tests: 253 → 281 (+28, 0 regressions). All synthetic DART-shaped fixtures
+  (`tests/test_filing_market_redflags.py`) — corp_cls 4-code + absent/empty/
+  unknown cases, and each red-flag keyword plus composite/dedup/no-match.
+
 ## [Unreleased] — error-surface symmetry (round-2 quality pass)
 
 Behaviour-preserving robustness. No new MCP tools, no new env vars, no

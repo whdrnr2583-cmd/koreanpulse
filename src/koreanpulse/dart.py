@@ -436,6 +436,71 @@ def _classify_filing_type(title: str) -> str:
     return "E"
 
 
+# DART `corp_cls` code → listing market. Y=KOSPI, K=KOSDAQ, N=KONEX, E=기타.
+# Unknown / absent codes map to None so callers never assert a market DART
+# didn't give us.
+_CORP_CLS_TO_MARKET: dict[str, str] = {
+    "Y": "KOSPI",
+    "K": "KOSDAQ",
+    "N": "KONEX",
+    "E": "OTHER",
+}
+
+
+def market_from_corp_cls(corp_cls: Optional[str]) -> Optional[str]:
+    """Map DART's `corp_cls` field to a human market label.
+
+    Returns 'KOSPI' | 'KOSDAQ' | 'KONEX' | 'OTHER', or None when corp_cls is
+    absent, empty, or an unrecognized code.
+    """
+    if not corp_cls:
+        return None
+    return _CORP_CLS_TO_MARKET.get(str(corp_cls).strip().upper())
+
+
+# Title-keyword → red-flag tag. Governance / distress signals a reader scans
+# a filing feed for. Order defines the tag order in the output list; each tag
+# is emitted at most once even if several of its keywords appear.
+#
+# audit_opinion keywords are distress-only: a clean ('적정') audit opinion
+# title must NOT be tagged, since that would flag a healthy company as a red
+# flag. '감사의견' alone matches every audit-opinion filing regardless of the
+# actual opinion, so it was removed — only the non-clean opinion outcomes
+# (의견거절 = disclaimer, 한정 = qualified, 부적정 = adverse) trigger the tag.
+# '감사의견 한정' (with the space DART actually uses, e.g.
+# "감사보고서(감사의견 한정)") is used instead of a bare '한정' to avoid
+# matching unrelated titles that happen to contain that two-character word.
+_RED_FLAG_KEYWORDS: tuple[tuple[str, str], ...] = (
+    ("전환사채권발행", "cb_issuance"),
+    ("최대주주변경", "controlling_shareholder_change"),
+    ("회생절차", "rehabilitation"),
+    ("의견거절", "audit_opinion"),
+    ("감사의견 한정", "audit_opinion"),
+    ("부적정", "audit_opinion"),
+    ("불성실공시", "disclosure_violation"),
+    ("유상증자", "rights_issue"),
+    ("감자", "capital_reduction"),
+)
+
+
+def tag_red_flags(title: str) -> list[str]:
+    """Pure function: filing title → ordered list of red-flag tags.
+
+    Keyword-based; no external state. Returns [] on no match. A tag appears
+    at most once even when multiple of its trigger keywords are present
+    (e.g. both '의견거절' and '감사의견 한정' yield a single 'audit_opinion').
+    A clean audit opinion (e.g. '감사보고서(감사의견 적정)') is intentionally
+    not tagged — only distress outcomes (disclaimer/qualified/adverse) are.
+    """
+    if not title:
+        return []
+    tags: list[str] = []
+    for keyword, tag in _RED_FLAG_KEYWORDS:
+        if keyword in title and tag not in tags:
+            tags.append(tag)
+    return tags
+
+
 def _parse_filing(row: dict, *, requested_type: Optional[str] = None) -> Filing:
     """Convert one DART row dict into a Filing model.
 
@@ -464,6 +529,8 @@ def _parse_filing(row: dict, *, requested_type: Optional[str] = None) -> Filing:
         corp_code=row.get("corp_code", ""),
         corp_name_ko=row.get("corp_name", ""),
         stock_code=row.get("stock_code") or None,
+        market=market_from_corp_cls(row.get("corp_cls")),
+        red_flags=tag_red_flags(title),
         filing_type=filing_type_code,
         filing_type_label_ko=label_ko,
         filing_type_label_en=label_en,

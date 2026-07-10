@@ -37,10 +37,26 @@ class Filing(BaseModel):
     stock_code: Optional[str] = Field(
         default=None, description="6-digit KRX stock code if listed"
     )
+    market: Optional[str] = Field(
+        default=None,
+        description=(
+            "Listing market from DART corp_cls: 'KOSPI', 'KOSDAQ', 'KONEX', "
+            "or 'OTHER'. None when DART omits corp_cls."
+        ),
+    )
     filing_type: str = Field(description="DART filing type code (A–J)")
     filing_type_label_ko: str
     filing_type_label_en: str
     title: str = Field(description="Filing title (Korean)")
+    red_flags: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Governance/distress tags inferred from the filing title, e.g. "
+            "'cb_issuance', 'controlling_shareholder_change', 'rehabilitation', "
+            "'audit_opinion', 'disclosure_violation', 'rights_issue', "
+            "'capital_reduction'. Empty when no keyword matched."
+        ),
+    )
     title_en: Optional[str] = Field(
         default=None, description="LLM-translated title"
     )

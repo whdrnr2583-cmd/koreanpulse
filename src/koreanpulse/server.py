@@ -192,7 +192,19 @@ async def track_korean_filings(
         license_key: subscription key. Required when KOREANPULSE_REQUIRE_LICENSE=1.
 
     Returns:
-        Filings ordered by most recent first.
+        Filings ordered by most recent first. Each filing carries:
+        - `market`: listing venue from DART corp_cls — "KOSPI", "KOSDAQ",
+          "KONEX", or "OTHER" (None when DART omits it). Use this instead of
+          guessing KOSPI vs KOSDAQ from the company name.
+        - `red_flags`: governance/distress tags inferred from the title:
+          - cb_issuance — convertible bond issuance (전환사채권발행)
+          - controlling_shareholder_change — largest-shareholder change (최대주주변경)
+          - rehabilitation — court receivership / rehabilitation (회생절차)
+          - audit_opinion — distress-only audit opinion (의견거절/한정/부적정);
+            a clean ('적정') opinion is not tagged
+          - disclosure_violation — unfaithful-disclosure designation (불성실공시)
+          - rights_issue — paid-in capital increase (유상증자)
+          - capital_reduction — capital reduction (감자)
     """
     logger.info("tool_call: track_korean_filings days=%d limit=%d translate=%s summarize=%s", days, limit, translate, summarize)
     await _gate(license_key, units=1 + (1 if summarize else 0))
