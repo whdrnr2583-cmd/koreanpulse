@@ -133,6 +133,22 @@ class TestParseFiling:
         assert f.filing_type == "C"
         assert f.filing_type_label_en == "Securities Issuance Disclosure"
 
+    def test_rcept_no_as_int_is_coerced_to_str(self):
+        """Non-source fixture: DART's own payloads always send rcept_no as a
+        14-digit string, but a proxy/gateway could hand it back as a JSON
+        number. `_parse_filing` must coerce rather than crash on `.strip()`.
+        """
+        row = {
+            "corp_code": "01111111",
+            "corp_name": "굿컴퍼니",
+            "report_nm": "분기보고서(2026.03)",
+            "rcept_no": 20260601000001,  # int, not str
+            "rcept_dt": "20260601",
+        }
+        f = _parse_filing(row)
+        assert f.receipt_no == "20260601000001"
+        assert "20260601000001" in f.dart_url
+
 
 class TestListFilings:
     @pytest.mark.asyncio
@@ -191,6 +207,153 @@ class TestListFilings:
                     end_de=date(2026, 5, 3),
                     client=client,
                 )
+
+
+class TestListFilingsPayloadRobustness:
+    """DART can return a 200 with a non-JSON / malformed body on maintenance
+    or gateway errors. None of these should leak a raw traceback to the client
+    — each must surface as a DartError (or degrade gracefully by skipping the
+    bad row). Fixtures here are independent of SAMPLE_RESPONSE."""
+
+    @pytest.mark.asyncio
+    async def test_non_json_html_body_raises_dart_error(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, text="<html><body>maintenance</body></html>")
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(DartError, match="non-JSON"):
+                await list_filings(
+                    bgn_de=date(2026, 5, 3), end_de=date(2026, 5, 3), client=client
+                )
+
+    @pytest.mark.asyncio
+    async def test_empty_body_raises_dart_error(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=b"")
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(DartError, match="non-JSON"):
+                await list_filings(
+                    bgn_de=date(2026, 5, 3), end_de=date(2026, 5, 3), client=client
+                )
+
+    @pytest.mark.asyncio
+    async def test_json_array_shape_raises_dart_error(self, monkeypatch):
+        """Valid JSON but not the expected object envelope."""
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=["unexpected", "array"])
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(DartError, match="unexpected JSON shape"):
+                await list_filings(
+                    bgn_de=date(2026, 5, 3), end_de=date(2026, 5, 3), client=client
+                )
+
+    @pytest.mark.asyncio
+    async def test_malformed_row_missing_rcept_no_is_skipped(self, monkeypatch):
+        """One bad row must not crash the whole request — good rows survive."""
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        body = {
+            "status": "000",
+            "message": "정상",
+            "list": [
+                {  # good row
+                    "corp_code": "01111111",
+                    "corp_name": "굿컴퍼니",
+                    "stock_code": "111111",
+                    "report_nm": "분기보고서(2026.03)",
+                    "rcept_no": "20260601000001",
+                    "rcept_dt": "20260601",
+                },
+                {  # malformed — no rcept_no (would have raised KeyError)
+                    "corp_code": "02222222",
+                    "corp_name": "배드컴퍼니",
+                    "report_nm": "사업보고서",
+                    "rcept_dt": "20260601",
+                },
+            ],
+        }
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=body)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            filings = await list_filings(
+                bgn_de=date(2026, 6, 1), end_de=date(2026, 6, 1), client=client
+            )
+        assert len(filings) == 1
+        assert filings[0].corp_name_ko == "굿컴퍼니"
+        assert filings[0].receipt_no == "20260601000001"
+
+    @pytest.mark.asyncio
+    async def test_non_dict_row_is_skipped(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        body = {
+            "status": "000",
+            "list": [
+                "not-a-dict",
+                {
+                    "corp_code": "03333333",
+                    "corp_name": "정상회사",
+                    "report_nm": "감사보고서",
+                    "rcept_no": "20260601000009",
+                    "rcept_dt": "20260601",
+                },
+            ],
+        }
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=body)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            filings = await list_filings(
+                bgn_de=date(2026, 6, 1), end_de=date(2026, 6, 1), client=client
+            )
+        assert len(filings) == 1
+        assert filings[0].corp_name_ko == "정상회사"
+
+    @pytest.mark.asyncio
+    async def test_rcept_no_as_int_is_not_skipped(self, monkeypatch):
+        """The malformed-row skip guard must not itself crash on a
+        non-string `rcept_no` (e.g. a JSON number) — this is the exact
+        failure mode the guard was added to prevent. A row with an int
+        rcept_no is well-formed enough to keep, not skip.
+        """
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        body = {
+            "status": "000",
+            "list": [
+                {
+                    "corp_code": "04444444",
+                    "corp_name": "숫자회사",
+                    "report_nm": "감사보고서",
+                    "rcept_no": 20260601000010,  # int, not str
+                    "rcept_dt": "20260601",
+                },
+            ],
+        }
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=body)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            filings = await list_filings(
+                bgn_de=date(2026, 6, 1), end_de=date(2026, 6, 1), client=client
+            )
+        assert len(filings) == 1
+        assert filings[0].receipt_no == "20260601000010"
 
 
 class TestDailyQuotaGuard:

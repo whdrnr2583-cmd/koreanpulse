@@ -195,10 +195,25 @@ async def list_filings(
 
         resp = await retry_async(_call, max_attempts=3, base_seconds=0.5)
         resp.raise_for_status()
-        data = resp.json()
+        # DART normally returns JSON, but on maintenance / gateway errors it
+        # can hand back a 200 with an HTML page or an empty body. `resp.json()`
+        # then raises a raw JSONDecodeError that would leak to the MCP client;
+        # wrap it in DartError with a clear message instead.
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            body_preview = (resp.text or "")[:120].replace("\n", " ")
+            raise DartError(
+                f"DART returned a non-JSON body (status {resp.status_code}): "
+                f"{body_preview!r}. This usually means DART is in maintenance "
+                f"or the endpoint returned an error page."
+            ) from exc
     finally:
         if owns_client:
             await client.aclose()
+
+    if not isinstance(data, dict):
+        raise DartError(f"DART returned an unexpected JSON shape: {type(data).__name__}")
 
     status = data.get("status")
     if status not in ("000", "013"):
@@ -209,7 +224,19 @@ async def list_filings(
     if status == "013":
         return []
 
-    return [_parse_filing(row, requested_type=pblntf_ty) for row in data.get("list", [])]
+    filings: list[Filing] = []
+    for row in data.get("list", []):
+        # A single malformed row (non-dict, or missing the load-bearing
+        # `rcept_no` that keys the receipt and DART URL) must not crash the
+        # whole request — skip it and keep the good rows. `rcept_no` is
+        # normally a 14-digit string, but coerce defensively (e.g. if DART
+        # or a proxy ever hands it back as a JSON number) rather than calling
+        # `.strip()` on a non-str and leaking a raw AttributeError.
+        if not isinstance(row, dict) or not str(row.get("rcept_no") or "").strip():
+            logger.warning("dart: skipping malformed filing row: %r", row)
+            continue
+        filings.append(_parse_filing(row, requested_type=pblntf_ty))
+    return filings
 
 
 # ── Cached filing list ─────────────────────────────────────────────────────
@@ -400,7 +427,7 @@ def _parse_filing(row: dict, *, requested_type: Optional[str] = None) -> Filing:
         requested_type: if the caller filtered the list by `pblntf_ty`, pass it
             through so we trust the request over the title heuristic.
     """
-    receipt_no = row["rcept_no"]
+    receipt_no = str(row.get("rcept_no") or "").strip()
     title = row.get("report_nm", "").strip()
 
     # Trust the request param when present, else infer from title.
