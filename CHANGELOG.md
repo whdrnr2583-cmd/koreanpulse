@@ -1,5 +1,31 @@
 # Changelog
 
+## [Unreleased] — error-surface symmetry (round-2 quality pass)
+
+Behaviour-preserving robustness. No new MCP tools, no new env vars, no
+commerce strings. Every DART / translation entry point now hands callers a
+typed error instead of a raw `httpx` traceback on transport failure.
+
+- **`dart.list_filings`** — a non-2xx status (503 maintenance, 429 rate
+  limit, 5xx) or a network failure that survives all retries was leaking a
+  raw `httpx.HTTPStatusError` / transport exception to the MCP client. Now
+  wrapped in `DartError`, mirroring `corp_code._download_corp_code` which
+  already wrapped the identical failure mode in `CorpCodeError`. No caller
+  depended on the httpx type (verified via grep; `server.py` let it
+  propagate).
+- **`translate.Translator._call_openai` / `_call_anthropic`** — when the
+  provider call fails on every retry, `retry_async` re-raises the raw httpx
+  exception. Both paths now convert it into a typed `TranslationError` so the
+  translate layer owns its own failure surface and the API key never rides
+  along in a raw traceback.
+- **`news.fetch_industry_news`** — verified (live-probe methodology, 7
+  abnormal payloads: empty body, maintenance HTML, truncated XML, valid
+  non-RSS XML, JSON error envelope, binary garbage) that the RSS path
+  already degrades to an empty result without leaking. Locked in with
+  regression tests; no code change needed.
+- Tests: 237 → 253 (+16, 0 regressions). All fixtures synthetic
+  (`MockTransport`), no real DART / OpenAI / Anthropic calls.
+
 ## 0.1.12 — 2026-07-08 (quality pass — activist/foreign-holder allowlist refresh, 2 new news sources, robustness)
 
 Product-quality hardening within the existing 7-tool surface. No new MCP

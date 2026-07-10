@@ -436,7 +436,19 @@ class Translator:
                 resp.raise_for_status()
                 return resp.json()
 
-        data = await retry_async(_call, max_attempts=3, base_seconds=1.0)
+        # When all retries fail, retry_async re-raises the raw httpx exception
+        # (reraise=True). server.py currently absorbs it with a broad except,
+        # but the translate layer should own its own failure surface — wrap it
+        # in TranslationError so callers get a typed error and the key never
+        # rides along in a raw traceback.
+        try:
+            data = await retry_async(_call, max_attempts=3, base_seconds=1.0)
+        except httpx.HTTPStatusError as exc:
+            raise TranslationError(
+                f"OpenAI API returned HTTP {exc.response.status_code} after retries"
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise TranslationError(f"OpenAI API request failed: {exc}") from exc
 
         try:
             text = data["choices"][0]["message"]["content"]
@@ -496,7 +508,16 @@ class Translator:
                 resp.raise_for_status()
                 return resp.json()
 
-        data = await retry_async(_call, max_attempts=3, base_seconds=1.0)
+        # Same rationale as _call_openai: wrap the raw httpx exception that
+        # retry_async re-raises on total failure into a typed TranslationError.
+        try:
+            data = await retry_async(_call, max_attempts=3, base_seconds=1.0)
+        except httpx.HTTPStatusError as exc:
+            raise TranslationError(
+                f"Anthropic API returned HTTP {exc.response.status_code} after retries"
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise TranslationError(f"Anthropic API request failed: {exc}") from exc
 
         try:
             content_blocks = data.get("content", [])

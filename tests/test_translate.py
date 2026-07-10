@@ -235,3 +235,65 @@ class TestHostedMode:
             out = await t.translate_ko_to_en("삼성전자")
 
         assert out == "FRESH_WORKER_VALUE"  # not the stale local value
+
+
+class TestLocalProviderTransportErrors:
+    """When the live provider call fails on every retry, retry_async re-raises
+    the raw httpx exception. The translate layer must convert it into a typed
+    TranslationError (not leak a raw httpx.HTTPError). Fixtures are synthetic
+    MockTransport handlers — no real OpenAI / Anthropic call.
+
+    Non-retryable statuses (401) / errors ("connection refused") are used so
+    retry_async fails fast without real backoff sleeps.
+    """
+
+    @staticmethod
+    def _patch_client(monkeypatch, handler):
+        real = httpx.AsyncClient
+
+        def factory(*args, **kwargs):
+            return real(transport=httpx.MockTransport(handler), timeout=5.0)
+
+        monkeypatch.setattr("koreanpulse.translate.httpx.AsyncClient", factory)
+
+    @pytest.mark.asyncio
+    async def test_openai_http_error_wrapped(self, monkeypatch):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(401, json={"error": "invalid api key"})
+
+        self._patch_client(monkeypatch, handler)
+        t = Translator(provider="openai", api_key="bad", mode="local")
+        with pytest.raises(TranslationError, match="OpenAI API returned HTTP 401"):
+            await t.translate_ko_to_en("삼성전자 실적 발표")
+
+    @pytest.mark.asyncio
+    async def test_openai_network_error_wrapped(self, monkeypatch):
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("connection refused")
+
+        self._patch_client(monkeypatch, handler)
+        t = Translator(provider="openai", api_key="x", mode="local")
+        with pytest.raises(TranslationError, match="OpenAI API request failed"):
+            await t.translate_ko_to_en("삼성전자 실적 발표")
+
+    @pytest.mark.asyncio
+    async def test_anthropic_http_error_wrapped(self, monkeypatch):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(401, json={"error": "invalid api key"})
+
+        self._patch_client(monkeypatch, handler)
+        t = Translator(provider="anthropic", api_key="bad", mode="local")
+        with pytest.raises(TranslationError, match="Anthropic API returned HTTP 401"):
+            await t.translate_ko_to_en("삼성전자 실적 발표")
+
+    @pytest.mark.asyncio
+    async def test_wrapped_error_is_not_httpx_exception(self, monkeypatch):
+        """A caller catching TranslationError must not have to also know httpx."""
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(401, json={"error": "nope"})
+
+        self._patch_client(monkeypatch, handler)
+        t = Translator(provider="openai", api_key="bad", mode="local")
+        with pytest.raises(TranslationError) as excinfo:
+            await t.translate_ko_to_en("테스트")
+        assert not isinstance(excinfo.value, httpx.HTTPError)
