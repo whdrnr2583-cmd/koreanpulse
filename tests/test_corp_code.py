@@ -103,6 +103,13 @@ class TestParseXml:
         xml = b"<result><list><corp_code></corp_code><corp_name>Foo</corp_name></list></result>"
         assert _parse_xml(xml) == []
 
+    def test_malformed_xml_raises_corp_code_error_not_lxml(self):
+        """A truncated cache file (partial write) must not leak a raw
+        lxml XMLSyntaxError to MCP clients."""
+        truncated = b"<result><list><corp_code>001"
+        with pytest.raises(CorpCodeError, match="malformed"):
+            _parse_xml(truncated)
+
 
 class TestDownloadCorpCode:
     @pytest.mark.asyncio
@@ -182,6 +189,30 @@ class TestEnsureIndexLoadedEndToEnd:
         by_corp = await lookup_by_corp_code("00126380")
         assert by_corp is not None
         assert by_corp.stock_code == "005930"
+
+    @pytest.mark.asyncio
+    async def test_corrupt_disk_cache_recovers_by_refetching(self, monkeypatch):
+        """A corrupt (truncated) fresh disk cache must self-heal by
+        re-downloading — not fail on every call for the whole 7-day TTL."""
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        # Seed a "fresh" but corrupt cache file on disk.
+        corp_code_mod.CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        corp_code_mod.CACHE_FILE.write_bytes(b"<result><list><corp_code>001")
+        assert corp_code_mod._is_cache_fresh()  # just written → within TTL
+
+        zip_bytes = _zip_bytes(SAMPLE_XML)
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=zip_bytes)
+
+        monkeypatch.setattr(httpx, "AsyncClient", _mock_client_factory(mock_handler))
+        # force_refresh=False so it goes through the fresh-cache path and
+        # exercises the corrupt-cache recovery branch specifically.
+        n = await ensure_index_loaded(force_refresh=False)
+        assert n == 2
+        # Cache file was rewritten with the good download.
+        assert b"\xec\x82\xbc\xec\x84\xb1" in corp_code_mod.CACHE_FILE.read_bytes()
 
 
 class TestLookups:

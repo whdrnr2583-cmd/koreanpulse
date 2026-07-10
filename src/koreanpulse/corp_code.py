@@ -99,7 +99,13 @@ def _is_cache_fresh() -> bool:
 
 
 def _parse_xml(xml_bytes: bytes) -> list[CorpEntry]:
-    root = etree.fromstring(xml_bytes)
+    try:
+        root = etree.fromstring(xml_bytes)
+    except etree.XMLSyntaxError as exc:
+        # A truncated disk cache (partial write on disk-full / killed process)
+        # or a corrupt DART payload would otherwise surface a raw lxml
+        # traceback to the MCP client. Wrap it so callers can recover.
+        raise CorpCodeError(f"corp_code index XML is malformed: {exc}") from exc
     entries: list[CorpEntry] = []
     for node in root.findall(".//list"):
         corp_code = (node.findtext("corp_code") or "").strip()
@@ -130,12 +136,22 @@ async def ensure_index_loaded(force_refresh: bool = False) -> int:
     if _is_cache_fresh() and not force_refresh:
         xml_bytes = CACHE_FILE.read_bytes()
         logger.info("corp_code: loaded from disk cache")
+        try:
+            entries = _parse_xml(xml_bytes)
+        except CorpCodeError as exc:
+            # Corrupt disk cache (e.g. truncated by a partial write) — without
+            # this recovery the parse would fail on every call for the full 7
+            # day TTL. Discard the bad file and re-download once.
+            logger.warning("corp_code: disk cache corrupt (%s), re-downloading", exc)
+            CACHE_FILE.unlink(missing_ok=True)
+            xml_bytes = await _download_corp_code()
+            CACHE_FILE.write_bytes(xml_bytes)
+            entries = _parse_xml(xml_bytes)
     else:
         xml_bytes = await _download_corp_code()
         CACHE_FILE.write_bytes(xml_bytes)
         logger.info("corp_code: downloaded fresh from DART (%d bytes)", len(xml_bytes))
-
-    entries = _parse_xml(xml_bytes)
+        entries = _parse_xml(xml_bytes)
 
     _INDEX = entries
     _BY_NAME = {e.corp_name: e for e in entries}
