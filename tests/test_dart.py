@@ -356,6 +356,72 @@ class TestListFilingsPayloadRobustness:
         assert filings[0].receipt_no == "20260601000010"
 
 
+class TestListFilingsTransportErrors:
+    """Network / HTTP-status failures must surface as a structured DartError,
+    not a raw httpx exception — symmetric with corp_code._download_corp_code
+    which wraps the same failure mode in CorpCodeError. Fixtures are synthetic
+    (MockTransport), not real DART responses."""
+
+    @pytest.mark.asyncio
+    async def test_http_500_raises_dart_error(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(500, text="upstream boom")
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(DartError, match="HTTP 500"):
+                await list_filings(
+                    bgn_de=date(2026, 5, 3), end_de=date(2026, 5, 3), client=client
+                )
+
+    @pytest.mark.asyncio
+    async def test_http_429_raises_dart_error(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(429, text="slow down")
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(DartError, match="HTTP 429"):
+                await list_filings(
+                    bgn_de=date(2026, 5, 3), end_de=date(2026, 5, 3), client=client
+                )
+
+    @pytest.mark.asyncio
+    async def test_network_error_raises_dart_error(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("connection refused")
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(DartError, match="request failed after retries"):
+                await list_filings(
+                    bgn_de=date(2026, 5, 3), end_de=date(2026, 5, 3), client=client
+                )
+
+    @pytest.mark.asyncio
+    async def test_raw_httpx_error_does_not_leak(self, monkeypatch):
+        """The wrapped DartError must not itself be an httpx exception —
+        callers that only know DartError must catch everything."""
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(503, text="maintenance")
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(DartError) as excinfo:
+                await list_filings(
+                    bgn_de=date(2026, 5, 3), end_de=date(2026, 5, 3), client=client
+                )
+        assert not isinstance(excinfo.value, httpx.HTTPError)
+
+
 class TestDailyQuotaGuard:
     @pytest.mark.asyncio
     async def test_quota_blocks_when_full(self, monkeypatch):

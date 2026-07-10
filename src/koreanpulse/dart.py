@@ -193,8 +193,25 @@ async def list_filings(
         async def _call() -> httpx.Response:
             return await client.get(f"{DART_API_BASE}/list.json", params=params)
 
-        resp = await retry_async(_call, max_attempts=3, base_seconds=0.5)
-        resp.raise_for_status()
+        # A non-2xx status or a network failure that survives all retries
+        # otherwise leaks a raw httpx.HTTPStatusError / transport exception to
+        # the MCP client. corp_code._download_corp_code wraps the identical
+        # failure mode in CorpCodeError — mirror that asymmetry here so both
+        # DART entry points hand callers a structured DartError. (No caller
+        # depends on the httpx exception type — server.py lets it propagate.)
+        try:
+            resp = await retry_async(_call, max_attempts=3, base_seconds=0.5)
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise DartError(
+                f"DART list.json returned HTTP {exc.response.status_code}. "
+                f"This usually means DART is rate-limiting or in maintenance; "
+                f"retry shortly."
+            ) from exc
+        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+            raise DartError(
+                f"DART list.json request failed after retries: {exc}"
+            ) from exc
         # DART normally returns JSON, but on maintenance / gateway errors it
         # can hand back a 200 with an HTML page or an empty body. `resp.json()`
         # then raises a raw JSONDecodeError that would leak to the MCP client;

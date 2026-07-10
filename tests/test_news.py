@@ -234,3 +234,59 @@ class TestFetchIndustryNewsRobustness:
 
         assert len(articles) == 2
         assert {a.source_key for a in articles} == {"etnews", "koreaherald"}
+
+
+class TestFetchIndustryNewsAbnormalPayloads:
+    """Round-2 live-probe codification: a 200 response whose body is NOT a
+    well-formed RSS feed (maintenance HTML, truncated XML, empty body, a JSON
+    error envelope, binary garbage) must degrade to an empty result — never
+    leak a raw lxml/parse traceback to the MCP client. These fixtures mirror
+    the abnormal payloads probed live against the RSS path; all are synthetic.
+    """
+
+    _ABNORMAL = {
+        "empty_body": b"",
+        "maintenance_html": (
+            b"<!DOCTYPE html><html><body><h1>503 Service Unavailable</h1></body></html>"
+        ),
+        "truncated_xml": b"<?xml version='1.0'?><rss><channel><item><title>foo</tit",
+        "valid_xml_not_rss": b"<?xml version='1.0'?><root><a>hi</a></root>",
+        "json_error_envelope": b'{"error":"rate limited"}',
+        "binary_garbage": b"\x00\x01\x02\x03garbage",
+        "gzip_magic_undecoded": b"\x1f\x8b\x08\x00garbage",
+    }
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("name", list(_ABNORMAL))
+    async def test_abnormal_payload_degrades_to_empty(self, name):
+        body = self._ABNORMAL[name]
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=body)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            articles = await fetch_industry_news(
+                source_keys=["koreaherald"], client=client, limit=5
+            )
+        finally:
+            await client.aclose()
+        assert articles == []
+
+    @pytest.mark.asyncio
+    async def test_one_abnormal_source_does_not_block_a_healthy_one(self):
+        """A garbage body from one source must not poison a sibling feed."""
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            if "etnews" in request.url.host:
+                return httpx.Response(200, content=b"\x00garbage-not-xml")
+            return httpx.Response(200, content=_KOREAHERALD_RSS)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            articles = await fetch_industry_news(
+                source_keys=["etnews", "koreaherald"], client=client
+            )
+        finally:
+            await client.aclose()
+        assert [a.source_key for a in articles] == ["koreaherald"]
