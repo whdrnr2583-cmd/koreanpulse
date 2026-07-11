@@ -157,6 +157,49 @@ class TestDownloadCorpCode:
             await _download_corp_code()
 
     @pytest.mark.asyncio
+    async def test_non_2xx_status_never_leaks_api_key_in_error_text(self, monkeypatch):
+        """A transient non-2xx from DART (maintenance/rate-limit/5xx) must
+        never carry DART_API_KEY in the raised CorpCodeError text.
+
+        `crtfc_key` rides on the query string (see `_download_corp_code`'s
+        `params=`), and httpx.HTTPStatusError's own message template embeds
+        the full request URL (`"... for url '{0.url}'"`) — interpolating the
+        raw exception object into the error message would leak the key to
+        any caller of the two free/anonymous tools that trigger this path
+        (`lookup_corp_code`, `resolve_stock_code`), no license required.
+        `str(CorpCodeError(...))` is exactly what FastMCP's dispatcher embeds
+        verbatim into the client-facing ToolError text (`f"...: {e}"`), so
+        that's the surface this test guards.
+        """
+        secret_key = "SUPER_SECRET_DART_KEY_12345"
+        monkeypatch.setenv("DART_API_KEY", secret_key)
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(503, content=b"service unavailable")
+
+        monkeypatch.setattr(httpx, "AsyncClient", _mock_client_factory(mock_handler))
+        with pytest.raises(CorpCodeError) as exc_info:
+            await _download_corp_code()
+        assert secret_key not in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_transport_error_never_leaks_api_key_in_error_text(self, monkeypatch):
+        """Same guarantee as above for non-status httpx errors (connect/read
+        timeouts, transport failures) — these don't embed the URL in their
+        own message today, but assert it explicitly so the invariant can't
+        regress silently if httpx's exception formatting ever changes."""
+        secret_key = "SUPER_SECRET_DART_KEY_12345"
+        monkeypatch.setenv("DART_API_KEY", secret_key)
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("connection refused", request=request)
+
+        monkeypatch.setattr(httpx, "AsyncClient", _mock_client_factory(mock_handler))
+        with pytest.raises(CorpCodeError) as exc_info:
+            await _download_corp_code()
+        assert secret_key not in str(exc_info.value)
+
+    @pytest.mark.asyncio
     async def test_successful_download_extracts_xml(self, monkeypatch):
         monkeypatch.setenv("DART_API_KEY", "test_key")
         zip_bytes = _zip_bytes(SAMPLE_XML)

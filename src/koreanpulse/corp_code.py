@@ -76,8 +76,22 @@ async def _download_corp_code() -> bytes:
             resp = await client.get(CORP_CODE_URL, params={"crtfc_key": _api_key()})
             resp.raise_for_status()
             content = resp.content
+    except httpx.HTTPStatusError as exc:
+        # httpx.HTTPStatusError's message interpolates the *request URL*,
+        # which includes crtfc_key on the query string (params= above) — a
+        # raw f"{exc}" here would leak DART_API_KEY into the MCP tool error
+        # text on any non-2xx response. Mirror dart.py's pattern: only the
+        # status code, never the exception object itself.
+        raise CorpCodeError(
+            f"corp_code index download failed: HTTP {exc.response.status_code}"
+        ) from exc
     except (httpx.HTTPError, httpx.TimeoutException) as exc:
-        raise CorpCodeError(f"corp_code index download failed: {exc}") from exc
+        # Other httpx errors (connect/read/pool timeouts, transport errors)
+        # don't carry the request URL in their message, so the exception
+        # type name is safe to surface without risking a key leak.
+        raise CorpCodeError(
+            f"corp_code index download failed: {type(exc).__name__}"
+        ) from exc
 
     try:
         with zipfile.ZipFile(io.BytesIO(content)) as zf:
