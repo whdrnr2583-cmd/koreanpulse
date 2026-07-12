@@ -176,26 +176,81 @@ async def ensure_index_loaded(force_refresh: bool = False) -> int:
 
 
 async def lookup_by_name(query: str, *, listed_only: bool = False, limit: int = 10) -> list[CorpEntry]:
-    """Substring-match `query` against Korean corp names."""
+    """Substring-match `query` against Korean corp names.
+
+    Collects *all* matches (respecting `listed_only`) before ranking, then
+    sorts so the most useful hit lands first — an early-break on `limit`
+    during the scan would silently drop a better match that happens to sit
+    later in the raw index (e.g. a real ticker's exact name being outranked
+    by an unrelated "XXX서비스" subsidiary that appears earlier). Sort key,
+    ascending on every field:
+        1. exact name match first
+        2. prefix match first
+        3. listed (stock_code set) before unlisted
+        4. shorter corp_name first
+        5. most recently modified first
+    """
     await ensure_index_loaded()
     q = query.strip()
     if not q:
         return []
-    out: list[CorpEntry] = []
-    for entry in _INDEX:
-        if listed_only and not entry.stock_code:
-            continue
-        if q in entry.corp_name:
-            out.append(entry)
-            if len(out) >= limit:
-                break
-    return out
+    matches = [
+        entry
+        for entry in _INDEX
+        if q in entry.corp_name and (not listed_only or entry.stock_code)
+    ]
+
+    def _modify_rank(entry: CorpEntry) -> int:
+        # Descending modify_date via negation (sort() is ascending only).
+        # Falls back to 0 for a missing/non-numeric modify_date rather than
+        # raising, since DART occasionally omits it.
+        try:
+            return -int(entry.modify_date)
+        except (TypeError, ValueError):
+            return 0
+
+    matches.sort(
+        key=lambda e: (
+            e.corp_name != q,
+            not e.corp_name.startswith(q),
+            e.stock_code is None,
+            len(e.corp_name),
+            _modify_rank(e),
+        )
+    )
+    return matches[:limit]
+
+
+def normalize_stock_code(stock_code: str) -> str:
+    """Normalize an upstream ticker string to DART's 6-digit format.
+
+    Strips whitespace, uppercases, drops a trailing exchange suffix (`.KS`
+    / `.KQ` / `.KRX`), and left-pads with zeros when what remains is
+    all-digit and shorter than 6 characters — many upstream feeds drop the
+    leading zero (e.g. "5930" for Samsung Electronics' "005930"). Pure
+    string transform — does not touch the index, so it's safe to call
+    outside `lookup_by_stock_code` (e.g. to derive a candidate code before
+    looking it up, as `server.resolve_stock_code`'s preferred-stock hint
+    does).
+    """
+    code = stock_code.strip().upper()
+    for suffix in (".KS", ".KQ", ".KRX"):
+        if code.endswith(suffix):
+            code = code[: -len(suffix)]
+            break
+    if code.isdigit() and len(code) < 6:
+        code = code.zfill(6)
+    return code
 
 
 async def lookup_by_stock_code(stock_code: str) -> Optional[CorpEntry]:
-    """Resolve a 6-digit KRX code to its DART entry."""
+    """Resolve a 6-digit KRX code to its DART entry.
+
+    See `normalize_stock_code` for the format normalization applied before
+    the lookup.
+    """
     await ensure_index_loaded()
-    return _BY_STOCK.get(stock_code.strip())
+    return _BY_STOCK.get(normalize_stock_code(stock_code))
 
 
 async def lookup_by_corp_code(corp_code: str) -> Optional[CorpEntry]:

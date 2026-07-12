@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 import httpx
 import pytest
 
 import koreanpulse.dart as dart_mod
+from koreanpulse.cache import FileCache, NullCache
 from koreanpulse.dart import (
     DART_HARD_DAILY_LIMIT,
     DartDailyQuotaExceeded,
     DartError,
+    MajorHolding,
     _classify_filing_type,
     _parse_filing,
     daily_usage_snapshot,
     list_filings,
+    list_major_holdings,
 )
 
 
@@ -25,6 +28,19 @@ def _reset_daily_counter():
     yield
     dart_mod._daily_count = 0
     dart_mod._daily_window_kst = ""
+
+
+@pytest.fixture(autouse=True)
+def _isolate_default_cache(tmp_path):
+    """`list_major_holdings` has no injectable `cache=` param — it reads
+    the module-level default cache. Some other test module (test_server.py,
+    via `koreanpulse.server` import) wires that default to a real
+    `.data/cache` FileCache as a side effect of module import order during
+    pytest collection — isolate it here so these tests never touch that
+    real on-disk cache, and don't leak state to tests that run after."""
+    dart_mod.set_default_cache(FileCache(root=tmp_path / "default_cache"))
+    yield
+    dart_mod.set_default_cache(NullCache())
 
 
 # Sample DART API response (real format observed live 2026-05-04 — pblntf_ty is NOT included).
@@ -469,3 +485,307 @@ class TestDailyQuotaGuard:
         monkeypatch.setenv("DART_DAILY_QUOTA", "not_a_number")
         from koreanpulse.dart import _read_daily_quota
         assert _read_daily_quota() == int(DART_HARD_DAILY_LIMIT * 0.8)
+
+
+class TestListFilingsQueryMetadata:
+    """2026-07-12 — Filing.query_total_count / data_fetched_at additive
+    fields, threaded through from a live `list_filings` fetch."""
+
+    @pytest.mark.asyncio
+    async def test_total_count_and_fetched_at_set_on_live_fetch(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=SAMPLE_RESPONSE)
+
+        transport = httpx.MockTransport(mock_handler)
+        before = datetime.now(timezone.utc)
+        async with httpx.AsyncClient(transport=transport) as client:
+            filings = await list_filings(
+                bgn_de=date(2026, 5, 3), end_de=date(2026, 5, 3), client=client
+            )
+        after = datetime.now(timezone.utc)
+
+        assert len(filings) == 2
+        for f in filings:
+            assert f.query_total_count == SAMPLE_RESPONSE["total_count"]
+            assert f.data_fetched_at is not None
+            assert before <= f.data_fetched_at <= after
+
+    @pytest.mark.asyncio
+    async def test_missing_total_count_coerces_to_none(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        body = {
+            "status": "000",
+            "list": [SAMPLE_RESPONSE["list"][0]],
+        }  # no total_count key at all
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=body)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            filings = await list_filings(
+                bgn_de=date(2026, 5, 3), end_de=date(2026, 5, 3), client=client
+            )
+        assert filings[0].query_total_count is None
+
+    @pytest.mark.asyncio
+    async def test_non_numeric_total_count_coerces_to_none(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        body = {
+            "status": "000",
+            "total_count": "not-a-number",
+            "list": [SAMPLE_RESPONSE["list"][0]],
+        }
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=body)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            filings = await list_filings(
+                bgn_de=date(2026, 5, 3), end_de=date(2026, 5, 3), client=client
+            )
+        assert filings[0].query_total_count is None
+
+    def test_old_cache_json_without_query_metadata_round_trips_to_none(self):
+        """A cache entry written before these fields existed has neither
+        key in its serialized JSON — `Filing.model_validate` must default
+        both to None rather than raising."""
+        from koreanpulse.models import Filing
+
+        old_cache_dict = {
+            "corp_code": "00126380",
+            "corp_name_ko": "삼성전자",
+            "stock_code": "005930",
+            "filing_type": "A",
+            "filing_type_label_ko": "정기공시",
+            "filing_type_label_en": "Periodic Disclosure",
+            "title": "사업보고서",
+            "red_flags": [],
+            "receipt_no": "20260503000123",
+            "filed_at": "2026-05-03T00:00:00",
+            "dart_url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260503000123",
+            "attribution": "DART",
+            # no query_total_count / data_fetched_at / holding_pct keys
+        }
+        f = Filing.model_validate(old_cache_dict)
+        assert f.query_total_count is None
+        assert f.data_fetched_at is None
+        assert f.holding_pct is None
+        assert f.holding_pct_change is None
+        assert f.holder_reporter_ko is None
+
+
+# Sample DART majorstock.json response — field names per DART's OpenAPI docs
+# (repror = reporter, stkrt = current holding %, stkrt_irds = change vs the
+# prior report). Only these 3 fields are parsed by `list_major_holdings`.
+SAMPLE_MAJORSTOCK_RESPONSE = {
+    "status": "000",
+    "message": "정상",
+    "list": [
+        {
+            "rcept_no": "20260601000111",
+            "corp_code": "00126380",
+            "corp_name": "삼성전자",
+            "repror": "국민연금공단",
+            "stkqy": "100000000",
+            "stkqy_irds": "1000000",
+            "stkrt": "8.51",
+            "stkrt_irds": "0.10",
+            "report_resn": "지분율 변동",
+        },
+        {
+            "rcept_no": "20260601000112",
+            "corp_code": "00126380",
+            "corp_name": "삼성전자",
+            "repror": "얼라인파트너스자산운용",
+            "stkqy": "5000000",
+            "stkqy_irds": "500000",
+            "stkrt": "5.20",
+            "stkrt_irds": "0.30",
+            "report_resn": "지분율 변동",
+        },
+    ],
+}
+
+MAJORSTOCK_EMPTY = {"status": "013", "message": "조회된 데이터가 없습니다."}
+MAJORSTOCK_ERROR = {"status": "020", "message": "사용한도를 초과하였습니다."}
+
+
+class TestListMajorHoldings:
+    @pytest.mark.asyncio
+    async def test_no_api_key_raises(self, monkeypatch):
+        monkeypatch.delenv("DART_API_KEY", raising=False)
+        with pytest.raises(DartError, match="DART_API_KEY"):
+            await list_major_holdings("00126380")
+
+    @pytest.mark.asyncio
+    async def test_successful_response_parses_only_3_fields(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            assert request.url.path == "/api/majorstock.json"
+            assert request.url.params["corp_code"] == "00126380"
+            return httpx.Response(200, json=SAMPLE_MAJORSTOCK_RESPONSE)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            holdings = await list_major_holdings("00126380", client=client)
+
+        assert len(holdings) == 2
+        assert holdings[0] == MajorHolding(
+            repror="국민연금공단", stkrt=8.51, stkrt_irds=0.10
+        )
+        assert holdings[1] == MajorHolding(
+            repror="얼라인파트너스자산운용", stkrt=5.20, stkrt_irds=0.30
+        )
+
+    @pytest.mark.asyncio
+    async def test_status_013_returns_empty_list(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=MAJORSTOCK_EMPTY)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            assert await list_major_holdings("00999999", client=client) == []
+
+    @pytest.mark.asyncio
+    async def test_non_000_013_status_raises_dart_error(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=MAJORSTOCK_ERROR)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(DartError, match="020"):
+                await list_major_holdings("00126380", client=client)
+
+    @pytest.mark.asyncio
+    async def test_row_missing_repror_is_skipped(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        body = {
+            "status": "000",
+            "list": [
+                {"corp_code": "00126380", "stkrt": "5.0"},  # no repror
+                {
+                    "corp_code": "00126380",
+                    "repror": "굿펀드",
+                    "stkrt": "6.0",
+                    "stkrt_irds": "-0.5",
+                },
+            ],
+        }
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=body)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            holdings = await list_major_holdings("00126380", client=client)
+        assert len(holdings) == 1
+        assert holdings[0].repror == "굿펀드"
+        assert holdings[0].stkrt_irds == -0.5
+
+    @pytest.mark.asyncio
+    async def test_non_dict_row_is_skipped(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        body = {"status": "000", "list": ["not-a-dict", {"repror": "정상"}]}
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=body)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            holdings = await list_major_holdings("00126380", client=client)
+        assert len(holdings) == 1
+        assert holdings[0].repror == "정상"
+
+    @pytest.mark.asyncio
+    async def test_unparseable_stkrt_coerces_to_none_not_raise(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        body = {
+            "status": "000",
+            "list": [{"repror": "이상한펀드", "stkrt": "n/a", "stkrt_irds": None}],
+        }
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=body)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            holdings = await list_major_holdings("00126380", client=client)
+        assert holdings[0].stkrt is None
+        assert holdings[0].stkrt_irds is None
+
+    @pytest.mark.asyncio
+    async def test_http_status_error_leaks_only_status_code(self, monkeypatch):
+        """Mirrors list_filings' error pattern exactly — HTTPStatusError
+        must never carry `crtfc_key` (query-string) into the error text."""
+        secret_key = "SUPER_SECRET_DART_KEY_99999"
+        monkeypatch.setenv("DART_API_KEY", secret_key)
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(503, text="maintenance")
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(DartError, match="HTTP 503") as exc_info:
+                await list_major_holdings("00126380", client=client)
+        assert secret_key not in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_transport_error_leaks_only_exception_type_name(self, monkeypatch):
+        """The non-HTTPStatusError branch must surface only
+        `type(exc).__name__` — no key, no URL, not even the raw exception
+        message (stricter than list_filings' current `{exc}` interpolation,
+        per this task's explicit instruction)."""
+        secret_key = "SUPER_SECRET_DART_KEY_99999"
+        monkeypatch.setenv("DART_API_KEY", secret_key)
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError(
+                f"connection refused for corp_code=00126380&crtfc_key={secret_key}"
+            )
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(DartError) as exc_info:
+                await list_major_holdings("00126380", client=client)
+        assert secret_key not in str(exc_info.value)
+        assert "ConnectError" in str(exc_info.value)
+        assert not isinstance(exc_info.value, httpx.HTTPError)
+
+    @pytest.mark.asyncio
+    async def test_bumps_daily_counter(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=SAMPLE_MAJORSTOCK_RESPONSE)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            await list_major_holdings("00126380", client=client)
+        assert daily_usage_snapshot()["calls"] == 1
+
+    @pytest.mark.asyncio
+    async def test_cache_hit_skips_network_and_daily_counter(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        call_count = {"n": 0}
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            call_count["n"] += 1
+            return httpx.Response(200, json=SAMPLE_MAJORSTOCK_RESPONSE)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            r1 = await list_major_holdings("00126380", client=client)
+            r2 = await list_major_holdings("00126380", client=client)
+
+        assert call_count["n"] == 1  # second call served from cache
+        assert r1 == r2
+        assert daily_usage_snapshot()["calls"] == 1

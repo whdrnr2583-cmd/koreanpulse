@@ -5,7 +5,12 @@ from datetime import timedelta
 import httpx
 import pytest
 
-from koreanpulse.news import _parse_pub_date, classify_industries, fetch_industry_news
+from koreanpulse.news import (
+    _make_snippet,
+    _parse_pub_date,
+    classify_industries,
+    fetch_industry_news,
+)
 
 
 class TestClassifyIndustries:
@@ -52,6 +57,86 @@ class TestClassifyIndustries:
 
     def test_english_no_match_still_empty(self):
         assert classify_industries("The weather is nice today") == []
+
+
+class TestClassifyIndustriesAsciiWordBoundary:
+    """2026-07-12 — ASCII-only keywords now match on a letter-boundary
+    regex instead of a bare substring, fixing 2 real false positives found
+    live: 'dram' is a substring of 'k-dramas', 'ai' is a substring of
+    'chairman'. Digits and Hangul act as boundaries (so 'HBM3E' and
+    'AI반도체' still match) and a trailing plural is accepted. Korean
+    keywords are unaffected (still substring-matched)."""
+
+    def test_dram_substring_of_kdramas_not_tagged_semiconductor(self):
+        tags = classify_industries("Banks are creating K-dramas now")
+        assert "semiconductor" not in tags
+
+    def test_ai_substring_of_chairman_not_tagged_ai(self):
+        tags = classify_industries("The chairman announced record profits")
+        assert "ai" not in tags
+
+    def test_standalone_dram_still_tagged_semiconductor(self):
+        tags = classify_industries("Samsung ramps up DRAM production")
+        assert "semiconductor" in tags
+
+    def test_standalone_ai_still_tagged_ai(self):
+        tags = classify_industries("New AI chip unveiled by local startup")
+        assert "ai" in tags
+
+    def test_ascii_keyword_adjacent_digit_still_matches(self):
+        """'HBM3E' — a digit after the keyword must not block the match."""
+        tags = classify_industries("삼성 HBM3E 양산")
+        assert "semiconductor" in tags
+
+    def test_ascii_keyword_adjacent_hangul_still_matches(self):
+        """'AI반도체' — Hangul abutting the keyword must not block it."""
+        tags = classify_industries("삼성전자 AI반도체 신제품 공개")
+        assert "ai" in tags
+        assert "semiconductor" in tags
+
+    def test_ascii_keyword_plural_still_matches(self):
+        tags = classify_industries("Korean chipmakers rally on export data")
+        assert "semiconductor" in tags
+
+    def test_korean_keyword_substring_matching_unaffected(self):
+        """Korean keywords must keep substring matching — no word-boundary
+        regression for the Korean-language recall path."""
+        tags = classify_industries("삼성전자, HBM 공급 확대")
+        assert "semiconductor" in tags
+
+    def test_existing_english_standalone_tests_still_pass(self):
+        """Re-assert the pre-existing English recall fixtures survive the
+        word-boundary change (regression guard alongside the class above)."""
+        assert "shipbuilding" in classify_industries(
+            "Hanwha Ocean loses submarine bid to German shipbuilder"
+        )
+        assert "defense" in classify_industries(
+            "Hanwha Aerospace signs new fighter jet arms deal"
+        )
+        assert "semiconductor" in classify_industries(
+            "Local chipmaker posts record semiconductor exports"
+        )
+        assert classify_industries("The weather is nice today") == []
+        tags = classify_industries("AI 반도체 수요 폭증")
+        assert "ai" in tags
+        assert "semiconductor" in tags
+
+
+class TestMakeSnippet:
+    def test_strips_tags_and_collapses_whitespace(self):
+        raw = "<p>Samsung   posts\n\nrecord   profit</p>"
+        assert _make_snippet(raw) == "Samsung posts record profit"
+
+    def test_empty_description_returns_empty_string(self):
+        assert _make_snippet("") == ""
+
+    def test_truncates_to_300_chars(self):
+        raw = "가" * 500
+        snippet = _make_snippet(raw)
+        assert len(snippet) == 300
+
+    def test_no_tags_no_op_besides_whitespace_collapse(self):
+        assert _make_snippet("plain description text") == "plain description text"
 
 
 class TestParsePubDate:
@@ -162,6 +247,74 @@ class TestFetchIndustryNewsLanguageAware:
 
         assert len(articles) == 1
         assert articles[0].title_en == ""  # left for the caller's translator
+
+
+_ENTITY_RSS = b"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+<item>
+<title>Samsung &amp; LG battle for HBM crown</title>
+<link>https://www.koreaherald.com/article/2</link>
+<pubDate>Tue, 07 Jul 2026 10:00:00 +09:00</pubDate>
+<description>&lt;p&gt;Profit &quot;surged&quot; last quarter&amp;nbsp;&amp;mdash; a record year for chipmakers&lt;/p&gt;</description>
+</item>
+</channel></rss>"""
+# Deliberately double-encoded &amp;nbsp; / &amp;mdash; in <description> to
+# mirror a real observed pattern: some RSS generators HTML-escape a
+# description that already contains literal HTML markup (so the raw XML
+# text node reads "&lt;p&gt;...&amp;nbsp;...&lt;/p&gt;"). A single
+# html.unescape() pass — which is all `_fetch_rss` does — decodes exactly
+# one layer, same as it would for a normal single-encoded feed; the
+# fixture intentionally exercises both the tag-decode (&lt;p&gt; -> <p>)
+# and the entity-decode (&quot; -> ") paths through one unescape() call.
+
+
+class TestFetchIndustryNewsEntityDecodeAndSnippet:
+    """2026-07-12 — html.unescape() on title/description in `_fetch_rss`,
+    and `Article.snippet` populated from `description` in
+    `fetch_industry_news` (no extra network fetch)."""
+
+    @pytest.mark.asyncio
+    async def test_title_html_entities_are_decoded(self):
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=_ENTITY_RSS)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            articles = await fetch_industry_news(source_keys=["koreaherald"], client=client)
+        finally:
+            await client.aclose()
+
+        assert len(articles) == 1
+        assert articles[0].title_ko == "Samsung & LG battle for HBM crown"
+
+    @pytest.mark.asyncio
+    async def test_snippet_filled_from_description_tags_stripped(self):
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=_ENTITY_RSS)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            articles = await fetch_industry_news(source_keys=["koreaherald"], client=client)
+        finally:
+            await client.aclose()
+
+        assert (
+            articles[0].snippet
+            == 'Profit "surged" last quarter — a record year for chipmakers'
+        )
+
+    @pytest.mark.asyncio
+    async def test_snippet_empty_when_source_has_no_description(self):
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=_ETNEWS_RSS)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            articles = await fetch_industry_news(source_keys=["etnews"], client=client)
+        finally:
+            await client.aclose()
+
+        assert articles[0].snippet == ""
 
 
 class TestFetchIndustryNewsRobustness:

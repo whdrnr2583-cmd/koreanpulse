@@ -121,6 +121,37 @@ class TestTagRedFlags:
         assert tag_red_flags("[기재정정]전환사채권발행결정") == ["cb_issuance"]
 
 
+class TestTagRedFlagsExpanded2026_07_12:
+    """Red-flag keyword expansion (task A2) — 7 new keyword/tag pairs added
+    after the original 9. `test_clean_audit_opinion_not_flagged` above must
+    keep passing unchanged — none of these new keywords touch '적정'."""
+
+    def test_management_designation(self):
+        assert tag_red_flags("관리종목지정") == ["management_designation"]
+
+    def test_delisting_risk(self):
+        assert tag_red_flags("상장폐지결정") == ["delisting_risk"]
+
+    def test_trading_halt(self):
+        assert tag_red_flags("거래정지안내") == ["trading_halt"]
+
+    def test_reverse_split(self):
+        assert tag_red_flags("주식병합결정") == ["reverse_split"]
+
+    def test_short_term_borrowing(self):
+        assert tag_red_flags("단기차입금증가결정") == ["short_term_borrowing"]
+
+    def test_going_concern_from_gyesok_gieop(self):
+        assert tag_red_flags("계속기업 존속능력에 대한 불확실성") == ["going_concern"]
+
+    def test_going_concern_from_jonsok_neungnyeok_alone(self):
+        assert tag_red_flags("존속능력 불확실성 관련 안내") == ["going_concern"]
+
+    def test_clean_audit_opinion_still_not_flagged(self):
+        # Regression guard for the task's explicit "가드 유지" requirement.
+        assert tag_red_flags("감사보고서(감사의견 적정)") == []
+
+
 class TestRedFlagsOnParsedFiling:
     def test_red_flags_surfaced(self):
         f = _parse_filing(_row(title="전환사채권발행결정", corp_cls="K"))

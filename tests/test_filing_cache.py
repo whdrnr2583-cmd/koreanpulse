@@ -96,6 +96,14 @@ class TestListFilingsCached:
         assert r1[0].corp_name_ko == r2[0].corp_name_ko == "삼성전자"
         # Second call must be cached → only 1 origin request
         assert call_count["n"] == 1
+        # query_total_count / data_fetched_at round-trip through the cache
+        # serialize/deserialize (model_dump -> JSON -> model_validate) —
+        # the cached row keeps the *original* live-fetch's values rather
+        # than getting a fresh data_fetched_at on the cache-hit path.
+        assert r1[0].query_total_count == SAMPLE_RESPONSE["total_count"]
+        assert r2[0].query_total_count == SAMPLE_RESPONSE["total_count"]
+        assert r1[0].data_fetched_at is not None
+        assert r1[0].data_fetched_at == r2[0].data_fetched_at
 
     @pytest.mark.asyncio
     async def test_cache_hit_does_not_burn_daily_quota(self, monkeypatch, tmp_path):

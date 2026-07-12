@@ -26,6 +26,15 @@ class Article(BaseModel):
     industries: list[str] = Field(default_factory=list)
     relevance_score: float = Field(ge=0.0, le=1.0, default=0.5)
     attribution: str = Field(description="Required attribution string")
+    snippet: str = Field(
+        default="",
+        description=(
+            "~300-char plain-text excerpt from the RSS `description` field "
+            "(HTML-unescaped, tags stripped, whitespace collapsed). No "
+            "additional network fetch — derived from the same feed item as "
+            "the title. Empty when the source's feed carries no description."
+        ),
+    )
 
 
 class Filing(BaseModel):
@@ -54,7 +63,9 @@ class Filing(BaseModel):
             "Governance/distress tags inferred from the filing title, e.g. "
             "'cb_issuance', 'controlling_shareholder_change', 'rehabilitation', "
             "'audit_opinion', 'disclosure_violation', 'rights_issue', "
-            "'capital_reduction'. Empty when no keyword matched."
+            "'capital_reduction', 'management_designation', 'delisting_risk', "
+            "'trading_halt', 'reverse_split', 'short_term_borrowing', "
+            "'going_concern'. Empty when no keyword matched."
         ),
     )
     title_en: Optional[str] = Field(
@@ -78,6 +89,46 @@ class Filing(BaseModel):
         ),
     )
     attribution: str
+    holding_pct: Optional[float] = Field(
+        default=None,
+        description=(
+            "Reporter's current holding percentage from DART majorstock.json "
+            "(대량보유상황보고, `stkrt`). Paid-tier enrichment on "
+            "monitor_activist_investors / monitor_foreign_holders rows only; "
+            "None when not looked up or no reporter match was found."
+        ),
+    )
+    holding_pct_change: Optional[float] = Field(
+        default=None,
+        description=(
+            "Change in holding percentage versus the prior majorstock "
+            "report (`stkrt_irds`). Same paid-tier enrichment as `holding_pct`."
+        ),
+    )
+    holder_reporter_ko: Optional[str] = Field(
+        default=None,
+        description=(
+            "DART majorstock reporter name (`repror`) matched to this "
+            "filing's filer. Same paid-tier enrichment as `holding_pct`."
+        ),
+    )
+    query_total_count: Optional[int] = Field(
+        default=None,
+        description=(
+            "DART's reported total_count for the query that produced this "
+            "filing — the full match count before `limit`/`page_count` "
+            "truncation, not the number of rows returned. None on cached "
+            "rows written before this field existed."
+        ),
+    )
+    data_fetched_at: Optional[datetime] = Field(
+        default=None,
+        description=(
+            "UTC timestamp this filing was live-fetched from DART (as-of "
+            "time for the data). None for rows served from a cache entry "
+            "written before this field existed."
+        ),
+    )
 
 
 class ActivistFiling(Filing):

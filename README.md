@@ -23,7 +23,7 @@ Korean stock disclosures, activist filings & foreign-holder flows in English —
 
 ## Status
 
-**Pre-alpha (v0.1.10).** 7 MCP tools shipped — 5 free + 2 paid (activist + foreign-holder classification gated to Solo $29/mo+). 181 tests pass, 1 skipped. Beta/waitlist tone — watchlist polling + alert dispatch ship Q3 2026. Beta acquisition plan in `docs/BETA.md`.
+**Pre-alpha (v0.1.13).** 7 MCP tools shipped — 5 free + 2 paid (activist + foreign-holder classification gated to Solo $29/mo+). 365 tests pass, 1 skipped. Beta/waitlist tone — watchlist polling + alert dispatch ship Q3 2026. Beta acquisition plan in `docs/BETA.md`.
 
 ---
 

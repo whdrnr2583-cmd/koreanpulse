@@ -13,6 +13,7 @@ recall. Replace with a fine-tuned classifier later if precision matters.
 """
 from __future__ import annotations
 
+import html
 import logging
 import re
 from datetime import datetime, timedelta, timezone
@@ -65,12 +66,54 @@ INDUSTRY_KEYWORDS: dict[str, tuple[str, ...]] = {
 }
 
 
+# 2026-07-12 — ASCII-only keywords (e.g. "DRAM", "AI") were substring-
+# matched against the whole text, which produces real false positives:
+# "dram" is a substring of "k-dramas", "ai" is a substring of "chairman".
+# Korean keywords don't have this problem the same way (no equivalent
+# short-Korean-substring-inside-an-unrelated-word collision observed) and
+# Korean text has no consistent word-boundary tokenization to rely on, so
+# they keep the original substring match. ASCII-only keywords instead match
+# on a letter-boundary regex, precompiled once per industry at module load
+# (not per classify_industries() call). Plain `\b` is too strict here:
+# Korean text abuts ASCII terms without spaces ("AI반도체") and model names
+# append digits ("HBM3E"), so only adjacent A-Z letters block a match —
+# digits and Hangul act as boundaries. A trailing optional plural
+# ("chipmakers", "GPUs") is also accepted.
+_ASCII_ONLY_RE = re.compile(r"^[\x00-\x7f]+$")
+
+
+def _is_ascii_keyword(keyword: str) -> bool:
+    return bool(_ASCII_ONLY_RE.match(keyword))
+
+
+def _build_industry_matchers() -> dict[str, tuple[Optional[re.Pattern[str]], tuple[str, ...]]]:
+    matchers: dict[str, tuple[Optional[re.Pattern[str]], tuple[str, ...]]] = {}
+    for industry, keywords in INDUSTRY_KEYWORDS.items():
+        ascii_keywords = [kw for kw in keywords if _is_ascii_keyword(kw)]
+        non_ascii_keywords = tuple(kw.lower() for kw in keywords if not _is_ascii_keyword(kw))
+        pattern: Optional[re.Pattern[str]] = None
+        if ascii_keywords:
+            alternation = "|".join(re.escape(kw) for kw in ascii_keywords)
+            pattern = re.compile(
+                rf"(?<![A-Za-z])(?:{alternation})(?:e?s)?(?![A-Za-z])", re.IGNORECASE
+            )
+        matchers[industry] = (pattern, non_ascii_keywords)
+    return matchers
+
+
+_INDUSTRY_MATCHERS = _build_industry_matchers()
+
+
 def classify_industries(title: str, body: str = "") -> list[str]:
     """Return list of industry tags hit by the title (and body if given)."""
-    text = (title + " " + body).lower()
+    text = f"{title} {body}"
+    text_lower = text.lower()
     out: list[str] = []
-    for industry, keywords in INDUSTRY_KEYWORDS.items():
-        if any(kw.lower() in text for kw in keywords):
+    for industry, (pattern, non_ascii_keywords) in _INDUSTRY_MATCHERS.items():
+        if pattern is not None and pattern.search(text):
+            out.append(industry)
+            continue
+        if any(kw in text_lower for kw in non_ascii_keywords):
             out.append(industry)
     return out
 
@@ -100,10 +143,14 @@ async def _fetch_rss(source: NewsSource, client: httpx.AsyncClient) -> list[dict
     for item in root.findall(".//item"):
         items.append(
             {
-                "title": (item.findtext("title") or "").strip(),
+                # lxml's XML parser only decodes the 5 predefined XML
+                # entities (amp/lt/gt/quot/apos) — named HTML entities some
+                # feeds embed in title/description (&nbsp;, &rsquo;, &mdash;,
+                # &hellip;, ...) survive as literal text without this.
+                "title": html.unescape((item.findtext("title") or "").strip()),
                 "link": (item.findtext("link") or "").strip(),
                 "pubDate": (item.findtext("pubDate") or "").strip(),
-                "description": (item.findtext("description") or "").strip(),
+                "description": html.unescape((item.findtext("description") or "").strip()),
             }
         )
     return items
@@ -142,6 +189,27 @@ def _parse_pub_date(value: str) -> datetime:
     return dt
 
 
+_TAG_RE = re.compile(r"<[^>]+>")
+_WHITESPACE_RE = re.compile(r"\s+")
+_SNIPPET_MAX_CHARS = 300
+
+
+def _make_snippet(description: str) -> str:
+    """Plain-text excerpt from an RSS `description` field for `Article.snippet`.
+
+    HTML entities are already decoded by `_fetch_rss` (`html.unescape`).
+    This additionally strips any literal HTML tags some feeds embed in
+    `<description>` (e.g. "<p>...</p>"), collapses whitespace/newlines,
+    and truncates to `_SNIPPET_MAX_CHARS`. No additional network fetch —
+    derived from the same feed item the title came from.
+    """
+    if not description:
+        return ""
+    text = _TAG_RE.sub(" ", description)
+    text = _WHITESPACE_RE.sub(" ", text).strip()
+    return text[:_SNIPPET_MAX_CHARS]
+
+
 async def fetch_industry_news(
     *,
     industries: Optional[list[str]] = None,
@@ -162,7 +230,8 @@ async def fetch_industry_news(
     Returns:
         Articles sorted by published_at descending. `summary_en` is empty —
         callers add translation/summary via the Translator on demand to stay
-        cost-disciplined (see SPEC.md).
+        cost-disciplined (see SPEC.md). `snippet` is filled directly from
+        the RSS `description` (no LLM call, no extra network fetch).
     """
     sources = NEWS_SOURCES
     if source_keys:
@@ -200,6 +269,7 @@ async def fetch_industry_news(
                         url=r["link"],
                         published_at=_parse_pub_date(r["pubDate"]),
                         summary_en="",
+                        snippet=_make_snippet(r.get("description", "")),
                         industries=tags,
                         relevance_score=min(1.0, 0.4 + 0.15 * len(tags)),
                         attribution=src.attribution,

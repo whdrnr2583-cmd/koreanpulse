@@ -192,7 +192,7 @@ KOREAN_ACTIVISTS: tuple[InvestorRecord, ...] = (
         origin="us",
         # Joined City of London + Palliser on the 2022-2024 삼성물산
         # buyback/dividend shareholder-proposal campaign.
-        aliases_ko=(),
+        aliases_ko=("화이트박스", "화이트박스어드바이저스"),
         aliases_en=("whitebox advisors",),
     ),
     InvestorRecord(
@@ -258,6 +258,28 @@ FOREIGN_HOLDERS: tuple[InvestorRecord, ...] = (
 ALL_INVESTORS: tuple[InvestorRecord, ...] = KOREAN_ACTIVISTS + FOREIGN_HOLDERS
 
 
+# 2026-07-12 — a few allowlist aliases are short enough to also appear
+# inside an unrelated real-world name's substring, producing a false
+# activist/foreign-holder tag on a filer that has nothing to do with the
+# fund. Keyed by `InvestorRecord.canonical`; each value is a tuple of
+# substrings that, when present in the filer name, block a match against
+# that record entirely (checked before the alias scan below).
+_ALIAS_DENYLIST: dict[str, tuple[str, ...]] = {
+    # "웰링턴" alone also matches the Daniel Wellington watch brand's
+    # Korean subsidiary/importer naming ("다니엘웰링턴...").
+    "Wellington Management": ("다니엘웰링턴",),
+    # "캐피탈그룹"/"캐피털그룹" also matches "제일캐피탈그룹" and other
+    # "제일캐피탈"-prefixed Korean consumer-finance entities, unrelated to
+    # The Capital Group Companies.
+    "Capital Group": ("제일캐피탈",),
+    # Bare "밀레니엄" also matches several real, unrelated DART-registered
+    # non-fund entities (verified against the corp_code registry) rather
+    # than Millennium Management: a Shilla-affiliated hospitality entity,
+    # a Daedong-affiliated entity, and an unrelated holding company.
+    "Millennium": ("신라밀레니엄", "대동밀레니엄", "밀레니엄홀딩스"),
+}
+
+
 def match_investor(filer_name: Optional[str]) -> Optional[InvestorMatch]:
     """Match a filer name against the full allowlist.
 
@@ -265,6 +287,11 @@ def match_investor(filer_name: Optional[str]) -> Optional[InvestorMatch]:
     or None if no match. Matching is case-insensitive substring; Korean
     aliases match against the raw name, latin aliases against the
     lowercased name. A mixed string like "KCGI 자산운용" matches both layers.
+
+    A record listed in `_ALIAS_DENYLIST` is skipped entirely (not just the
+    offending alias) when the filer name contains one of its denylisted
+    substrings — this only suppresses false positives for that record; the
+    scan continues so unrelated allowlist entries can still match.
     """
     if not filer_name:
         return None
@@ -274,6 +301,9 @@ def match_investor(filer_name: Optional[str]) -> Optional[InvestorMatch]:
     name_lower = name.lower()
 
     for rec in ALL_INVESTORS:
+        denylist = _ALIAS_DENYLIST.get(rec.canonical, ())
+        if denylist and any(bad in name for bad in denylist):
+            continue
         for alias in rec.aliases_ko:
             if alias and alias in name:
                 return InvestorMatch(rec.canonical, rec.klass, rec.origin)

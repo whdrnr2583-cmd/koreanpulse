@@ -309,3 +309,102 @@ class TestLookups:
     @pytest.mark.asyncio
     async def test_lookup_by_corp_code_unknown_returns_none(self):
         assert await lookup_by_corp_code("00000001") is None
+
+
+class TestCorpResolverRanking:
+    """2026-07-12 accuracy fix — `lookup_by_name` used to early-break on
+    `limit` while scanning raw index order, so an exact-name match sitting
+    later in the index could be silently outranked by an earlier unrelated
+    substring hit (real symptom: '삼성전자' wasn't `result[0]`, '셀트리온'
+    exact match landed at index 2). The fixtures below deliberately place
+    the exact/listed/shorter match *later* in raw index order to prove the
+    new ranking (not scan order) decides the winner."""
+
+    @pytest.fixture(autouse=True)
+    def _seed(self):
+        from koreanpulse.corp_code import CorpEntry
+
+        entries = [
+            # 삼성전자 cluster — exact/listed match placed last in raw order.
+            CorpEntry("00000010", "삼성전자서비스", None, "20250101"),
+            CorpEntry("00000011", "삼성전자판매", "010010", "20260101"),
+            CorpEntry("00000012", "삼성전자", "005930", "20260101"),
+            # 셀트리온 cluster — exact match placed last (index 2 within the
+            # cluster), longer substring matches placed earlier.
+            CorpEntry("00000020", "셀트리온제약", "068760", "20260101"),
+            CorpEntry("00000021", "셀트리온헬스케어", "091990", "20260101"),
+            CorpEntry("00000022", "셀트리온", "068270", "20260101"),
+        ]
+        corp_code_mod._INDEX = entries
+        corp_code_mod._BY_NAME = {e.corp_name: e for e in entries}
+        corp_code_mod._BY_STOCK = {e.stock_code: e for e in entries if e.stock_code}
+        corp_code_mod._BY_CORP = {e.corp_code: e for e in entries}
+
+    @pytest.mark.asyncio
+    async def test_exact_listed_match_ranks_first_despite_scan_order(self):
+        hits = await lookup_by_name("삼성전자")
+        assert hits[0].corp_name == "삼성전자"
+        assert hits[0].stock_code == "005930"
+
+    @pytest.mark.asyncio
+    async def test_exact_match_ranks_first_despite_scan_order(self):
+        hits = await lookup_by_name("셀트리온")
+        assert hits[0].corp_name == "셀트리온"
+        assert hits[0].stock_code == "068270"
+
+    @pytest.mark.asyncio
+    async def test_limit_applied_after_ranking_not_before(self):
+        # With limit=1 the single returned hit must still be the exact
+        # match, not whatever the scan happened to see first.
+        hits = await lookup_by_name("삼성전자", limit=1)
+        assert len(hits) == 1
+        assert hits[0].corp_name == "삼성전자"
+
+
+class TestLookupByStockCodeNormalization:
+    """2026-07-12 accuracy fix — real-world tickers often carry a leading
+    zero drop or an exchange suffix (Yahoo/Bloomberg-style '.KS'/'.KQ')."""
+
+    @pytest.fixture(autouse=True)
+    def _seed(self):
+        from koreanpulse.corp_code import CorpEntry
+
+        entries = [CorpEntry("00126380", "삼성전자", "005930", "20260101")]
+        corp_code_mod._INDEX = entries
+        corp_code_mod._BY_NAME = {e.corp_name: e for e in entries}
+        corp_code_mod._BY_STOCK = {e.stock_code: e for e in entries if e.stock_code}
+        corp_code_mod._BY_CORP = {e.corp_code: e for e in entries}
+
+    @pytest.mark.asyncio
+    async def test_leading_zero_dropped_ticker_resolves(self):
+        hit = await lookup_by_stock_code("5930")
+        assert hit is not None
+        assert hit.stock_code == "005930"
+
+    @pytest.mark.asyncio
+    async def test_ks_suffix_stripped(self):
+        hit = await lookup_by_stock_code("005930.KS")
+        assert hit is not None
+        assert hit.stock_code == "005930"
+
+    @pytest.mark.asyncio
+    async def test_whitespace_and_leading_zero_both_handled(self):
+        hit = await lookup_by_stock_code(" 5930 ")
+        assert hit is not None
+        assert hit.stock_code == "005930"
+
+    @pytest.mark.asyncio
+    async def test_krx_suffix_stripped(self):
+        hit = await lookup_by_stock_code("005930.KRX")
+        assert hit is not None
+        assert hit.stock_code == "005930"
+
+    @pytest.mark.asyncio
+    async def test_kq_suffix_stripped_lowercase(self):
+        hit = await lookup_by_stock_code("005930.kq")
+        assert hit is not None
+        assert hit.stock_code == "005930"
+
+    @pytest.mark.asyncio
+    async def test_still_returns_none_for_unknown_code(self):
+        assert await lookup_by_stock_code("999999") is None

@@ -188,3 +188,72 @@ class TestRegistries:
         allowed = {"kr", "us", "uk", "eu", "other"}
         for r in ALL_INVESTORS:
             assert r.origin in allowed, f"{r.canonical} has unknown origin {r.origin}"
+
+
+class TestWhiteboxAdvisorsKoreanAliases:
+    """2026-07-12 — Whitebox Advisors previously had zero Korean aliases
+    (`aliases_ko=()`), so a Korean-language filer name could never match
+    it even though it's a named campaign participant."""
+
+    def test_korean_alias_matches(self):
+        assert match_activist("화이트박스") == "Whitebox Advisors"
+
+    def test_korean_alias_variant_matches(self):
+        assert match_activist("화이트박스어드바이저스") == "Whitebox Advisors"
+
+
+class TestAliasDenylistFalsePositives:
+    """2026-07-12 accuracy fix — a few allowlist aliases are short enough
+    to also appear inside an unrelated real-world entity's name. These
+    must resolve to None, not a false activist/foreign-holder tag."""
+
+    def test_daniel_wellington_watch_brand_is_not_wellington_management(self):
+        assert match_investor("다니엘웰링턴코리아") is None
+        assert match_activist("다니엘웰링턴코리아") is None
+        assert match_foreign_holder("다니엘웰링턴코리아") is None
+
+    def test_jeil_capital_group_is_not_capital_group(self):
+        assert match_investor("제일캐피탈그룹") is None
+        assert match_foreign_holder("제일캐피탈그룹") is None
+
+    def test_shilla_millennium_is_not_millennium_management(self):
+        assert match_investor("신라밀레니엄") is None
+
+    def test_daedong_millennium_is_not_millennium_management(self):
+        assert match_investor("대동밀레니엄") is None
+
+    def test_millennium_holdings_is_not_millennium_management(self):
+        assert match_investor("밀레니엄홀딩스") is None
+
+    def test_genuine_wellington_management_still_matches(self):
+        m = match_foreign_holder("Wellington Management Company LLP")
+        assert m is not None
+        assert m.canonical == "Wellington Management"
+
+    def test_genuine_wellington_management_korean_still_matches(self):
+        m = match_foreign_holder("웰링턴자산운용")
+        assert m is not None
+        assert m.canonical == "Wellington Management"
+
+    def test_genuine_capital_group_still_matches(self):
+        m = match_foreign_holder("Capital Group Companies")
+        assert m is not None
+        assert m.canonical == "Capital Group"
+
+    def test_genuine_capital_group_korean_still_matches(self):
+        m = match_foreign_holder("캐피털그룹자산운용")
+        assert m is not None
+        assert m.canonical == "Capital Group"
+
+    def test_genuine_millennium_still_matches(self):
+        m = match_foreign_holder("Millennium Management LLC")
+        assert m is not None
+        assert m.canonical == "Millennium"
+
+    def test_vanguard_kcgi_align_unaffected_by_denylist(self):
+        """Regression guard — the denylist must not collaterally block
+        unrelated existing allowlist entries."""
+        v = match_foreign_holder("Vanguard Group Inc.")
+        assert v is not None and v.canonical == "Vanguard"
+        assert match_activist("KCGI 제일호 사모투자합자회사") == "KCGI"
+        assert match_activist("얼라인파트너스자산운용") == "Align Partners"

@@ -1,6 +1,94 @@
 # Changelog
 
-## [Unreleased] — filing `market` + `red_flags` fields (feature pass)
+## 0.1.13 — 2026-07-12 (product hardening — corp resolver ranking, red_flags expansion, activist denylist, preferred-stock hint, majorstock enrichment, news classification fix)
+
+No new MCP tools, no new env vars, no commerce strings. Quality/correctness
+pass across the existing 7-tool surface.
+
+- **`corp_code.lookup_by_name`** — ranks all matches instead of returning
+  the first `limit` hits in raw index order (which could silently drop a
+  better match sitting later in the index). Sort key: exact name match →
+  prefix match → listed before unlisted → shorter name → most recently
+  modified.
+- **`corp_code.normalize_stock_code`** (new) — strips whitespace/case,
+  drops a trailing `.KS`/`.KQ`/`.KRX` exchange suffix, zero-pads a short
+  all-digit code to 6 chars. `lookup_by_stock_code` now normalizes through
+  it before the registry lookup.
+- **`server.resolve_stock_code`** — when a 6-digit code doesn't resolve
+  directly but is shaped like a Korean preferred-stock ticker (non-zero
+  last digit, e.g. `005935` for 삼성전자우), the response now carries an
+  additive `related_common_stock` hint pointing at the common-stock entry
+  (`005930`/삼성전자) — only when that lookup actually succeeds; no
+  preferred-stock corp_code is fabricated.
+- **`dart.tag_red_flags`** — 6 new tags (7 new keywords; `going_concern`
+  matches 2 keywords): `management_designation` (관리종목),
+  `delisting_risk` (상장폐지), `trading_halt` (거래정지), `reverse_split`
+  (주식병합), `short_term_borrowing` (단기차입금), `going_concern`
+  (계속기업/존속능력). `Filing.red_flags` now covers 13 tags total (was 7).
+- **`dart.list_major_holdings`** (new) — thin wrapper around DART's
+  `/majorstock.json` (대량보유상황보고), returns each reporter's current
+  holding % and change vs. the prior report. Cached 1h via the shared
+  default cache; errors wrapped in `DartError` with the same
+  status-code-only / exception-type-only message pattern as
+  `list_filings` (no URL/key leak).
+- **`_enrich.fill_holding_pct`** (new, `src/koreanpulse/_enrich.py`) —
+  best-effort enrichment for `monitor_activist_investors` /
+  `monitor_foreign_holders` rows: fills `Filing.holding_pct` /
+  `holding_pct_change` / `holder_reporter_ko` by matching `filer_name_ko`
+  against majorstock `repror` (exact, then substring either direction).
+  Non-throwing per corp_code (a DART failure leaves those fields `None`
+  rather than failing the tool call); capped at 8 distinct corp_codes per
+  call to bound DART-quota spend. Wired into both paid tools behind a new
+  `enrich_holdings: bool = True` parameter.
+- **`Filing.query_total_count` / `Filing.data_fetched_at`** (new,
+  `Optional`) — DART's `total_count` for the query before `limit`
+  truncation, and the UTC as-of timestamp of the live fetch. `None` on
+  rows served from a cache entry written before these fields existed.
+  Threaded through `list_filings` → `_parse_filing`.
+- **`activists.match_investor`** — new `_ALIAS_DENYLIST` blocks 3
+  false-positive collisions found by substring aliasing: `Wellington
+  Management` vs. `다니엘웰링턴` (Daniel Wellington watch brand's Korean
+  importer naming), `Capital Group` vs. `제일캐피탈`-prefixed
+  consumer-finance entities, `Millennium` vs. 3 unrelated DART-registered
+  entities (신라밀레니엄/대동밀레니엄/밀레니엄홀딩스, verified against the
+  corp_code registry). A denylisted record is skipped entirely for that
+  filer name; the scan continues for other allowlist entries. Also added
+  missing Korean aliases (화이트박스/화이트박스어드바이저스) for Whitebox
+  Advisors, which previously had none.
+- **`news.classify_industries`** — ASCII-only keywords (`DRAM`, `AI`,
+  `HBM`, ...) now match on a precompiled letter-boundary regex instead of
+  naive substring, fixing both directions of the same bug: false
+  positives (`dram` inside "k-dramas", `ai` inside "chairman") and false
+  negatives caught in review (`HBM3E`, `AI반도체`, plural `chipmakers`/
+  `GPUs` were failing to match under an earlier boundary attempt). Only
+  adjacent `A-Za-z` letters block a match — digits and Hangul both count
+  as boundaries (so `HBM3E` and `AI반도체` both match), with an optional
+  trailing plural (`e?s`) accepted. Korean keywords are unchanged
+  (substring match; no equivalent collision pattern observed).
+- **`news._fetch_rss`** — `title`/`description` now run through
+  `html.unescape()`. lxml's XML parser only decodes the 5 predefined XML
+  entities; named HTML entities some feeds embed (`&nbsp;`, `&rsquo;`,
+  `&mdash;`, `&hellip;`, ...) were surviving as literal text.
+- **`Article.snippet`** (new field) — ~300-char plain-text excerpt from
+  the RSS `description`, HTML-tag-stripped and whitespace-collapsed via
+  new `news._make_snippet`. No additional network fetch.
+- **`server.search_korean_industry_news`** — an unsupported `industries`
+  tag is no longer silently dropped; the tool now returns
+  `{"articles": [...], "unsupported_industries": [...],
+  "supported_industries": [...]}` instead of a bare list when any
+  requested tag doesn't match, so the caller can retry with a supported
+  tag.
+- Minor: `mcp_http.py`'s HTTP root body no longer names a pricing/signup
+  URL (commerce-policy consistency, same pattern as the 7/8 cleanup);
+  `billing/__init__.py` module docstring clarified as historical-only
+  (Lemon Squeezy — Polar has been the sole billing provider since
+  2026-05-06).
+- Tests: 285 → **365 passed + 1 skipped** (+80, 0 regressions;
+  `--ignore=tests/test_license_postgres`). Extended
+  `test_dart.py` / `test_server.py` / `test_news.py` / `test_activists.py`
+  / `test_corp_code.py` / `test_filing_cache.py`, all synthetic fixtures.
+
+### Filing `market` + `red_flags` fields (feature pass, 2026-07-11)
 
 Additive fields on the `Filing` model — surfaced by `track_korean_filings`
 and inherited by `monitor_activist_investors` / `monitor_foreign_holders`.
@@ -24,7 +112,7 @@ commerce strings.
   (`tests/test_filing_market_redflags.py`) — corp_cls 4-code + absent/empty/
   unknown cases, and each red-flag keyword plus composite/dedup/no-match.
 
-## [Unreleased] — error-surface symmetry (round-2 quality pass)
+### Error-surface symmetry (round-2 quality pass, 2026-07-10)
 
 Behaviour-preserving robustness. No new MCP tools, no new env vars, no
 commerce strings. Every DART / translation entry point now hands callers a

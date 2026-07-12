@@ -34,6 +34,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from dataclasses import asdict, dataclass
 from datetime import date, datetime, timezone, timedelta
 from typing import Optional
 
@@ -145,6 +146,19 @@ def _yyyymmdd(d: date | str) -> str:
     return d.strftime("%Y%m%d")
 
 
+def _coerce_optional_int(value: object) -> Optional[int]:
+    """Best-effort int coercion for a DART numeric-as-string field.
+
+    Returns None (never raises) when `value` is missing or not parseable.
+    """
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 async def list_filings(
     *,
     corp_code: Optional[str] = None,
@@ -241,6 +255,14 @@ async def list_filings(
     if status == "013":
         return []
 
+    # `total_count` is DART's full match count for the query before our
+    # `page_count`/`limit` truncation — surfaced on each row so a caller
+    # can tell "you got N of total_count" without a second request.
+    # `data_fetched_at` marks this as a live DART fetch (as opposed to a
+    # cache hit replaying a previously-fetched row) — see list_filings_cached.
+    query_total_count = _coerce_optional_int(data.get("total_count"))
+    fetched_at = datetime.now(timezone.utc)
+
     filings: list[Filing] = []
     for row in data.get("list", []):
         # A single malformed row (non-dict, or missing the load-bearing
@@ -252,8 +274,180 @@ async def list_filings(
         if not isinstance(row, dict) or not str(row.get("rcept_no") or "").strip():
             logger.warning("dart: skipping malformed filing row: %r", row)
             continue
-        filings.append(_parse_filing(row, requested_type=pblntf_ty))
+        filings.append(
+            _parse_filing(
+                row,
+                requested_type=pblntf_ty,
+                query_total_count=query_total_count,
+                data_fetched_at=fetched_at,
+            )
+        )
     return filings
+
+
+# ── Major shareholding reports (대량보유상황보고) ──────────────────────────
+# `/majorstock.json` is a distinct DART endpoint from `/list.json`: it
+# returns each reporter's (repror) current holding percentage and its
+# change versus the prior report, which the filing-list endpoint doesn't
+# carry. Paid-tier enrichment input for `monitor_activist_investors` /
+# `monitor_foreign_holders` (see server.py / _enrich.py).
+
+_MAJOR_HOLDING_CACHE_NAMESPACE = "dart_majorstock"
+# Majorstock rows are a point-in-time snapshot per corp_code (not a
+# date-ranged query), so a flat TTL is enough — 1 hour matches the "recent"
+# tier `_ttl_for_query` uses for filings filed in the last week.
+_MAJOR_HOLDING_TTL_SECONDS = 3600
+
+
+@dataclass(frozen=True)
+class MajorHolding:
+    """One row from DART's majorstock.json (대량보유상황보고).
+
+    Only the 3 fields consumed by the paid-tier enrichment are parsed —
+    `repror` (보고자, the reporting entity), `stkrt` (보유비율, current
+    holding %), and `stkrt_irds` (증감, change vs the prior report). DART
+    returns other fields (report reason, share counts, contract details)
+    that we deliberately do not surface here — don't add them without a
+    verified live payload to parse against (no fabricated fields).
+    """
+
+    repror: str
+    stkrt: Optional[float]
+    stkrt_irds: Optional[float]
+
+
+def _coerce_optional_float(value: object) -> Optional[float]:
+    """Best-effort float coercion for a DART numeric-as-string field.
+
+    Returns None (never raises) when `value` is missing, empty, or not
+    parseable — matching `list_filings`' policy of degrading a single bad
+    field rather than crashing the whole response.
+    """
+    if value is None or value == "":
+        return None
+    try:
+        return float(str(value).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+
+
+async def list_major_holdings(
+    corp_code: str,
+    *,
+    client: Optional[httpx.AsyncClient] = None,
+) -> list[MajorHolding]:
+    """Fetch DART major-shareholding-report rows. Thin wrapper around
+    `/majorstock.json`.
+
+    Cached via the shared default cache (see `set_default_cache` /
+    `get_default_cache`) for `_MAJOR_HOLDING_TTL_SECONDS` — a cache hit
+    consumes no DART quota and does not bump the daily counter.
+
+    Args:
+        corp_code: 8-digit DART corp code.
+        client: optional shared httpx client.
+
+    Returns:
+        Parsed MajorHolding rows (most-recent report order, as DART
+        returns them). Empty list when DART has no majorstock report on
+        file for this corp (status '013').
+
+    Raises:
+        DartError: API returned a non-`000`/`013` status, or the
+            request/response failed. Mirrors `list_filings`' error
+            handling exactly: an HTTPStatusError surfaces only the status
+            code, any other transport failure surfaces only the exception
+            type name — never the request URL or `crtfc_key`, which
+            `params=` below puts on the query string.
+    """
+    cache = get_default_cache()
+    key = cache_key(_MAJOR_HOLDING_CACHE_NAMESPACE, corp_code)
+    cached = await cache.get(key)
+    if cached is not None:
+        try:
+            return [MajorHolding(**item) for item in cached]
+        except (TypeError, ValueError) as exc:
+            logger.warning("majorstock cache: stale schema, refetching: %s", exc)
+
+    params = {
+        "crtfc_key": _api_key(),
+        "corp_code": corp_code,
+    }
+
+    owns_client = client is None
+    client = client or httpx.AsyncClient(timeout=30.0)
+    try:
+        # Soft daily-quota guard before throttle — fail fast if we're over budget.
+        await _bump_daily_counter(1)
+        await _throttle.acquire(timeout=2.0, label="dart:majorstock")
+
+        async def _call() -> httpx.Response:
+            return await client.get(f"{DART_API_BASE}/majorstock.json", params=params)
+
+        try:
+            resp = await retry_async(_call, max_attempts=3, base_seconds=0.5)
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise DartError(
+                f"DART majorstock.json returned HTTP {exc.response.status_code}. "
+                f"This usually means DART is rate-limiting or in maintenance; "
+                f"retry shortly."
+            ) from exc
+        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+            raise DartError(
+                f"DART majorstock.json request failed after retries: "
+                f"{type(exc).__name__}"
+            ) from exc
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            body_preview = (resp.text or "")[:120].replace("\n", " ")
+            raise DartError(
+                f"DART returned a non-JSON body (status {resp.status_code}): "
+                f"{body_preview!r}. This usually means DART is in maintenance "
+                f"or the endpoint returned an error page."
+            ) from exc
+    finally:
+        if owns_client:
+            await client.aclose()
+
+    if not isinstance(data, dict):
+        raise DartError(f"DART returned an unexpected JSON shape: {type(data).__name__}")
+
+    status = data.get("status")
+    if status not in ("000", "013"):
+        # 000 = OK, 013 = no result (DART convention). Anything else = error.
+        msg = data.get("message", "unknown DART error")
+        raise DartError(f"DART {status}: {msg}")
+
+    holdings: list[MajorHolding] = []
+    if status == "000":
+        for row in data.get("list", []):
+            # A malformed row (non-dict, or missing `repror` — the field
+            # both the corp-level match key and the caller's best-match
+            # logic key off) must not crash the whole request.
+            if not isinstance(row, dict):
+                logger.warning("dart: skipping malformed majorstock row: %r", row)
+                continue
+            repror = str(row.get("repror") or "").strip()
+            if not repror:
+                logger.warning("dart: skipping majorstock row missing repror: %r", row)
+                continue
+            holdings.append(
+                MajorHolding(
+                    repror=repror,
+                    stkrt=_coerce_optional_float(row.get("stkrt")),
+                    stkrt_irds=_coerce_optional_float(row.get("stkrt_irds")),
+                )
+            )
+
+    try:
+        serialized = [asdict(h) for h in holdings]
+        await cache.set(key, serialized, ttl_seconds=_MAJOR_HOLDING_TTL_SECONDS)
+    except Exception as exc:  # noqa: BLE001 — cache failure must not block the response
+        logger.warning("majorstock cache write failed (suppressed): %s", exc)
+
+    return holdings
 
 
 # ── Cached filing list ─────────────────────────────────────────────────────
@@ -480,6 +674,15 @@ _RED_FLAG_KEYWORDS: tuple[tuple[str, str], ...] = (
     ("불성실공시", "disclosure_violation"),
     ("유상증자", "rights_issue"),
     ("감자", "capital_reduction"),
+    # Added 2026-07-12 — broaden distress/governance coverage beyond the
+    # original 9 keywords.
+    ("관리종목", "management_designation"),
+    ("상장폐지", "delisting_risk"),
+    ("거래정지", "trading_halt"),
+    ("주식병합", "reverse_split"),
+    ("단기차입금", "short_term_borrowing"),
+    ("계속기업", "going_concern"),
+    ("존속능력", "going_concern"),
 )
 
 
@@ -501,13 +704,26 @@ def tag_red_flags(title: str) -> list[str]:
     return tags
 
 
-def _parse_filing(row: dict, *, requested_type: Optional[str] = None) -> Filing:
+def _parse_filing(
+    row: dict,
+    *,
+    requested_type: Optional[str] = None,
+    query_total_count: Optional[int] = None,
+    data_fetched_at: Optional[datetime] = None,
+) -> Filing:
     """Convert one DART row dict into a Filing model.
 
     Args:
         row: DART list.json item.
         requested_type: if the caller filtered the list by `pblntf_ty`, pass it
             through so we trust the request over the title heuristic.
+        query_total_count: DART's `total_count` for the query this row came
+            from — threaded through unchanged from `list_filings`, not
+            re-derived per row.
+        data_fetched_at: UTC timestamp of the live DART fetch. Omitted (None)
+            for rows reconstructed from a cache entry — see
+            `list_filings_cached`, which round-trips through
+            `Filing.model_dump`/`model_validate` instead of this function.
     """
     receipt_no = str(row.get("rcept_no") or "").strip()
     title = row.get("report_nm", "").strip()
@@ -540,4 +756,6 @@ def _parse_filing(row: dict, *, requested_type: Optional[str] = None) -> Filing:
         dart_url=f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={receipt_no}",
         filer_name_ko=(row.get("flr_nm") or "").strip() or None,
         attribution=DART_ATTRIBUTION,
+        query_total_count=query_total_count,
+        data_fetched_at=data_fetched_at,
     )

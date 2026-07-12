@@ -20,7 +20,7 @@ from agentprod import CostTracker
 from fastmcp import FastMCP
 
 from koreanpulse import __version__
-from koreanpulse._enrich import fill_corp_name_en
+from koreanpulse._enrich import fill_corp_name_en, fill_holding_pct
 from koreanpulse.activists import (
     match_activist,
     match_foreign_holder,
@@ -31,6 +31,7 @@ from koreanpulse.corp_code import (
     ensure_index_loaded,
     lookup_by_name,
     lookup_by_stock_code,
+    normalize_stock_code,
 )
 from koreanpulse.dart import list_filings_cached, set_default_cache as _set_dart_cache
 from koreanpulse.license import (
@@ -38,7 +39,7 @@ from koreanpulse.license import (
     validate_license_or_raise,
 )
 from koreanpulse.models import ActivistFiling, Article, Filing, ForeignHolderFiling
-from koreanpulse.news import fetch_industry_news
+from koreanpulse.news import INDUSTRY_KEYWORDS, fetch_industry_news
 from koreanpulse.translate import Translator
 
 # DART filings are stamped in KST (UTC+9). When a US/EU user asks for
@@ -205,6 +206,13 @@ async def track_korean_filings(
           - disclosure_violation — unfaithful-disclosure designation (불성실공시)
           - rights_issue — paid-in capital increase (유상증자)
           - capital_reduction — capital reduction (감자)
+          - management_designation — administrative-issue designation (관리종목)
+          - delisting_risk — delisting event/risk (상장폐지)
+          - trading_halt — trading suspension (거래정지)
+          - reverse_split — share consolidation (주식병합)
+          - short_term_borrowing — short-term borrowing disclosure (단기차입금)
+          - going_concern — going-concern doubt (계속기업/존속능력)
+        - `query_total_count` / `data_fetched_at`: DART's full match count before this response's `limit` truncation, and the UTC as-of timestamp of the live fetch (None on rows served from cache).
     """
     logger.info("tool_call: track_korean_filings days=%d limit=%d translate=%s summarize=%s", days, limit, translate, summarize)
     await _gate(license_key, units=1 + (1 if summarize else 0))
@@ -293,14 +301,47 @@ async def lookup_corp_code(
 async def resolve_stock_code(
     stock_code: str,
     license_key: Optional[str] = None,
-) -> Optional[CorpEntry]:
+) -> Optional[CorpEntry] | dict:
     """KRX 6-digit ticker → DART corp entry resolver. Free tier.
 
     Use this tool when the user provides a 6-digit Korean stock code (e.g. 005930 for Samsung Electronics, 000660 for SK hynix, 035420 for NAVER, 035720 for Kakao, 005380 for Hyundai Motor) and you need the company name + corp_code for downstream filings or industry-news lookups.
+
+    When the code is unresolved but looks like a Korean preferred-stock ticker (6 digits, non-zero last digit, e.g. 005935 for 삼성전자우), the response carries an additive `related_common_stock` hint pointing at the common-stock entry — the corp registry only maps common stock, so no preferred-stock corp_code is fabricated.
     """
     logger.info("tool_call: resolve_stock_code stock_code=%s", str(stock_code)[:10])
     await _gate(license_key, units=1)
-    return await lookup_by_stock_code(stock_code)
+    result = await lookup_by_stock_code(stock_code)
+    if result is not None:
+        return result
+
+    hint = await _related_common_stock_hint(stock_code)
+    if hint is not None:
+        return {"related_common_stock": hint}
+    return None
+
+
+async def _related_common_stock_hint(stock_code: str) -> Optional[dict]:
+    """Best-effort hint for a 6-digit code shaped like a Korean
+    preferred-stock ticker that DART's corp registry doesn't resolve
+    directly (the registry only maps common stock).
+
+    Korean preferred tickers conventionally share the common stock's first
+    5 digits with a non-zero last digit (e.g. 005935 for 삼성전자우 vs
+    005930 for 삼성전자 common). This tries the common-stock candidate
+    (last digit zeroed) and only returns a hint when that lookup actually
+    resolves — never invents a preferred-stock corp_code/name.
+    """
+    code = normalize_stock_code(stock_code)
+    if not (code.isdigit() and len(code) == 6 and code[-1] != "0"):
+        return None
+    common = await lookup_by_stock_code(code[:-1] + "0")
+    if common is None:
+        return None
+    return {
+        "stock_code": common.stock_code,
+        "corp_name": common.corp_name,
+        "note": "preferred-stock ticker; corp registry only maps common stock",
+    }
 
 
 @mcp.tool(
@@ -318,7 +359,7 @@ async def search_korean_industry_news(
     limit: int = 20,
     translate: bool = True,
     license_key: Optional[str] = None,
-) -> list[Article]:
+) -> list[Article] | dict:
     """Korean industry news search across 16 sectors with on-demand English translation. Sources: 전자신문 (etnews) + 한국경제 (hankyung) + The Korea Herald (English-native) + 지디넷코리아 (zdnet). Free tier.
 
     Use this tool when the user asks about: Korean industry trends, sector-specific news on Korean equities (Korean semiconductors / K-battery / K-shipbuilding / K-biotech / K-defense / Korean auto / EV charging / Korean AI / steel / petrochem / construction / fintech / gaming / e-commerce / telco / energy), recent corporate developments not yet captured in DART filings, English summaries of Korean industry coverage. Industry tags listed below — pass them in `industries` to filter.
@@ -327,7 +368,8 @@ async def search_korean_industry_news(
         industries: filter to one or more industry tags. Available:
             semiconductor, shipbuilding, battery, biotech, defense, auto,
             ev_charging, ai, steel, petrochem, construction, fintech, gaming,
-            ecommerce, telco, energy.
+            ecommerce, telco, energy. An unrecognized tag is never silently
+            dropped or errored — see Returns below.
         sources: filter to source keys (etnews, hankyung, koreaherald, zdnet).
             None = all. koreaherald is English-native — its titles are
             returned as-is (no ko->en translation round-trip needed).
@@ -338,10 +380,22 @@ async def search_korean_industry_news(
         license_key: required when license gate is enabled.
 
     Returns:
-        Articles sorted by published_at desc.
+        A bare list of Articles sorted by published_at desc — same shape
+        as before — when every requested `industries` tag is recognized
+        (or `industries` is omitted). If one or more requested tags is NOT
+        a supported industry, the return value is instead a dict:
+        `{"articles": [...], "unsupported_industries": [...], "supported_industries": [...]}`
+        — articles for the recognized tags still come back (an
+        unsupported tag is dropped from the filter, not treated as an
+        error), and the extra fields tell the caller which of their tags
+        didn't match so they can retry with a supported one.
     """
     logger.info("tool_call: search_korean_industry_news industries=%s sources=%s limit=%d translate=%s", industries, sources, limit, translate)
     await _gate(license_key, units=1)
+
+    unsupported_industries = (
+        [i for i in industries if i not in INDUSTRY_KEYWORDS] if industries else []
+    )
 
     articles = await fetch_industry_news(
         industries=industries, source_keys=sources, limit=min(limit, 50)
@@ -358,6 +412,12 @@ async def search_korean_industry_news(
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("translate failed for article: %s", exc)
 
+    if unsupported_industries:
+        return {
+            "articles": articles,
+            "unsupported_industries": unsupported_industries,
+            "supported_industries": list(INDUSTRY_KEYWORDS.keys()),
+        }
     return articles
 
 
@@ -376,6 +436,7 @@ async def monitor_activist_investors(
     activist_only: bool = False,
     translate: bool = True,
     limit: int = 50,
+    enrich_holdings: bool = True,
     license_key: Optional[str] = None,
 ) -> list[ActivistFiling] | str:
     """Korean activist investor tracking — activist filer classification on DART 5%-rule (주식등의대량보유상황보고서) shareholding disclosures. Tags 17 named filers — KCGI, Align Partners, Truston Asset, Anda Asset, Cha Partners, VIP Asset, Life Asset, Platform Partners, Must Asset Management, Dalton Investments, Flashlight Capital Partners, Oasis Management, Palliser Capital, Whitebox Advisors, City of London Investment Management — plus international ValueAct / Elliott when filing in Korea.
@@ -411,10 +472,18 @@ async def monitor_activist_investors(
         activist_only: if True, drop rows that didn't match a known activist.
         translate: server-side EN translation of titles (cached).
         limit: max rows (≤100).
+        enrich_holdings: if True (default), rows matched to a known activist
+            get their `holding_pct` / `holding_pct_change` / `holder_reporter_ko`
+            filled from DART's majorstock.json (best-effort — a lookup
+            failure leaves those fields None rather than failing the call).
+            Capped at 8 distinct corp_codes per call.
         license_key: required when license gate is enabled.
 
     Returns:
-        ActivistFiling rows ordered by filing date desc.
+        ActivistFiling rows ordered by filing date desc. `query_total_count`
+        / `data_fetched_at` carry DART's full match count before this
+        response's `limit` truncation and the UTC as-of timestamp of the
+        live fetch (None on rows served from cache).
     """
     logger.info("tool_call: monitor_activist_investors days=%d activist_only=%s limit=%d corp_code=%s license_key_set=%s", days, activist_only, limit, company_corp_code, license_key is not None)
     paywall = await _paid_gate(
@@ -453,6 +522,11 @@ async def monitor_activist_investors(
 
     enriched = enriched[:limit]
 
+    if enrich_holdings:
+        matched = [a for a in enriched if a.is_likely_activist]
+        if matched:
+            await fill_holding_pct(matched, op="monitor_activist_investors")
+
     if translate and enriched:
         translator = _get_translator()
         for af in enriched:
@@ -483,6 +557,7 @@ async def monitor_foreign_holders(
     origin: Optional[str] = None,
     translate: bool = True,
     limit: int = 50,
+    enrich_holdings: bool = True,
     license_key: Optional[str] = None,
 ) -> list[ForeignHolderFiling] | str:
     """Monitor foreign investor activity in Korean stocks — foreign-holder classification on DART 5%-rule disclosures by global asset managers and sovereign wealth funds. Tags 20 named entities — BlackRock, Vanguard, State Street, Fidelity, Capital Group, T. Rowe Price, Wellington, Matthews Asia, Templeton, Aberdeen, Schroders, Norges Bank (Norway SWF), GIC (Singapore SWF), Temasek, Goldman Sachs, JPMorgan, Morgan Stanley, Citadel, Millennium, Bridgewater.
@@ -526,11 +601,19 @@ async def monitor_foreign_holders(
         origin: optional filter — one of 'us', 'uk', 'eu', 'other'.
         translate: server-side EN translation of titles (cached).
         limit: max rows (≤100).
+        enrich_holdings: if True (default), rows get their `holding_pct` /
+            `holding_pct_change` / `holder_reporter_ko` filled from DART's
+            majorstock.json (best-effort — a lookup failure leaves those
+            fields None rather than failing the call). Capped at 8 distinct
+            corp_codes per call.
         license_key: required when license gate is enabled.
 
     Returns:
         ForeignHolderFiling rows ordered by filing date desc. Each row
         carries `holder_label` (canonical English) and `holder_origin`.
+        `query_total_count` / `data_fetched_at` carry DART's full match
+        count before this response's `limit` truncation and the UTC as-of
+        timestamp of the live fetch (None on rows served from cache).
     """
     logger.info("tool_call: monitor_foreign_holders days=%d limit=%d corp_code=%s license_key_set=%s", days, limit, company_corp_code, license_key is not None)
     paywall = await _paid_gate(
@@ -569,6 +652,9 @@ async def monitor_foreign_holders(
         enriched.append(fhf)
 
     enriched = enriched[:limit]
+
+    if enrich_holdings and enriched:
+        await fill_holding_pct(enriched, op="monitor_foreign_holders")
 
     if translate and enriched:
         translator = _get_translator()
