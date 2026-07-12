@@ -2,7 +2,7 @@
   "$schema": "https://modelcontextprotocol.io/schemas/mcp-server-descriptor.json",
   "name": "koreanpulse",
   "displayName": "koreanpulse — Korean Stock Market Intelligence (DART, Foreign & Activist Investors)",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "Real-time Korean stock market intelligence for AI assistants, as an MCP server. Track Korean DART (전자공시) corporate disclosures as they are filed, monitor foreign investor holding changes (BlackRock / Vanguard / Norges / GIC / Temasek + more) and activist investor campaigns (KCGI / Align / ValueAct / Elliott), and search classified Korean industry news — all KOSPI / KOSDAQ / KRX data, delivered in English with named-entity classification. Free public daily snapshot at koreanpulse.dev/today. A hosted Cloud tier adds a watchlist-to-alert workflow shipping Q3 2026 on top of the free daily snapshot. Data and intelligence only — not buy/sell recommendations. OSS self-host (AGPL) available.",
   "homepage": "https://koreanpulse.dev",
   "repository": "https://github.com/whdrnr2583-cmd/koreanpulse",

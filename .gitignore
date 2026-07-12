@@ -39,3 +39,6 @@ next-env.d.ts
 # MCPB build artefacts (published via Smithery, not git)
 dist-mcpb/
 .vercel
+
+# Local Claude memory (project SoT, not committed)
+.claude/memory/

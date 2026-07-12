@@ -2,17 +2,20 @@
 # https://smithery.ai/docs/build/project-config
 
 name: koreanpulse
-displayName: koreanpulse — English-first Korean Equity Intelligence
+displayName: koreanpulse — Korean Stock Market Intelligence (DART, Foreign & Activist Investors)
 description: |
-  English-first Korean equity intelligence as an MCP server. Query
-  Korean DART (전자공시) filings, KOSPI/KOSDAQ disclosures, foreign-holder
-  5%-rule flows (BlackRock / Vanguard / Norges / GIC / Temasek + 15 more)
-  and Korean activist filings (KCGI / Align / ValueAct / Elliott) —
-  translated to English on demand with named-entity classification.
+  Real-time Korean stock market intelligence for AI assistants, as an
+  MCP server. Track Korean DART (전자공시) corporate disclosures as they
+  are filed, monitor foreign investor holding changes (BlackRock /
+  Vanguard / Norges / GIC / Temasek + 15 more) and activist investor
+  campaigns (KCGI / Align / ValueAct / Elliott), and search Korean
+  industry news across classified categories — all KOSPI / KOSDAQ /
+  KRX data, delivered in English with named-entity classification.
   Free public daily snapshot at koreanpulse.dev/today. Connect via
   hosted remote MCP (mcp.koreanpulse.dev/mcp) for ChatGPT / Claude.ai,
-  or pip install for Claude Desktop / Cursor. OSS self-host (AGPL);
-  paid Cloud tiers for the watchlist-to-alert workflow (ships Q3 2026).
+  or pip install for Claude Desktop / Cursor. Data and intelligence
+  only — not buy/sell recommendations. OSS self-host (AGPL); paid
+  Cloud tiers for the watchlist-to-alert workflow (ships Q3 2026).
 homepage: https://koreanpulse.dev
 repository: https://github.com/whdrnr2583-cmd/koreanpulse
 license: AGPL-3.0
@@ -21,12 +24,16 @@ icon: https://raw.githubusercontent.com/whdrnr2583-cmd/koreanpulse/main/docs/ass
 tags:
   - korea
   - korean-stocks
+  - korean-market-data
+  - stock-market
   - finance
   - hedge-fund
   - dart
+  - dart-api
   - kospi
   - kosdaq
   - activist
+  - foreign-investors
   - disclosures
   - research
   - industry

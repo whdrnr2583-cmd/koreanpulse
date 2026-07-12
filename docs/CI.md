@@ -35,14 +35,15 @@ the repo is still private.
    - Optional: add required reviewers so a release tag still needs your manual
      approval before it pushes to PyPI
 
-After that, every `git push origin v0.1.0` cleanly publishes.
+After that, every `git push origin v<NEW_VERSION>` cleanly publishes.
 
 ### Cutting a release
 
 ```bash
 # Update version in pyproject.toml first, then:
-git commit -am "release v0.1.0"
-git tag v0.1.0
+# Substitute v<NEW_VERSION> (e.g., v0.2.0).
+git commit -am "release v<NEW_VERSION>"
+git tag v<NEW_VERSION>
 git push origin main --tags
 ```
 

@@ -4,27 +4,30 @@ import "./globals.css";
 
 const SITE = "https://koreanpulse.dev";
 const DESCRIPTION =
-  "English-first Korean equity intelligence MCP — DART filings, KOSPI/KOSDAQ " +
-  "disclosures, foreign-holder & activist 5%-rule flows, translated to English.";
+  "Real-time Korean stock market intelligence for AI assistants — track DART " +
+  "filings, foreign & activist investor activity, and classified Korean " +
+  "industry news, in English. MCP server for ChatGPT, Claude, and Cursor.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
-  title: "koreanpulse — Korean equity intelligence MCP (DART, KOSPI/KOSDAQ)",
+  title:
+    "koreanpulse — Korean Stock Market Intelligence for AI assistants (DART, KOSPI/KOSDAQ)",
   description: DESCRIPTION,
   keywords: [
-    "Korean equity intelligence",
+    "Korean stock market data",
     "Korean stocks",
-    "DART filings",
+    "track Korean DART filings",
+    "DART API in English",
     "KOSPI",
     "KOSDAQ",
-    "MCP server",
-    "Korean activist investors",
-    "foreign-holder 5%-rule disclosure",
-    "Korean stock data",
+    "MCP server for Korean stocks",
+    "Korean activist investor tracking",
+    "foreign investor activity Korean stocks",
+    "Korean market data for AI agents",
   ],
   alternates: { canonical: SITE },
   openGraph: {
-    title: "koreanpulse — Korean equity intelligence MCP",
+    title: "koreanpulse — Korean Stock Market Intelligence for AI assistants",
     description: DESCRIPTION,
     type: "website",
     url: SITE,
@@ -32,7 +35,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "koreanpulse — Korean equity intelligence MCP",
+    title: "koreanpulse — Korean Stock Market Intelligence for AI assistants",
     description: DESCRIPTION,
   },
 };
@@ -45,9 +48,9 @@ const jsonLd = {
   operatingSystem: "MCP client — ChatGPT, Claude.ai, Cursor, Claude Desktop",
   url: SITE,
   description:
-    "English-first Korean equity intelligence MCP server — DART (전자공시) filings, " +
-    "KOSPI/KOSDAQ disclosures, foreign-holder and activist 5%-rule flows, and Korean " +
-    "industry news, translated to English on demand.",
+    "Korean stock market intelligence MCP server for AI assistants — track DART " +
+    "(전자공시) filings, foreign investor activity, activist investor campaigns, and " +
+    "KOSPI/KOSDAQ disclosures, with classified Korean industry news, all in English.",
   featureList: [
     "DART filing tracking with English translation",
     "Korean activist investor 5%-rule classification (KCGI, Align, ValueAct, Elliott)",

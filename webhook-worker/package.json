@@ -2,7 +2,7 @@
   "name": "koreanpulse-webhook",
   "version": "0.0.0",
   "private": true,
-  "description": "Cloudflare Worker — Lemon Squeezy webhook + license validation, D1-backed",
+  "description": "Cloudflare Worker — Polar webhook + license validation, D1-backed (Lemon Squeezy handler retained as historical reference; LS store application was declined 2026-05-06)",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",

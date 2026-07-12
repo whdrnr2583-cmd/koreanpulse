@@ -80,12 +80,8 @@ _ROOT_BODY = (
     "  monitor_activist_investors (gate), monitor_foreign_holders (gate),\n"
     "  resolve_stock_code, lookup_corp_code, koreanpulse_about\n"
     "\n"
-    "2 paid tools (Solo $29/mo+): activist_investors + foreign_holders\n"
-    "  classification (KCGI / Align / BlackRock / Norges / etc).\n"
-    "\n"
-    "Pricing + signup:  https://koreanpulse.dev/#pricing\n"
-    "Free daily digest: https://koreanpulse.dev/today\n"
     "Source (AGPL):     https://github.com/whdrnr2583-cmd/koreanpulse\n"
+    "Free daily digest: https://koreanpulse.dev\n"
     "PyPI:              https://pypi.org/project/koreanpulse/\n"
 )
 

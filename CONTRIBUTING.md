@@ -95,8 +95,9 @@ See `docs/CI.md`. tl;dr:
 
 ```bash
 # Bump version in pyproject.toml, update CHANGELOG.md
-git commit -am "release v0.1.0"
-git tag v0.1.0
+# Substitute v<NEW_VERSION> (e.g., v0.2.0).
+git commit -am "release v<NEW_VERSION>"
+git tag v<NEW_VERSION>
 git push origin main --tags
 ```
 

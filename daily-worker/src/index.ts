@@ -156,11 +156,17 @@ async function buildDaily(
   // Single DART API call services both activist + foreign-flow streams.
   // 7-day window catches bursty 5%-rule filings without overwhelming the
   // page. Both streams sorted most-recent first.
-  const { activists, foreign_flows } = await fetchClassifiedFilings(env, 7);
+  //
+  // safeClassifiedFilings / safeTopFilings: DART API is the most common
+  // failure point (Friday peak load, transient 5xx, redirect blocks). A
+  // throw here previously aborted buildDaily entirely, leaving today.json
+  // stale with no trace. Wrapping in safe helpers means a DART outage
+  // produces an empty-but-dated snapshot rather than a missed build.
+  const { activists, foreign_flows } = await safeClassifiedFilings(env, 7);
 
   // Major filings: last 1 day, top 10 — the "what big companies actually
   // said today" feed.
-  const topRaw = await fetchTopFilings(env, 1, 10);
+  const topRaw = await safeTopFilings(env, 1, 10);
 
   // Translate / summarise — bounded so the cron stays under the 30-second
   // free-tier CPU limit even on cold cache.
@@ -319,6 +325,36 @@ async function safeSummarise(env: Env, text: string): Promise<string | undefined
   } catch (exc) {
     console.warn("summarise fallthrough", exc);
     return undefined;
+  }
+}
+
+// DART-level safe wrappers — a DART API failure (Friday peak load, transient
+// 5xx, UA redirect) must not abort the entire cron build. An empty-but-dated
+// snapshot is far better than a stale today.json that silently freezes.
+async function safeClassifiedFilings(
+  env: Env,
+  daysBack: number,
+): Promise<Awaited<ReturnType<typeof fetchClassifiedFilings>>> {
+  try {
+    return await fetchClassifiedFilings(env, daysBack);
+  } catch (exc) {
+    const message = exc instanceof Error ? exc.message : String(exc);
+    console.error(`[dart] fetchClassifiedFilings FAILED: ${message}`);
+    return { activists: [], foreign_flows: [] };
+  }
+}
+
+async function safeTopFilings(
+  env: Env,
+  daysBack: number,
+  limit: number,
+): Promise<Awaited<ReturnType<typeof fetchTopFilings>>> {
+  try {
+    return await fetchTopFilings(env, daysBack, limit);
+  } catch (exc) {
+    const message = exc instanceof Error ? exc.message : String(exc);
+    console.error(`[dart] fetchTopFilings FAILED: ${message}`);
+    return [];
   }
 }
 

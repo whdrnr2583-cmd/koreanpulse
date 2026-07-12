@@ -8,6 +8,7 @@ If conversion is too low, this document doubles as the diagnostic for which leve
 
 ## Hard rules (memory-pinned)
 
+- **Outbound channels = Gmail + HN only** (set 2026-05-14, reaffirmed 2026-05-23, per `feedback_gmail_only_outbound`). All external outbound is restricted to: (a) Gmail email, (b) Hacker News (warming comments + one Show HN). Everything else — platform DMs and comments on LinkedIn / Substack / Twitter / Reddit / Discord / Slack / Telegram / global Product Hunt — is **banned**. **This supersedes the per-channel list below:** any channel that is not Gmail or HN (or fully passive, e.g. marketplace listings / SEO) is blocked regardless of how it's described in this doc.
 - **No SNS broadcasting.** No Twitter/X, no LinkedIn posts, no Instagram, no YouTube. (User constraint, multiple times pinned.)
 - **No paid ads.** Capital-increase block applies — bootstrap discovery only.
 - **No cold sales calls or demos.** comm-0 constraint. All outreach is async, opt-in, self-serve.
@@ -67,27 +68,31 @@ already drafted in `docs/listings/`.
 - Draft already lives at [`docs/HN_LAUNCH.md`](HN_LAUNCH.md) — post that body verbatim
 - Comments may need replies (comm OK in this context — public Q&A, not 1:1 sales)
 
-#### Channel 3 — Multiplier DM (2 contacts)
+#### Channel 3 — Multiplier outreach (2 contacts) — ⚠️ Gmail-only
 
 Two publishers, not buyers. Goal = mention to their subscribers.
 
-- Sanghyun Park (Clepsydra Capital, Smartkarma) — DM via Smartkarma profile
-- Douglas Kim (Douglas Research Insights, Substack) — Substack contact form
+- Sanghyun Park (Clepsydra Capital, Smartkarma)
+- Douglas Kim (Douglas Research Insights, Substack)
+
+⚠️ **Updated 2026-05-24 per outbound rule:** Smartkarma DM and the
+Substack contact form are platform DMs and are **banned**. Reach these
+two **only if a public, Gmail-reachable email address exists** (then it
+is just cold email — Channel "Cold email" rules apply). If no direct
+email is findable, this channel is **dropped** — do not DM via the
+platforms.
 
 Drafts at `_workspace/multiplier_outreach_2026-05-05.md`. 1-shot, no
 follow-up, same rule as cold email.
 
-#### Channel 4 — Reddit (answer-only, no link-drop self-posts)
+#### Channel 4 — Reddit — 🚫 BANNED (outbound rule)
 
-Subreddits where Korea-curious investors hang out:
+⚠️ **Disabled 2026-05-24 per `feedback_gmail_only_outbound`.** Reddit
+comments and posts are banned outbound. This channel is **not active**.
+The subreddit list below is kept for historical reference only — do not
+post or comment.
 
-- [r/KoreanFinance](https://reddit.com/r/KoreanFinance) — small but exact-fit (~10k members 2026-05)
-- [r/EmergingMarkets](https://reddit.com/r/EmergingMarkets) — Korea questions surface regularly
-- [r/SecurityAnalysis](https://reddit.com/r/SecurityAnalysis) — Korea-tagged threads only, high quality bar
-
-Pattern: answer the question first; one-line link at the end **only when
-the question actually involves Korean data**. No self-posts marketing
-the product. No cross-posting.
+~~r/KoreanFinance, r/EmergingMarkets, r/SecurityAnalysis~~ — blocked.
 
 ### Passive channel (v0)
 
@@ -108,9 +113,8 @@ See `_workspace/deferred_channels_2026-05-05.md` for the full memo. One-line sum
   finished; KSEA/AKPA/KAMPiNA confirmed off-ICP. Activate only after audience
   composition data shows >30% diaspora signups.
 - **Indie Hackers / Show HN W11–W12 retro** — reuse Show HN body if HN gives ≥1 paid signup.
-- **Telegram alpha-drop channels** — high noise, guilt-by-association risk; never v0.
-- **Crypto Discord (Hyperliquid / Solana / ByBit / OKX)** — defer. Frequency-based
-  posting overhead doesn't fit "single founder, sustainable" model.
+- **Telegram alpha-drop channels** — 🚫 **banned** (outbound rule: no Telegram). Was "never v0"; now hard-blocked.
+- **Crypto Discord (Hyperliquid / Solana / ByBit / OKX)** — 🚫 **banned** (outbound rule: no Discord). Was deferred; now hard-blocked.
 
 ## Acquisition copy
 
