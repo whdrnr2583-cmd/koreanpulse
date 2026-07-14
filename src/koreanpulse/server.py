@@ -254,6 +254,11 @@ async def track_korean_filings(
         limit: max filings to return (≤100). DART returns most-recent first,
             so on a busy window the older end of the range is dropped first.
             Narrow `days` or `filing_type` if you need older items.
+            In batch mode (`company_corp_codes`) `limit` applies PER COMPANY,
+            not to the merged set, so a heavy filer can never crowd a quieter
+            company out of the results: an empty result for a company means
+            that company genuinely filed nothing in the window. A batch call
+            can therefore return up to `limit × len(company_corp_codes)` rows.
         translate: True to fill `title_en` via server-side LLM (cached).
         summarize: True to fill `summary_en` (≤200 words). Costs more — use
             sparingly. Long-form analysis should be done by the client LLM.
@@ -318,6 +323,13 @@ async def track_korean_filings(
             license_key is not None,
         )
 
+    def _apply_filters(rows: list[Filing]) -> list[Filing]:
+        if since_dt is not None:
+            rows = [f for f in rows if f.filed_at >= since_dt]
+        if material_only:
+            rows = [f for f in rows if f.red_flags]
+        return rows
+
     if batch_codes:
         per_corp = await asyncio.gather(
             *[
@@ -332,7 +344,14 @@ async def track_korean_filings(
                 for code in batch_codes
             ]
         )
-        filings = [f for sublist in per_corp for f in sublist]
+        # `limit` is PER COMPANY in batch mode, applied before the merge.
+        # Truncating the merged set instead would let a heavy filer crowd a
+        # quieter one out entirely, and the caller could not tell "this company
+        # filed nothing" from "this company was truncated away" — a false
+        # all-clear, which is the worst failure mode for a portfolio monitor.
+        # Cost: batch mode can return up to limit × len(batch_codes) rows.
+        filings = [f for rows in per_corp for f in _apply_filters(rows)[:limit]]
+        filings.sort(key=lambda f: f.filed_at, reverse=True)
     else:
         filings = await list_filings_cached(
             cache=_cache,
@@ -342,17 +361,13 @@ async def track_korean_filings(
             pblntf_ty=filing_type,
             page_count=min(limit, 100),
         )
-
-    if since_dt is not None:
-        filings = [f for f in filings if f.filed_at >= since_dt]
-    if material_only:
-        filings = [f for f in filings if f.red_flags]
-    # Sort only when the batch/since/material pipeline is engaged — the
-    # legacy single-company/days path returns DART's native ordering
-    # untouched (zero behavior change when the new args are omitted).
-    if batch_codes or since_dt is not None or material_only:
-        filings.sort(key=lambda f: f.filed_at, reverse=True)
-    filings = filings[:limit]
+        filings = _apply_filters(filings)
+        # Sort only when the since/material pipeline is engaged — the legacy
+        # single-company/days path returns DART's native ordering untouched
+        # (zero behavior change when the new args are omitted).
+        if since_dt is not None or material_only:
+            filings.sort(key=lambda f: f.filed_at, reverse=True)
+        filings = filings[:limit]
 
     if translate or summarize:
         translator = _get_translator()

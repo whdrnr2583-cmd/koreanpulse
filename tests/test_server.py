@@ -490,6 +490,62 @@ class TestTrackKoreanFilingsBatchScan:
         assert [f.corp_code for f in result] == ["00000002", "00000003", "00000001"]
 
     @pytest.mark.asyncio
+    async def test_limit_is_per_company_so_a_heavy_filer_cannot_crowd_out_a_quiet_one(
+        self, monkeypatch
+    ):
+        """Regression — 2026-07-14 live smoke test.
+
+        A merged-then-truncated `limit` silently dropped NAVER entirely from a
+        [Samsung, SK hynix, NAVER] batch: the two heavy filers filled the whole
+        limit and the quiet company vanished, indistinguishable from "filed
+        nothing". That is a false all-clear — the worst output a portfolio
+        monitor can produce. `limit` must apply PER COMPANY.
+        """
+        # Heavy filer: 5 recent filings. Quiet filer: 1 older filing.
+        heavy = [
+            _batch_filing(code="00000001", filed_at=datetime(2026, 5, 10 + i))
+            for i in range(5)
+        ]
+        quiet = [_batch_filing(code="00000002", filed_at=datetime(2026, 5, 1))]
+        self._fake_source(monkeypatch, {"00000001": heavy, "00000002": quiet})
+
+        result = await track_korean_filings(
+            company_corp_codes=["00000001", "00000002"],
+            limit=3,
+            translate=False,
+        )
+
+        returned = {f.corp_code for f in result}
+        # The quiet company MUST survive — its filing is older than every one
+        # of the heavy filer's, so a merged truncation would have dropped it.
+        assert "00000002" in returned, "quiet company was crowded out of the batch"
+        # limit is per-company: 3 from the heavy filer + the quiet one's 1.
+        assert sum(1 for f in result if f.corp_code == "00000001") == 3
+        assert sum(1 for f in result if f.corp_code == "00000002") == 1
+        # Still globally sorted newest-first across the merged set.
+        assert [f.filed_at for f in result] == sorted(
+            [f.filed_at for f in result], reverse=True
+        )
+
+    @pytest.mark.asyncio
+    async def test_legacy_single_company_limit_still_truncates_the_result_set(
+        self, monkeypatch
+    ):
+        """The per-company limit change must not alter the legacy path: a
+        single-company call still returns at most `limit` rows."""
+        rows = [
+            _batch_filing(code="00000001", filed_at=datetime(2026, 5, 10 + i))
+            for i in range(5)
+        ]
+        self._fake_source(monkeypatch, {"00000001": rows})
+
+        result = await track_korean_filings(
+            company_corp_code="00000001", limit=3, translate=False
+        )
+
+        assert len(result) == 3
+
+    @pytest.mark.asyncio
     async def test_plural_list_takes_precedence_over_singular(self, monkeypatch):
         by_code = {
             "00000009": [_batch_filing(code="00000009", filed_at=datetime(2026, 5, 5))],
