@@ -13,6 +13,8 @@ from koreanpulse.dart import (
     DartError,
     MajorHolding,
     _classify_filing_type,
+    _is_correction_title,
+    _link_corrections,
     _parse_filing,
     daily_usage_snapshot,
     list_filings,
@@ -166,7 +168,165 @@ class TestParseFiling:
         assert "20260601000001" in f.dart_url
 
 
+def _row(corp_code, report_nm, rcept_no, *, corp_name="테스트", rcept_dt="20260503"):
+    return {
+        "corp_code": corp_code,
+        "corp_name": corp_name,
+        "report_nm": report_nm,
+        "rcept_no": rcept_no,
+        "rcept_dt": rcept_dt,
+    }
+
+
+class TestIsCorrectionTitle:
+    def test_gijae_jeongjeong_is_correction(self):
+        assert _is_correction_title("[기재정정]주요사항보고서(유상증자결정)")
+
+    def test_cheombu_jeongjeong_is_correction(self):
+        assert _is_correction_title("[첨부정정]사업보고서(2025.12)")
+
+    def test_normal_title_is_not_correction(self):
+        assert not _is_correction_title("주요사항보고서(유상증자결정)")
+
+    def test_non_leading_jeongjeong_is_not_correction(self):
+        # '정정' buried in the report name (not a leading bracket tag) must
+        # not flag the filing.
+        assert not _is_correction_title("정정공시 관련 안내")
+
+    def test_non_correction_bracket_tag_is_not_correction(self):
+        # A leading bracket tag without '정정' (e.g. [연장결정]) is not a
+        # correction.
+        assert not _is_correction_title("[연장결정]주요사항보고서")
+
+
+class TestLinkCorrections:
+    def test_correction_links_to_original_in_same_batch(self):
+        original = _parse_filing(
+            _row("00111111", "주요사항보고서(유상증자결정)", "20260503000100")
+        )
+        correction = _parse_filing(
+            _row(
+                "00111111",
+                "[기재정정]주요사항보고서(유상증자결정)",
+                "20260510000200",
+            )
+        )
+        filings = [original, correction]
+        _link_corrections(filings)
+        assert correction.is_correction is True
+        assert correction.previous_receipt_no == "20260503000100"
+        # The original itself is untouched.
+        assert original.is_correction is False
+        assert original.previous_receipt_no is None
+
+    def test_correction_without_original_leaves_none(self):
+        correction = _parse_filing(
+            _row(
+                "00111111",
+                "[기재정정]주요사항보고서(유상증자결정)",
+                "20260510000200",
+            )
+        )
+        # A different, unrelated filing shares the batch but not the report name.
+        other = _parse_filing(
+            _row("00111111", "분기보고서(2026.03)", "20260504000050")
+        )
+        filings = [correction, other]
+        _link_corrections(filings)
+        assert correction.is_correction is True
+        assert correction.previous_receipt_no is None
+
+    def test_normal_filing_is_not_flagged_or_linked(self):
+        normal = _parse_filing(
+            _row("00111111", "주요사항보고서(유상증자결정)", "20260503000100")
+        )
+        _link_corrections([normal])
+        assert normal.is_correction is False
+        assert normal.previous_receipt_no is None
+
+    def test_does_not_link_across_corp_codes(self):
+        # Same normalized report name but a different company — must not link.
+        original = _parse_filing(
+            _row("00111111", "주요사항보고서(유상증자결정)", "20260503000100")
+        )
+        correction = _parse_filing(
+            _row(
+                "00222222",
+                "[기재정정]주요사항보고서(유상증자결정)",
+                "20260510000200",
+            )
+        )
+        _link_corrections([original, correction])
+        assert correction.previous_receipt_no is None
+
+    def test_links_to_closest_prior_when_multiple(self):
+        v1 = _parse_filing(
+            _row("00111111", "주요사항보고서(유상증자결정)", "20260501000100")
+        )
+        v2 = _parse_filing(
+            _row(
+                "00111111",
+                "[기재정정]주요사항보고서(유상증자결정)",
+                "20260505000100",
+            )
+        )
+        v3 = _parse_filing(
+            _row(
+                "00111111",
+                "[기재정정]주요사항보고서(유상증자결정)",
+                "20260510000100",
+            )
+        )
+        _link_corrections([v1, v2, v3])
+        # v3 links to the immediately preceding version (v2), not the original.
+        assert v3.previous_receipt_no == "20260505000100"
+        # v2 links back to the original v1.
+        assert v2.previous_receipt_no == "20260501000100"
+
+
 class TestListFilings:
+    @pytest.mark.asyncio
+    async def test_correction_linking_through_list_filings(self, monkeypatch):
+        """End-to-end: a batch containing a correction and its original must
+        come back from `list_filings` already linked."""
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        response = {
+            "status": "000",
+            "message": "정상",
+            "total_count": 2,
+            "list": [
+                _row(
+                    "00111111",
+                    "[기재정정]주요사항보고서(유상증자결정)",
+                    "20260510000200",
+                    rcept_dt="20260510",
+                ),
+                _row(
+                    "00111111",
+                    "주요사항보고서(유상증자결정)",
+                    "20260503000100",
+                    rcept_dt="20260503",
+                ),
+            ],
+        }
+
+        async def mock_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=response)
+
+        transport = httpx.MockTransport(mock_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            filings = await list_filings(
+                bgn_de=date(2026, 5, 1),
+                end_de=date(2026, 5, 10),
+                client=client,
+            )
+        by_receipt = {f.receipt_no: f for f in filings}
+        correction = by_receipt["20260510000200"]
+        assert correction.is_correction is True
+        assert correction.previous_receipt_no == "20260503000100"
+        assert by_receipt["20260503000100"].is_correction is False
+        assert by_receipt["20260503000100"].previous_receipt_no is None
+
     @pytest.mark.asyncio
     async def test_no_api_key_raises(self, monkeypatch):
         monkeypatch.delenv("DART_API_KEY", raising=False)

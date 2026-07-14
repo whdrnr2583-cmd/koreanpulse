@@ -1,5 +1,26 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **DART correction filings no longer discard the correction→original
+  relationship.** DART re-files an amended disclosure with a leading
+  correction tag (`[기재정정]` content correction / `[첨부정정]` attachment
+  correction). That tag was only ever stripped for filing-type
+  classification, so callers could not tell a correction from an original,
+  nor which filing it amended. `Filing` gains two additive fields:
+  `is_correction` (bool, default `False`) — set when the title carries a
+  leading correction tag — and `previous_receipt_no` (`str | None`, default
+  `None`) — the `receipt_no` of the original this correction amends. The link
+  is resolved by post-processing the batch already fetched by `list_filings`
+  (no extra DART call, no widened window): a conservative match on same
+  `corp_code` + exact normalized report name (leading bracket tags stripped)
+  + earlier receipt number, linking the closest prior version. Left `None`
+  when no confident match exists in the fetched window — a wrong link is
+  worse than no link. Correctness fix; no new MCP tool, env var, or commerce
+  string.
+
 ## 0.1.13 — 2026-07-12 (product hardening — corp resolver ranking, red_flags expansion, activist denylist, preferred-stock hint, majorstock enrichment, news classification fix)
 
 No new MCP tools, no new env vars, no commerce strings. Quality/correctness

@@ -282,6 +282,9 @@ async def list_filings(
                 data_fetched_at=fetched_at,
             )
         )
+    # Post-process the fetched batch to link each correction re-filing back to
+    # the original it amends (no extra DART call — data already in hand).
+    _link_corrections(filings)
     return filings
 
 
@@ -614,15 +617,45 @@ _TITLE_TO_TYPE: tuple[tuple[str, str], ...] = (
 )
 
 
+def _strip_leading_bracket_tags(title: str) -> str:
+    """Strip leading DART bracket tags (e.g. [기재정정], [첨부정정]) from a title.
+
+    Only *leading* bracket tags are removed; brackets that appear later in the
+    title (rare) are left intact. Used both for filing-type classification and
+    for normalizing a correction title back to the original report name.
+    """
+    stripped = title
+    while stripped.startswith("[") and "]" in stripped:
+        stripped = stripped[stripped.index("]") + 1 :].lstrip()
+    return stripped
+
+
+def _is_correction_title(title: str) -> bool:
+    """True when the title carries a leading DART correction tag.
+
+    DART re-files an amended disclosure with a bracket tag such as [기재정정]
+    (content correction) or [첨부정정] (attachment correction) — both contain
+    '정정'. Only a leading bracket tag counts; '정정' elsewhere in the report
+    name does not flag the filing.
+    """
+    if not title:
+        return False
+    remaining = title.lstrip()
+    while remaining.startswith("[") and "]" in remaining:
+        end = remaining.index("]")
+        if "정정" in remaining[1:end]:
+            return True
+        remaining = remaining[end + 1 :].lstrip()
+    return False
+
+
 def _classify_filing_type(title: str) -> str:
     """Heuristic: infer DART filing-type code from the report title.
 
     Returns one of A/B/C/D/E/F/G/H/I/J. Defaults to E ('other') on no match.
     """
     # Strip leading [기재정정] or similar prefixes.
-    stripped = title
-    while stripped.startswith("[") and "]" in stripped:
-        stripped = stripped[stripped.index("]") + 1 :].lstrip()
+    stripped = _strip_leading_bracket_tags(title)
 
     for prefix, code in _TITLE_TO_TYPE:
         if prefix in stripped:
@@ -751,6 +784,7 @@ def _parse_filing(
         filing_type_label_ko=label_ko,
         filing_type_label_en=label_en,
         title=title,
+        is_correction=_is_correction_title(title),
         receipt_no=receipt_no,
         filed_at=filed_at,
         dart_url=f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={receipt_no}",
@@ -759,3 +793,53 @@ def _parse_filing(
         query_total_count=query_total_count,
         data_fetched_at=data_fetched_at,
     )
+
+
+def _receipt_lt(a: str, b: str) -> bool:
+    """True when receipt number `a` is strictly earlier than `b`.
+
+    DART receipt numbers are 14-digit `yyyymmdd` + 6-digit sequence, so they
+    order monotonically (and disambiguate same-day filings, which a date-only
+    compare cannot). Compare numerically when both are digit strings, else
+    fall back to a lexicographic compare so a malformed value never raises.
+    """
+    if a.isdigit() and b.isdigit():
+        return int(a) < int(b)
+    return a < b
+
+
+def _link_corrections(filings: list[Filing]) -> None:
+    """Resolve `previous_receipt_no` on correction filings, in place.
+
+    Post-processing only — operates on the batch already fetched, issues no
+    new DART call and does not widen the window. For each `is_correction`
+    filing, find the closest PRIOR filing in the same batch with the same
+    corp_code, an exact normalized report name (leading bracket tags
+    stripped), and an earlier receipt number. When several qualify, link the
+    latest one still earlier than the correction (the immediately preceding
+    version). Leaves `previous_receipt_no=None` when no confident match exists
+    in the window — a wrong link is worse than no link.
+    """
+    by_key: dict[tuple[str, str], list[Filing]] = {}
+    for f in filings:
+        norm = _strip_leading_bracket_tags(f.title).strip()
+        by_key.setdefault((f.corp_code, norm), []).append(f)
+
+    for f in filings:
+        if not f.is_correction or not f.corp_code:
+            # Empty corp_code can't be matched safely (unrelated corps would
+            # collide on report name alone) — leave it unlinked.
+            continue
+        norm = _strip_leading_bracket_tags(f.title).strip()
+        prior = [
+            c
+            for c in by_key.get((f.corp_code, norm), [])
+            if c is not f and _receipt_lt(c.receipt_no, f.receipt_no)
+        ]
+        if not prior:
+            continue
+        best = max(
+            prior,
+            key=lambda c: int(c.receipt_no) if c.receipt_no.isdigit() else -1,
+        )
+        f.previous_receipt_no = best.receipt_no

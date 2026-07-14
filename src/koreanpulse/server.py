@@ -212,6 +212,7 @@ async def track_korean_filings(
           - reverse_split — share consolidation (주식병합)
           - short_term_borrowing — short-term borrowing disclosure (단기차입금)
           - going_concern — going-concern doubt (계속기업/존속능력)
+        - `is_correction` / `previous_receipt_no`: whether this is a DART correction re-filing ([기재정정]/[첨부정정]), and the receipt_no of the original it amends when that original is in the same fetched window (None otherwise).
         - `query_total_count` / `data_fetched_at`: DART's full match count before this response's `limit` truncation, and the UTC as-of timestamp of the live fetch (None on rows served from cache).
     """
     logger.info("tool_call: track_korean_filings days=%d limit=%d translate=%s summarize=%s", days, limit, translate, summarize)

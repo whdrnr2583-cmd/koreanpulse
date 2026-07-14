@@ -129,6 +129,25 @@ class Filing(BaseModel):
             "written before this field existed."
         ),
     )
+    is_correction: bool = Field(
+        default=False,
+        description=(
+            "True when this filing is a DART correction re-filing — its title "
+            "carries a leading correction tag ([기재정정] content correction "
+            "or [첨부정정] attachment correction). False for original filings."
+        ),
+    )
+    previous_receipt_no: Optional[str] = Field(
+        default=None,
+        description=(
+            "receipt_no of the earlier filing this correction amends, resolved "
+            "only when that original is present in the same fetched window "
+            "(matched by corp_code + exact normalized report name + earlier "
+            "receipt number). None when this is not a correction, when the "
+            "original fell outside the fetched window, or when no confident "
+            "match was found — a wrong link is worse than no link."
+        ),
+    )
 
 
 class ActivistFiling(Filing):
