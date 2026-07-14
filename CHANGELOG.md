@@ -2,6 +2,38 @@
 
 ## [Unreleased]
 
+### Added (experimental — agent batch-scan, validation phase)
+
+- **`track_korean_filings` gains an experimental multi-company scan-since-
+  checkpoint mode for AI agents.** This is a PMF thesis test, not a committed
+  roadmap feature — the shape may change or be withdrawn based on whether
+  external agents actually use it. Three new *optional* args, all defaulting
+  so that existing single-company/days/no-args callers see zero behavior
+  change (no existing arg's meaning changes, no new MCP tool, no new env var,
+  no commerce string):
+  - `company_corp_codes: list[str] | None` — batch mode. When non-empty, the
+    tool fans out one cache-backed DART call per corp code concurrently
+    (`asyncio.gather`), merges the results, and sorts newest-first. Hard-
+    capped at 10 codes per call (raises `ValueError` above that) — DART has
+    no batch endpoint, so this is N calls and the cap protects the daily
+    quota. Takes precedence over the singular `company_corp_code` when both
+    are given.
+  - `since: str | None` — ISO-8601 date/datetime cutoff used instead of the
+    `days` window when provided; only filings with `filed_at >= since` are
+    returned. Normalized to KST wall-clock to match `filed_at`'s naive
+    KST-date footing. Malformed values raise `ValueError`.
+  - `material_only: bool = False` — when `True`, filters to filings whose
+    existing `red_flags` tag list is non-empty (reuses the current red-flag
+    tagging; no new classification).
+
+  Target workflow: portfolio monitoring — hand the tool a watchlist's corp
+  codes plus the timestamp of the last check to get everything new across all
+  of them in one call. Returns the same `list[Filing]` shape as before (no
+  new envelope). A single greppable `agent_batch_scan` log line is emitted
+  only on the batch/since path (recording corp-code count, since-vs-days,
+  `material_only`, and license-key presence — never its value) so repeat
+  agent usage of this capability can be measured from logs later.
+
 ### Fixed
 
 - **DART correction filings no longer discard the correction→original

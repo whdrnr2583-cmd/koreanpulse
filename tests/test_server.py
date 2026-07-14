@@ -7,7 +7,8 @@ themselves are integration-tested via `examples/quickstart.py`.
 """
 from __future__ import annotations
 
-from datetime import datetime
+import logging
+from datetime import date, datetime
 from typing import Optional
 
 import pytest
@@ -20,7 +21,11 @@ from koreanpulse.cache import FileCache
 from koreanpulse.corp_code import CorpEntry
 from koreanpulse.dart import MajorHolding
 from koreanpulse.models import Article, Filing, ForeignHolderFiling
-from koreanpulse.server import resolve_stock_code, search_korean_industry_news
+from koreanpulse.server import (
+    resolve_stock_code,
+    search_korean_industry_news,
+    track_korean_filings,
+)
 from koreanpulse.translate import Translator
 
 
@@ -406,6 +411,276 @@ class TestFillHoldingPct:
         await fill_holding_pct([fhf], op="test")
         assert fhf.holding_pct == 6.6
         assert fhf.holder_reporter_ko == "블랙록"
+
+
+def _batch_filing(
+    *,
+    code: str,
+    filed_at: datetime,
+    red_flags: Optional[list[str]] = None,
+    title: str = "사업보고서",
+) -> Filing:
+    return Filing(
+        corp_code=code,
+        corp_name_ko=f"회사{code}",
+        stock_code=None,
+        filing_type="A",
+        filing_type_label_ko="정기공시",
+        filing_type_label_en="Periodic",
+        title=title,
+        red_flags=red_flags or [],
+        receipt_no=f"rcpt_{code}_{filed_at:%Y%m%d}",
+        filed_at=filed_at,
+        dart_url="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=rcpt",
+        attribution="DART",
+    )
+
+
+class TestTrackKoreanFilingsBatchScan:
+    """2026-07-14 — experimental agent-oriented batch-scan capability on
+    the existing `track_korean_filings` tool (3 new optional args:
+    `company_corp_codes`, `since`, `material_only`). All default such that
+    a legacy single-company/days/no-args call is byte-for-byte unchanged."""
+
+    @pytest.fixture(autouse=True)
+    def _no_license_gate(self, monkeypatch):
+        monkeypatch.delenv("KOREANPULSE_REQUIRE_LICENSE", raising=False)
+
+    def _fake_source(self, monkeypatch, by_code: dict[str, list[Filing]]):
+        """Install a fake `list_filings_cached` that returns per-corp_code
+        fixtures and records the kwargs of every call it received."""
+        calls: list[dict] = []
+
+        async def fake_list_filings_cached(*, cache, corp_code, bgn_de, end_de, pblntf_ty, page_count):
+            calls.append(
+                {
+                    "corp_code": corp_code,
+                    "bgn_de": bgn_de,
+                    "end_de": end_de,
+                    "pblntf_ty": pblntf_ty,
+                    "page_count": page_count,
+                }
+            )
+            return list(by_code.get(corp_code, []))
+
+        monkeypatch.setattr(server_mod, "list_filings_cached", fake_list_filings_cached)
+        return calls
+
+    @pytest.mark.asyncio
+    async def test_batch_returns_merged_and_sorted_newest_first(self, monkeypatch):
+        by_code = {
+            "00000001": [_batch_filing(code="00000001", filed_at=datetime(2026, 5, 3))],
+            "00000002": [_batch_filing(code="00000002", filed_at=datetime(2026, 5, 5))],
+            "00000003": [_batch_filing(code="00000003", filed_at=datetime(2026, 5, 4))],
+        }
+        calls = self._fake_source(monkeypatch, by_code)
+
+        result = await track_korean_filings(
+            company_corp_codes=["00000001", "00000002", "00000003"],
+            translate=False,
+        )
+
+        # One fan-out call per corp_code.
+        assert sorted(c["corp_code"] for c in calls) == [
+            "00000001",
+            "00000002",
+            "00000003",
+        ]
+        # Merged + sorted newest-first across companies.
+        assert [f.corp_code for f in result] == ["00000002", "00000003", "00000001"]
+
+    @pytest.mark.asyncio
+    async def test_plural_list_takes_precedence_over_singular(self, monkeypatch):
+        by_code = {
+            "00000009": [_batch_filing(code="00000009", filed_at=datetime(2026, 5, 5))],
+        }
+        calls = self._fake_source(monkeypatch, by_code)
+
+        result = await track_korean_filings(
+            company_corp_code="00000001",  # singular — must be ignored
+            company_corp_codes=["00000009"],
+            translate=False,
+        )
+        assert [c["corp_code"] for c in calls] == ["00000009"]
+        assert [f.corp_code for f in result] == ["00000009"]
+
+    @pytest.mark.asyncio
+    async def test_more_than_10_corp_codes_raises_validation_error(self, monkeypatch):
+        self._fake_source(monkeypatch, {})
+        with pytest.raises(ValueError, match="at most 10"):
+            await track_korean_filings(
+                company_corp_codes=[f"{i:08d}" for i in range(11)],
+                translate=False,
+            )
+
+    @pytest.mark.asyncio
+    async def test_exactly_10_corp_codes_is_allowed(self, monkeypatch):
+        codes = [f"{i:08d}" for i in range(10)]
+        self._fake_source(monkeypatch, {c: [] for c in codes})
+        # Must not raise at the boundary.
+        result = await track_korean_filings(company_corp_codes=codes, translate=False)
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_since_filters_and_overrides_days_window(self, monkeypatch):
+        by_code = {
+            None: [
+                _batch_filing(code="00000001", filed_at=datetime(2026, 5, 3)),
+                _batch_filing(code="00000002", filed_at=datetime(2026, 5, 5)),
+            ]
+        }
+        calls = self._fake_source(monkeypatch, by_code)
+
+        result = await track_korean_filings(
+            days=7,
+            since="2026-05-04",
+            translate=False,
+        )
+        # `since` becomes the DART window start, not today-7.
+        assert calls[0]["bgn_de"] == date(2026, 5, 4)
+        # Only filings at/after the cutoff survive.
+        assert [f.filed_at for f in result] == [datetime(2026, 5, 5)]
+
+    @pytest.mark.asyncio
+    async def test_since_accepts_datetime_with_timezone(self, monkeypatch):
+        by_code = {
+            None: [_batch_filing(code="00000001", filed_at=datetime(2026, 5, 5))]
+        }
+        self._fake_source(monkeypatch, by_code)
+        # Z-suffixed UTC datetime must parse (normalized to KST wall-clock).
+        result = await track_korean_filings(
+            since="2026-05-01T00:00:00Z", translate=False
+        )
+        assert len(result) == 1
+
+    @pytest.mark.asyncio
+    async def test_malformed_since_raises_validation_error(self, monkeypatch):
+        self._fake_source(monkeypatch, {})
+        with pytest.raises(ValueError, match="ISO-8601"):
+            await track_korean_filings(since="not-a-date", translate=False)
+
+    @pytest.mark.asyncio
+    async def test_material_only_filters_to_nonempty_red_flags(self, monkeypatch):
+        by_code = {
+            None: [
+                _batch_filing(code="00000001", filed_at=datetime(2026, 5, 5), red_flags=[]),
+                _batch_filing(
+                    code="00000002",
+                    filed_at=datetime(2026, 5, 4),
+                    red_flags=["cb_issuance"],
+                ),
+            ]
+        }
+        self._fake_source(monkeypatch, by_code)
+
+        result = await track_korean_filings(material_only=True, translate=False)
+        assert [f.corp_code for f in result] == ["00000002"]
+        assert all(f.red_flags for f in result)
+
+    @pytest.mark.asyncio
+    async def test_material_only_across_batch(self, monkeypatch):
+        by_code = {
+            "00000001": [
+                _batch_filing(code="00000001", filed_at=datetime(2026, 5, 5), red_flags=[]),
+            ],
+            "00000002": [
+                _batch_filing(
+                    code="00000002",
+                    filed_at=datetime(2026, 5, 4),
+                    red_flags=["rights_issue"],
+                ),
+            ],
+        }
+        self._fake_source(monkeypatch, by_code)
+        result = await track_korean_filings(
+            company_corp_codes=["00000001", "00000002"],
+            material_only=True,
+            translate=False,
+        )
+        assert [f.corp_code for f in result] == ["00000002"]
+
+    @pytest.mark.asyncio
+    async def test_legacy_single_company_path_unchanged(self, monkeypatch):
+        """No new args → single call with the days window, no sort/filter,
+        DART's native order preserved, truncated to `limit`."""
+        native_order = [
+            _batch_filing(code="00000001", filed_at=datetime(2026, 5, 3)),
+            _batch_filing(code="00000001", filed_at=datetime(2026, 5, 5)),
+        ]
+        calls = self._fake_source(monkeypatch, {"00000001": native_order})
+
+        result = await track_korean_filings(
+            company_corp_code="00000001", days=7, translate=False
+        )
+        # Exactly one call, using the days window (today-7 .. today).
+        assert len(calls) == 1
+        assert calls[0]["corp_code"] == "00000001"
+        assert calls[0]["end_de"] == server_mod._kst_today()
+        # Order untouched (no re-sort on the legacy path).
+        assert [f.filed_at for f in result] == [
+            datetime(2026, 5, 3),
+            datetime(2026, 5, 5),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_legacy_no_args_path_unchanged(self, monkeypatch):
+        calls = self._fake_source(
+            monkeypatch,
+            {None: [_batch_filing(code="00000001", filed_at=datetime(2026, 5, 5))]},
+        )
+        result = await track_korean_filings(translate=False)
+        assert len(calls) == 1
+        assert calls[0]["corp_code"] is None
+        assert len(result) == 1
+
+    @pytest.mark.asyncio
+    async def test_instrumentation_fires_on_batch_path(self, monkeypatch, caplog):
+        codes = ["00000001", "00000002"]
+        self._fake_source(monkeypatch, {c: [] for c in codes})
+        with caplog.at_level(logging.INFO, logger="koreanpulse.server"):
+            await track_korean_filings(company_corp_codes=codes, translate=False)
+        batch_logs = [r for r in caplog.records if r.getMessage().startswith("agent_batch_scan")]
+        assert len(batch_logs) == 1
+        msg = batch_logs[0].getMessage()
+        assert "corp_code_count=2" in msg
+        assert "cutoff=days" in msg
+        assert "material_only=False" in msg
+        assert "license_key_present=False" in msg
+
+    @pytest.mark.asyncio
+    async def test_instrumentation_fires_on_since_path(self, monkeypatch, caplog):
+        self._fake_source(monkeypatch, {None: []})
+        with caplog.at_level(logging.INFO, logger="koreanpulse.server"):
+            await track_korean_filings(
+                since="2026-05-01", material_only=True, license_key="k", translate=False
+            )
+        batch_logs = [r for r in caplog.records if r.getMessage().startswith("agent_batch_scan")]
+        assert len(batch_logs) == 1
+        msg = batch_logs[0].getMessage()
+        assert "cutoff=since" in msg
+        assert "material_only=True" in msg
+        assert "license_key_present=True" in msg
+
+    @pytest.mark.asyncio
+    async def test_instrumentation_does_not_fire_on_legacy_path(self, monkeypatch, caplog):
+        self._fake_source(
+            monkeypatch,
+            {"00000001": [_batch_filing(code="00000001", filed_at=datetime(2026, 5, 5))]},
+        )
+        with caplog.at_level(logging.INFO, logger="koreanpulse.server"):
+            await track_korean_filings(company_corp_code="00000001", translate=False)
+        batch_logs = [r for r in caplog.records if r.getMessage().startswith("agent_batch_scan")]
+        assert batch_logs == []
+
+    @pytest.mark.asyncio
+    async def test_single_element_list_does_not_fire_instrumentation(self, monkeypatch, caplog):
+        """A 1-element `company_corp_codes` (no `since`) uses the fan-out
+        code path but is not the 'agent batch-scan' signal we measure."""
+        self._fake_source(monkeypatch, {"00000001": []})
+        with caplog.at_level(logging.INFO, logger="koreanpulse.server"):
+            await track_korean_filings(company_corp_codes=["00000001"], translate=False)
+        batch_logs = [r for r in caplog.records if r.getMessage().startswith("agent_batch_scan")]
+        assert batch_logs == []
 
 
 def _article(*, industries: Optional[list[str]] = None) -> Article:

@@ -11,6 +11,7 @@ Or import `mcp` and mount it inside another FastMCP app.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from datetime import date, datetime, timedelta, timezone
@@ -51,6 +52,35 @@ _KST = timezone(timedelta(hours=9))
 
 def _kst_today() -> date:
     return datetime.now(_KST).date()
+
+
+def _parse_since(raw: str) -> datetime:
+    """Parse an ISO-8601 `since` cutoff into a naive KST-wall-clock datetime.
+
+    `Filing.filed_at` is a *naive* datetime derived from DART's `rcept_dt`
+    (yyyymmdd, stamped in KST) — i.e. the filing date at KST midnight with
+    no tzinfo. To compare against it without a tz mismatch, we normalize the
+    caller's `since` to the same footing: a tz-aware input is converted to
+    KST wall-clock then stripped of tzinfo; a naive input is assumed to
+    already be KST. Note `filed_at` is date-granular (always midnight), so a
+    `since` with a time component filters at day boundaries in practice.
+
+    Raises ValueError on a malformed string rather than silently ignoring it.
+    """
+    s = raw.strip()
+    if s[-1:] in ("Z", "z"):  # Python 3.10 fromisoformat can't parse 'Z'
+        s = s[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError as exc:
+        raise ValueError(
+            "track_korean_filings: `since` must be an ISO-8601 date or "
+            "datetime (e.g. '2026-05-01' or '2026-05-01T09:00:00'); "
+            f"got {raw!r}"
+        ) from exc
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(_KST).replace(tzinfo=None)
+    return dt
 
 
 logger = logging.getLogger(__name__)
@@ -153,6 +183,9 @@ async def track_korean_filings(
     translate: bool = True,
     summarize: bool = False,
     license_key: Optional[str] = None,
+    company_corp_codes: Optional[list[str]] = None,
+    since: Optional[str] = None,
+    material_only: bool = False,
 ) -> list[Filing]:
     """Track Korean DART (전자공시) stock filings in English — real-time corporate disclosures for KOSPI / KOSDAQ / KONEX / KRX listed companies: 5%-rule shareholding disclosures, M&A, periodic reports, capital issuance, insider trading, audit reports. Free tier.
 
@@ -177,10 +210,44 @@ async def track_korean_filings(
     classification answer — say so to the user and surface the paid tool's
     license-required notice instead of pretending you've answered.
 
+    **Batch scan for agents (experimental).** To check MULTIPLE companies for
+    material disclosures since your last checkpoint in ONE call — instead of N
+    separate calls — pass `company_corp_codes` (a list, ≤10) plus a `since`
+    timestamp. This is the portfolio-monitoring / scan-since-checkpoint
+    workflow: give it your watchlist's corp codes and the ISO timestamp of
+    your previous check, optionally with `material_only=True`, and it returns
+    every filing across those companies newer than that timestamp, merged and
+    sorted newest-first. DART has no batch endpoint, so this fans out one
+    cache-backed call per corp code — the ≤10 cap keeps a single call from
+    blowing past DART's daily quota.
+
     Args:
-        company_corp_code: 8-digit DART corp code. Use `lookup_corp_code` first
-            to resolve a company name. Omit to query all companies.
-        days: how many days back from today (1–30).
+        company_corp_code: 8-digit DART corp code (single company). Use
+            `lookup_corp_code` first to resolve a company name. Omit to query
+            all companies. Ignored when `company_corp_codes` (plural) is
+            provided non-empty — the plural list takes precedence.
+        company_corp_codes: OPTIONAL list of up to 10 corp codes for batch
+            mode. When provided non-empty, the tool queries each corp code
+            concurrently (one cache-backed DART call each), merges the
+            results, and sorts newest-first — use this to scan a whole
+            watchlist in one call. More than 10 codes raises a validation
+            error (DART has no batch endpoint; this is N calls, so the cap
+            protects the daily quota). Takes precedence over
+            `company_corp_code` (singular) when both are given.
+        since: OPTIONAL ISO-8601 date or datetime (e.g. '2026-05-01' or
+            '2026-05-01T09:00:00'). When provided it is the cutoff instead of
+            `days` — only filings with `filed_at >= since` are returned. Use
+            it to fetch only what is new since your last checkpoint.
+            `filed_at` is date-granular (KST), so a time component filters at
+            day boundaries. A malformed value raises a validation error.
+            When omitted, the `days` window is used exactly as before.
+        material_only: OPTIONAL. When True, return only filings whose
+            `red_flags` list is non-empty (governance/distress-tagged — see
+            the red_flags catalog below). Applies to both single and batch
+            queries. Reuses the existing red-flag tagging; adds no new
+            classification.
+        days: how many days back from today (1–30). Ignored when `since` is
+            provided.
         filing_type: optional one-letter code:
             A=periodic, B=major event, C=issuance, D=shareholding,
             E=other, F=audit, G=fund, H=ABS, I=exchange, J=FTC.
@@ -218,18 +285,73 @@ async def track_korean_filings(
     logger.info("tool_call: track_korean_filings days=%d limit=%d translate=%s summarize=%s", days, limit, translate, summarize)
     await _gate(license_key, units=1 + (1 if summarize else 0))
 
+    # Batch precedence: a non-empty plural list wins over the singular arg.
+    batch_codes = [c.strip() for c in (company_corp_codes or []) if c and c.strip()]
+    if len(batch_codes) > 10:
+        raise ValueError(
+            "track_korean_filings: `company_corp_codes` accepts at most 10 "
+            f"corp codes per call (got {len(batch_codes)}). DART has no batch "
+            "endpoint — each code is a separate quota-backed call, so the cap "
+            "protects the daily quota. Split your watchlist into batches of 10."
+        )
+
+    since_dt = _parse_since(since) if since else None
+
     days = max(1, min(days, 30))
     end_de = _kst_today()
-    bgn_de = end_de - timedelta(days=days)
+    if since_dt is not None:
+        # Narrow the DART window to the cutoff so we don't over-fetch.
+        bgn_de = min(since_dt.date(), end_de)
+    else:
+        bgn_de = end_de - timedelta(days=days)
 
-    filings = await list_filings_cached(
-        cache=_cache,
-        corp_code=company_corp_code,
-        bgn_de=bgn_de,
-        end_de=end_de,
-        pblntf_ty=filing_type,
-        page_count=min(limit, 100),
-    )
+    # One structured, greppable line marking the new agent batch-scan usage
+    # pattern (multi-company or since-checkpoint), kept distinct from the
+    # legacy single-company/days call above. No PII; license key presence
+    # only, never its value.
+    if len(batch_codes) > 1 or since_dt is not None:
+        logger.info(
+            "agent_batch_scan corp_code_count=%d cutoff=%s material_only=%s license_key_present=%s",
+            len(batch_codes) if batch_codes else (1 if company_corp_code else 0),
+            "since" if since_dt is not None else "days",
+            material_only,
+            license_key is not None,
+        )
+
+    if batch_codes:
+        per_corp = await asyncio.gather(
+            *[
+                list_filings_cached(
+                    cache=_cache,
+                    corp_code=code,
+                    bgn_de=bgn_de,
+                    end_de=end_de,
+                    pblntf_ty=filing_type,
+                    page_count=min(limit, 100),
+                )
+                for code in batch_codes
+            ]
+        )
+        filings = [f for sublist in per_corp for f in sublist]
+    else:
+        filings = await list_filings_cached(
+            cache=_cache,
+            corp_code=company_corp_code,
+            bgn_de=bgn_de,
+            end_de=end_de,
+            pblntf_ty=filing_type,
+            page_count=min(limit, 100),
+        )
+
+    if since_dt is not None:
+        filings = [f for f in filings if f.filed_at >= since_dt]
+    if material_only:
+        filings = [f for f in filings if f.red_flags]
+    # Sort only when the batch/since/material pipeline is engaged — the
+    # legacy single-company/days path returns DART's native ordering
+    # untouched (zero behavior change when the new args are omitted).
+    if batch_codes or since_dt is not None or material_only:
+        filings.sort(key=lambda f: f.filed_at, reverse=True)
     filings = filings[:limit]
 
     if translate or summarize:
