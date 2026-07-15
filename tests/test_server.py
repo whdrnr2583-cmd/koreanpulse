@@ -828,3 +828,106 @@ class TestSearchKoreanIndustryNewsUnsupportedIndustries:
         assert len(result["supported_industries"]) == 16
         assert "semiconductor" in result["supported_industries"]
         assert "energy" in result["supported_industries"]
+
+
+class TestFillTitleEn:
+    """2026-07-15 — bounded-concurrency title translation (`_fill_title_en`).
+
+    Replaced the sequential per-filing translate loop measured at 117.5s on a
+    cold-cache 10-company batch (147 rows) — past common MCP client timeouts.
+    """
+
+    class _FakeTranslator:
+        """Counts calls per text and tracks peak concurrency."""
+
+        def __init__(self, fail_on: Optional[str] = None, delay: float = 0.01):
+            self.calls: dict[str, int] = {}
+            self.active = 0
+            self.max_active = 0
+            self._fail_on = fail_on
+            self._delay = delay
+
+        async def translate_ko_to_en(self, text, *, labels=None):
+            import asyncio
+
+            self.calls[text] = self.calls.get(text, 0) + 1
+            self.active += 1
+            self.max_active = max(self.max_active, self.active)
+            try:
+                await asyncio.sleep(self._delay)
+                if self._fail_on is not None and text == self._fail_on:
+                    raise RuntimeError("simulated provider failure")
+                return f"EN:{text}"
+            finally:
+                self.active -= 1
+
+    @staticmethod
+    def _mk(n: int, title: str) -> Filing:
+        return Filing(
+            corp_code="00000001",
+            corp_name_ko="회사",
+            stock_code=None,
+            filing_type="A",
+            filing_type_label_ko="정기공시",
+            filing_type_label_en="Periodic",
+            title=title,
+            receipt_no=f"rcpt_{n}",
+            filed_at=datetime(2026, 5, 1),
+            dart_url="https://dart.fss.or.kr/x",
+            attribution="DART",
+        )
+
+    @pytest.mark.asyncio
+    async def test_concurrency_is_bounded_by_semaphore(self, monkeypatch):
+        monkeypatch.setattr(server_mod, "_TRANSLATE_CONCURRENCY", 3)
+        tr = self._FakeTranslator()
+        filings = [self._mk(i, f"제목{i}") for i in range(20)]
+
+        await server_mod._fill_title_en(filings, tr, tool="test")
+
+        assert tr.max_active <= 3, f"peak concurrency {tr.max_active} exceeded bound 3"
+        assert tr.max_active > 1, "translations did not actually run concurrently"
+        assert all(f.title_en == f"EN:{f.title}" for f in filings)
+
+    @pytest.mark.asyncio
+    async def test_identical_titles_translate_exactly_once(self):
+        tr = self._FakeTranslator()
+        # 10 filings, only 2 unique titles — common on DART (shared report names).
+        filings = [self._mk(i, "주식등의대량보유상황보고서" if i % 2 else "사업보고서") for i in range(10)]
+
+        await server_mod._fill_title_en(filings, tr, tool="test")
+
+        assert tr.calls == {"주식등의대량보유상황보고서": 1, "사업보고서": 1}
+        assert all(f.title_en == f"EN:{f.title}" for f in filings)
+
+    @pytest.mark.asyncio
+    async def test_one_failure_does_not_discard_filings_or_block_others(self, caplog):
+        tr = self._FakeTranslator(fail_on="제목1")
+        filings = [self._mk(i, f"제목{i}") for i in range(3)]
+
+        with caplog.at_level(logging.WARNING):
+            await server_mod._fill_title_en(filings, tr, tool="test")
+
+        # The failed filing is KEPT, Korean title intact, title_en unset.
+        assert len(filings) == 3
+        failed = [f for f in filings if f.title == "제목1"][0]
+        assert failed.title_en is None
+        assert failed.title == "제목1"
+        # The other two still translated.
+        assert [f.title_en for f in filings if f.title != "제목1"] == ["EN:제목0", "EN:제목2"]
+        assert any("translate failed" in r.message for r in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_already_translated_and_empty_titles_are_skipped(self):
+        tr = self._FakeTranslator()
+        pre = self._mk(0, "이미번역")
+        pre.title_en = "Already"
+        blank = self._mk(1, "빈제목")
+        blank.title = ""
+        fresh = self._mk(2, "신규")
+
+        await server_mod._fill_title_en([pre, blank, fresh], tr, tool="test")
+
+        assert tr.calls == {"신규": 1}
+        assert pre.title_en == "Already"
+        assert blank.title_en is None

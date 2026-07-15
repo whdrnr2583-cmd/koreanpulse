@@ -104,6 +104,49 @@ def _get_translator() -> Translator:
     return _translator
 
 
+# Bounded fan-out for title translation. 8 concurrent short (~50-token)
+# requests stays far under OpenAI tier-1 limits (500 RPM / 200k TPM for
+# gpt-5-mini-class models) and is trivial load for the hosted cache-worker.
+# A sequential loop was measured at 117.5s for a cold-cache 10-company
+# batch (147 rows) — past every common MCP client timeout.
+_TRANSLATE_CONCURRENCY = 8
+
+
+async def _fill_title_en(filings: list, translator: Translator, *, tool: str) -> None:
+    """Fill `title_en` on filings concurrently, deduping identical titles.
+
+    Identical titles (common: many filings share the same DART report name)
+    are translated exactly once per call, so the cache never sees duplicate
+    in-flight misses. A failed translation logs a warning and leaves that
+    filing's `title_en` unset — the filing itself is always kept, with the
+    Korean `title` still present (same fallback as the old sequential loop).
+    """
+    pending: dict[str, list] = {}
+    for f in filings:
+        if not f.title_en and f.title:
+            pending.setdefault(f.title, []).append(f)
+    if not pending:
+        return
+
+    sem = asyncio.Semaphore(_TRANSLATE_CONCURRENCY)
+
+    async def _one(title: str) -> None:
+        async with sem:
+            try:
+                out = await translator.translate_ko_to_en(title, labels={"tool": tool})
+            except Exception as exc:  # noqa: BLE001
+                group = pending[title]
+                logger.warning(
+                    "translate failed for %s (%d filing(s)): %s",
+                    group[0].receipt_no, len(group), exc,
+                )
+                return
+        for f in pending[title]:
+            f.title_en = out
+
+    await asyncio.gather(*(_one(t) for t in pending))
+
+
 def _require_license() -> bool:
     """Toggle license gate via env. Off in dev, on in prod."""
     return os.environ.get("KOREANPULSE_REQUIRE_LICENSE", "0").strip() == "1"
@@ -371,14 +414,9 @@ async def track_korean_filings(
 
     if translate or summarize:
         translator = _get_translator()
+        if translate:
+            await _fill_title_en(filings, translator, tool="track_korean_filings")
         for f in filings:
-            if translate and not f.title_en:
-                try:
-                    f.title_en = await translator.translate_ko_to_en(
-                        f.title, labels={"tool": "track_korean_filings"}
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("translate failed for %s: %s", f.receipt_no, exc)
             if summarize and not f.summary_en:
                 try:
                     f.summary_en = await translator.summarize_ko(

@@ -34,6 +34,25 @@
   `material_only`, and license-key presence — never its value) so repeat
   agent usage of this capability can be measured from logs later.
 
+### Performance
+
+- **Cold-cache batch `track_korean_filings(translate=True)` latency cut ~3.3×
+  by parallelizing title translation.** The tool previously translated each
+  filing's title in a sequential `await` loop; a realistic cold-cache
+  10-company batch (~147 rows) measured **117.5s** — past common MCP client
+  timeouts. Titles are now translated with bounded concurrency (an
+  `asyncio.Semaphore(8)`; 8 concurrent ~50-token requests stay far under the
+  OpenAI tier limits and are trivial load for the hosted cache-worker).
+  Identical titles — common, since many filings share the same DART report
+  name — are deduped and translated exactly once per call, so the cache never
+  sees duplicate in-flight misses. Behavior is otherwise unchanged: the public
+  tool signature is identical, single-company calls take the same path, result
+  ordering is still global `filed_at` descending, and a translation failure
+  for one title logs a warning and leaves that filing with its Korean `title`
+  intact (the filing is never discarded). The same cold-cache 10-company batch
+  now completes in **~35.6s**. Performance/correctness fix; no new MCP tool,
+  env var, or commerce string.
+
 ### Fixed
 
 - **DART correction filings no longer discard the correction→original
