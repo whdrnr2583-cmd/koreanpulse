@@ -54,11 +54,11 @@
     },
     {
       "name": "monitor_activist_investors",
-      "description": "Korean activist investor tracking — DART type-D shareholding disclosures with activist filer auto-tagging (17 named filers: KCGI, Align, Truston, Anda, Cha, Life, Platform, VIP, Must, Dalton, Flashlight Capital Partners, Oasis, Palliser, Whitebox, City of London, plus international ValueAct / Elliott)."
+      "description": "License-gated (requires a license_key argument). Korean activist investor tracking — DART type-D shareholding disclosures with activist filer auto-tagging (17 named filers: KCGI, Align, Truston, Anda, Cha, Life, Platform, VIP, Must, Dalton, Flashlight Capital Partners, Oasis, Palliser, Whitebox, City of London, plus international ValueAct / Elliott). Disclosure data only — not a buy/sell recommendation."
     },
     {
       "name": "monitor_foreign_holders",
-      "description": "Monitor foreign investor activity in Korean stocks — DART type-D 5%-rule disclosures by foreign passive holders (BlackRock, Vanguard, State Street, Fidelity, T. Rowe Price, Wellington, Norges, GIC, Temasek, Goldman, JPM, Morgan Stanley, Citadel, Millennium, Bridgewater + 5 more). Disclosure data only — not a buy/sell recommendation."
+      "description": "License-gated (requires a license_key argument). Monitor foreign investor activity in Korean stocks — DART type-D 5%-rule disclosures by foreign passive holders (BlackRock, Vanguard, State Street, Fidelity, T. Rowe Price, Wellington, Norges, GIC, Temasek, Goldman, JPM, Morgan Stanley, Citadel, Millennium, Bridgewater + 5 more). Disclosure data only — not a buy/sell recommendation."
     },
     {
       "name": "koreanpulse_about",
@@ -88,13 +88,13 @@
     },
     {
       "name": "KOREANPULSE_LICENSE_KEY",
-      "description": "License key for the hosted classifier tools, required when KOREANPULSE_CACHE_MODE=hosted.",
+      "description": "License key for the hosted translation cache; used when KOREANPULSE_CACHE_MODE=hosted (falls back from an explicit call arg). It does not gate the two license-gated tools — those require a license_key argument passed per call (validated server-side), independent of cache mode.",
       "required": false
     }
   ],
   "oss_self_host": {
     "cost_usd": 0,
-    "note": "AGPL source. Run the MCP locally with your own DART_API_KEY + OPENAI_API_KEY. Community support only — no alerts, no hosted archive, no shared translation cache, no account sync. A separate deployment lane from the hosted Cloud tier. (Cloud customers also install the MCP locally today; a true HTTP-transport remote MCP is on the Q3 2026 roadmap.)"
+    "note": "AGPL source. Run the MCP locally with your own DART_API_KEY + OPENAI_API_KEY. Community support only — no alerts, no hosted archive, no shared translation cache, no account sync. A separate deployment lane from the hosted Cloud tier. (A hosted remote MCP endpoint is live now at https://mcp.koreanpulse.dev/mcp — connect it from Claude.ai or ChatGPT with no local install; the watchlist-to-alert workflow remains the Q3 2026 roadmap item.)"
   },
   "data_sources": [
     {

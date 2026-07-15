@@ -642,6 +642,9 @@ async def monitor_activist_investors(
     City of London, plus international like ValueAct / Elliott when they
     file in Korea).
 
+    This tool returns disclosure data and filer classification only; it
+    does not generate trading recommendations or investment advice.
+
     Args:
         days: how many days back from today (1–60).
         company_corp_code: optional DART corp_code to focus on one target.
