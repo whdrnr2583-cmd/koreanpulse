@@ -1,5 +1,4 @@
 {
-  "$schema": "https://modelcontextprotocol.io/schemas/mcp-server-descriptor.json",
   "name": "koreanpulse",
   "displayName": "koreanpulse — Korean Stock Market Intelligence (DART, Foreign & Activist Investors)",
   "version": "0.1.13",
@@ -26,11 +25,29 @@
     "industry",
     "english"
   ],
-  "transport": {
-    "type": "stdio",
-    "command": "koreanpulse",
-    "args": []
-  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.koreanpulse.dev/mcp"
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "koreanpulse",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "DART_API_KEY",
+          "description": "Korea FSS DART OpenAPI key — required only for self-hosting; the hosted remote MCP's five free tools need no user-managed DART key.",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ],
   "install": {
     "pip": "pip install koreanpulse",
     "uv": "uv pip install koreanpulse"
