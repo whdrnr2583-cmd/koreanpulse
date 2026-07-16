@@ -3,7 +3,7 @@
   "name": "io.github.whdrnr2583-cmd/koreanpulse",
   "title": "koreanpulse",
   "description": "Korean equities in English: DART filings, activist & foreign-holder classification, KRX news.",
-  "version": "0.1.11",
+  "version": "0.1.13",
   "repository": {
     "url": "https://github.com/whdrnr2583-cmd/koreanpulse",
     "source": "github"

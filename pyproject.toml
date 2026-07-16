@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "koreanpulse"
-version = "0.1.12"
+version = "0.1.13"
 description = "Korean stock market intelligence for AI assistants — track DART filings, foreign & activist investor activity, and classified Korean industry news, in English. MCP server for ChatGPT / Claude / Cursor / FastMCP agents. Free public daily web snapshot + paid Cloud."
 readme = "README.md"
 license = { text = "AGPL-3.0-or-later" }
