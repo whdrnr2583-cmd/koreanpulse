@@ -36,11 +36,11 @@ logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s: %(message)s",
 )
 
-from starlette.applications import Starlette
-from starlette.responses import PlainTextResponse
-from starlette.routing import Mount, Route
+from starlette.applications import Starlette  # noqa: E402 — must follow basicConfig above
+from starlette.responses import PlainTextResponse  # noqa: E402
+from starlette.routing import Mount, Route  # noqa: E402
 
-from koreanpulse.server import mcp
+from koreanpulse.server import mcp  # noqa: E402 — importing before basicConfig swallows tool_call logs
 
 if os.environ.get("KOREANPULSE_REQUIRE_LICENSE", "0").strip() == "1":
     _has_webhook = bool(
