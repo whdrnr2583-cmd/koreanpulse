@@ -148,25 +148,49 @@ export default {
 
 async function buildDaily(
   env: Env,
-): Promise<{ activists: number; foreign: number; top: number; takeaway: number; date: string }> {
+): Promise<{
+  activists: number;
+  foreign: number;
+  top: number;
+  takeaway: number;
+  date: string;
+  degraded: string[];
+}> {
   // KST date — DART is filed in KST and the dashboard targets KOSPI close.
   const nowKst = new Date(Date.now() + 9 * 3600 * 1000);
   const date = nowKst.toISOString().slice(0, 10);
 
   // Single DART API call services both activist + foreign-flow streams.
   // 7-day window catches bursty 5%-rule filings without overwhelming the
-  // page. Both streams sorted most-recent first.
-  //
-  // safeClassifiedFilings / safeTopFilings: DART API is the most common
-  // failure point (Friday peak load, transient 5xx, redirect blocks). A
-  // throw here previously aborted buildDaily entirely, leaving today.json
-  // stale with no trace. Wrapping in safe helpers means a DART outage
-  // produces an empty-but-dated snapshot rather than a missed build.
-  const { activists, foreign_flows } = await safeClassifiedFilings(env, 7);
+  // page. Both streams sorted most-recent first. Major filings: last 1 day,
+  // top 10 — the "what big companies actually said today" feed.
+  const classified = await tryClassifiedFilings(env, 7);
+  const top = await tryTopFilings(env, 1, 10);
 
-  // Major filings: last 1 day, top 10 — the "what big companies actually
-  // said today" feed.
-  const topRaw = await safeTopFilings(env, 1, 10);
+  // Every stream failing means DART is down, not that KRX went quiet. Bail
+  // before the KV writes below — they are unconditional, so continuing would
+  // overwrite the last good snapshot with a blank one that reads exactly like
+  // a quiet day, and nothing backs those keys up. Throwing keeps yesterday's
+  // real data serving and restores `[cron] buildDaily FAILED`, which is the
+  // only signal anyone can act on for a job that runs at 07:30 UTC untailed.
+  if (!classified.ok && !top.ok) {
+    throw new Error(
+      "DART unavailable — every filing stream failed, refusing to overwrite " +
+        `the last good snapshot. classified: ${classified.error} | top: ${top.error}`,
+    );
+  }
+
+  const { activists, foreign_flows } = classified.ok
+    ? classified.data
+    : { activists: [], foreign_flows: [] };
+  const topRaw = top.ok ? top.data : [];
+
+  // Partial failure still ships, but labelled. An empty section and a section
+  // we failed to fetch look identical once rendered, so the snapshot has to
+  // carry which streams are missing.
+  const degraded: string[] = [];
+  if (!classified.ok) degraded.push("activist and foreign-holder filings");
+  if (!top.ok) degraded.push("major filings");
 
   // Translate / summarise — bounded so the cron stays under the 30-second
   // free-tier CPU limit even on cold cache.
@@ -188,6 +212,9 @@ async function buildDaily(
     activist_filings: activistsEnriched,
     foreign_flows: foreignEnriched,
     top_filings: topEnriched,
+    // Omitted entirely on a clean build so consumers can treat presence as the
+    // signal, and so a normal snapshot's JSON is unchanged from schema v2.
+    ...(degraded.length ? { degraded } : {}),
     attribution: ATTRIBUTION,
     data_sources: [
       { name: "DART (전자공시시스템)", url: "https://opendart.fss.or.kr/" },
@@ -220,6 +247,7 @@ async function buildDaily(
     top: topEnriched.length,
     takeaway: takeaway.length,
     date,
+    degraded,
   };
 }
 
@@ -328,33 +356,37 @@ async function safeSummarise(env: Env, text: string): Promise<string | undefined
   }
 }
 
-// DART-level safe wrappers — a DART API failure (Friday peak load, transient
-// 5xx, UA redirect) must not abort the entire cron build. An empty-but-dated
-// snapshot is far better than a stale today.json that silently freezes.
-async function safeClassifiedFilings(
+// DART-level wrappers. A single stream failing (Friday peak load, transient
+// 5xx, UA redirect) shouldn't cost us the whole build — but the failure has to
+// stay visible, because an empty DART result and a genuinely quiet KRX day are
+// indistinguishable downstream. These report the outcome instead of swallowing
+// it; buildDaily decides what to do with it.
+type DartOutcome<T> = { ok: true; data: T } | { ok: false; error: string };
+
+async function tryClassifiedFilings(
   env: Env,
   daysBack: number,
-): Promise<Awaited<ReturnType<typeof fetchClassifiedFilings>>> {
+): Promise<DartOutcome<Awaited<ReturnType<typeof fetchClassifiedFilings>>>> {
   try {
-    return await fetchClassifiedFilings(env, daysBack);
+    return { ok: true, data: await fetchClassifiedFilings(env, daysBack) };
   } catch (exc) {
     const message = exc instanceof Error ? exc.message : String(exc);
     console.error(`[dart] fetchClassifiedFilings FAILED: ${message}`);
-    return { activists: [], foreign_flows: [] };
+    return { ok: false, error: message };
   }
 }
 
-async function safeTopFilings(
+async function tryTopFilings(
   env: Env,
   daysBack: number,
   limit: number,
-): Promise<Awaited<ReturnType<typeof fetchTopFilings>>> {
+): Promise<DartOutcome<Awaited<ReturnType<typeof fetchTopFilings>>>> {
   try {
-    return await fetchTopFilings(env, daysBack, limit);
+    return { ok: true, data: await fetchTopFilings(env, daysBack, limit) };
   } catch (exc) {
     const message = exc instanceof Error ? exc.message : String(exc);
     console.error(`[dart] fetchTopFilings FAILED: ${message}`);
-    return [];
+    return { ok: false, error: message };
   }
 }
 

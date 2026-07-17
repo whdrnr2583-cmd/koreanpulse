@@ -42,7 +42,7 @@ export const KOREAN_ACTIVISTS: InvestorRecord[] = [
   { canonical: "Flashlight Capital Partners", klass: "activist", origin: "other", aliasesKo: ["플래시라이트캐피탈파트너스", "플래시라이트캐피탈"], aliasesEn: ["flashlight capital"] },
   { canonical: "Oasis Management", klass: "activist", origin: "other", aliasesKo: ["오아시스매니지먼트", "오아시스 매니지먼트"], aliasesEn: ["oasis management"] },
   { canonical: "Palliser Capital", klass: "activist", origin: "uk", aliasesKo: ["팰리서캐피탈", "팰리서 캐피탈"], aliasesEn: ["palliser capital"] },
-  { canonical: "Whitebox Advisors", klass: "activist", origin: "us", aliasesKo: [], aliasesEn: ["whitebox advisors"] },
+  { canonical: "Whitebox Advisors", klass: "activist", origin: "us", aliasesKo: ["화이트박스", "화이트박스어드바이저스"], aliasesEn: ["whitebox advisors"] },
   { canonical: "City of London Investment Management", klass: "activist", origin: "uk", aliasesKo: ["시티오브런던"], aliasesEn: ["city of london investment"] },
 ];
 
@@ -80,6 +80,24 @@ export const FOREIGN_HOLDERS: InvestorRecord[] = [
 
 const ALL_INVESTORS: InvestorRecord[] = [...KOREAN_ACTIVISTS, ...FOREIGN_HOLDERS];
 
+// Mirrors _ALIAS_DENYLIST in src/koreanpulse/activists.py. Bare aliases are
+// substrings, so a few collide with real, unrelated DART filers — verified
+// against the corp_code registry on the Python side. Without this the daily
+// dashboard reports a watch importer as a Wellington position.
+const ALIAS_DENYLIST: Record<string, string[]> = {
+  // "웰링턴" alone also matches the Daniel Wellington watch brand's Korean
+  // subsidiary/importer naming ("다니엘웰링턴...").
+  "Wellington Management": ["다니엘웰링턴"],
+  // "캐피탈그룹"/"캐피털그룹" also matches "제일캐피탈그룹" and other
+  // "제일캐피탈"-prefixed Korean consumer-finance entities, unrelated to
+  // The Capital Group Companies.
+  "Capital Group": ["제일캐피탈"],
+  // Bare "밀레니엄" also matches several real, unrelated DART-registered
+  // non-fund entities rather than Millennium Management: a Shilla-affiliated
+  // hospitality entity, a Daedong-affiliated entity, and a holding company.
+  Millennium: ["신라밀레니엄", "대동밀레니엄", "밀레니엄홀딩스"],
+};
+
 export interface InvestorMatch {
   canonical: string;
   klass: InvestorClass;
@@ -89,6 +107,10 @@ export interface InvestorMatch {
 /**
  * Match a filer name against the full allowlist. Returns the matched
  * record's metadata, or null if no match.
+ *
+ * A record in ALIAS_DENYLIST is skipped entirely when the filer name contains
+ * one of its denylisted substrings — this suppresses false positives for that
+ * record only; the scan continues so unrelated entries can still match.
  */
 export function matchInvestor(filerName: string | null | undefined): InvestorMatch | null {
   if (!filerName) return null;
@@ -97,6 +119,8 @@ export function matchInvestor(filerName: string | null | undefined): InvestorMat
   const nameLower = name.toLowerCase();
 
   for (const rec of ALL_INVESTORS) {
+    const denylist = ALIAS_DENYLIST[rec.canonical];
+    if (denylist && denylist.some((bad) => name.includes(bad))) continue;
     for (const alias of rec.aliasesKo) {
       if (alias && name.includes(alias)) {
         return { canonical: rec.canonical, klass: rec.klass, origin: rec.origin };

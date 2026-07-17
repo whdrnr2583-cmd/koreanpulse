@@ -53,15 +53,27 @@ export async function postToDiscord(
   // at a glance — a Discord reader who never clicks through still gets
   // the headline. Falls back to filing counts on quiet days.
   const counts = `${snap.foreign_flows.length} foreign-holder · ${snap.activist_filings.length} activist · ${snap.top_filings.length} major filings`;
-  const description = snap.takeaway.length
+  const body = snap.takeaway.length
     ? snap.takeaway.map((b) => `› ${b}`).join("\n") + `\n\n_${counts}_`
     : counts;
+
+  // A subscriber reading "0 activist" has no way to tell a quiet day from a
+  // DART outage, and this embed is the only surface most of them ever see —
+  // so a partial build has to say so before the counts, not after.
+  const warning = snap.degraded?.length
+    ? `⚠️ **Partial build** — DART did not return ${snap.degraded.join(
+        " and ",
+      )}. Counts below undercount reality.\n\n`
+    : "";
+  const description = warning + body;
 
   const embed: DiscordEmbed = {
     title: `Today on KOSPI / KOSDAQ — ${snap.date}`,
     url: `${SITE}/today`,
     description: truncate(description, 4000),
-    color: 0xf0b429, // brand amber
+    // Amber is the brand colour and reads as "normal" here; a partial build
+    // gets red so it is distinguishable in a scrolled feed without reading.
+    color: snap.degraded?.length ? 0xdc2626 : 0xf0b429,
     timestamp: snap.generated_at,
     footer: { text: "koreanpulse.dev · DART · no investment advice" },
     fields,

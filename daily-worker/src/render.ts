@@ -18,7 +18,7 @@ import type { InvestorMatch } from "./activists";
  * bullets summarising the day's most material moves. Backwards-compatible
  * additive field, but bumped for clarity.
  */
-export const SNAPSHOT_SCHEMA_VERSION = 2;
+export const SNAPSHOT_SCHEMA_VERSION = 3;
 
 export interface DailySnapshot {
   schema_version: number;
@@ -29,6 +29,11 @@ export interface DailySnapshot {
   activist_filings: ActivistFilingEnriched[];
   foreign_flows: ForeignFlowEnriched[];
   top_filings: FilingEnriched[];
+  // Present only when a DART stream failed and its section is blank for that
+  // reason rather than because KRX was quiet. Absent on a clean build — the
+  // two cases are otherwise identical in every field below, which is exactly
+  // the confusion this exists to prevent. Human-readable stream names.
+  degraded?: string[];
   attribution: string;
   data_sources: { name: string; url: string }[];
   legal_notice: string;
@@ -138,17 +143,38 @@ export function renderDaily(snap: DailySnapshot): string {
   const description = `Korean equity disclosures, activist filings, and industry news — ${snap.date}, summarised in English.`;
   const ogUrl = `https://koreanpulse.dev/today`;
 
+  // A blank section can mean "nothing was filed" or "we couldn't reach DART".
+  // Only the snapshot knows which, so the copy below has to ask it — saying
+  // "No activist filings" during an outage is a false statement about KRX.
+  const failed = (stream: string) => (snap.degraded ?? []).includes(stream);
+  const unavailable = (what: string) =>
+    `<p class="text-amber-400/90 text-sm">Couldn't fetch ${what} from DART for this build — this section is incomplete, not empty.</p>`;
+
+  const degradedBanner = snap.degraded?.length
+    ? `<div class="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+         <strong class="font-semibold">Partial build.</strong> DART did not return ${escapeHtml(
+           snap.degraded.join(" and "),
+         )} for ${escapeHtml(snap.date)}. Those sections below are missing data, not reporting an absence of activity.
+       </div>`
+    : "";
+
   const activistSection = snap.activist_filings.length
     ? snap.activist_filings.map(activistRow).join("\n")
-    : `<p class="text-stone-500 text-sm">No activist filings in the last 7 days.</p>`;
+    : failed("activist and foreign-holder filings")
+      ? unavailable("activist filings")
+      : `<p class="text-stone-500 text-sm">No activist filings in the last 7 days.</p>`;
 
   const foreignSection = snap.foreign_flows.length
     ? snap.foreign_flows.map(foreignFlowRow).join("\n")
-    : `<p class="text-stone-500 text-sm">No foreign-holder 5%-rule filings in the last 7 days.</p>`;
+    : failed("activist and foreign-holder filings")
+      ? unavailable("foreign-holder filings")
+      : `<p class="text-stone-500 text-sm">No foreign-holder 5%-rule filings in the last 7 days.</p>`;
 
   const topSection = snap.top_filings.length
     ? `<ul class="space-y-3">${snap.top_filings.map(filingRow).join("\n")}</ul>`
-    : `<p class="text-stone-500 text-sm">No major filings today.</p>`;
+    : failed("major filings")
+      ? unavailable("major filings")
+      : `<p class="text-stone-500 text-sm">No major filings today.</p>`;
 
   const takeawaySection = snap.takeaway.length
     ? `<ul class="space-y-2 text-zinc-200">${snap.takeaway
@@ -159,7 +185,9 @@ export function renderDaily(snap: DailySnapshot): string {
             )}</span></li>`,
         )
         .join("\n")}</ul>`
-    : `<p class="text-stone-500 text-sm">No takeaway today — quiet day on KRX.</p>`;
+    : snap.degraded?.length
+      ? `<p class="text-amber-400/90 text-sm">No takeaway — the build ran on incomplete DART data.</p>`
+      : `<p class="text-stone-500 text-sm">No takeaway today — quiet day on KRX.</p>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -194,6 +222,8 @@ export function renderDaily(snap: DailySnapshot): string {
       <h1 class="text-3xl font-bold text-stone-100 mt-6">Today on KOSPI / KOSDAQ</h1>
       <p class="text-stone-400 mt-2 text-sm">${escapeHtml(snap.date)} · DART activist filings + key disclosures · English summaries</p>
     </header>
+
+    ${degradedBanner}
 
     <section class="mb-10">
       <h2 class="text-xl font-semibold text-stone-100 mb-3 flex items-center gap-2">
