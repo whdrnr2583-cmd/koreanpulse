@@ -195,9 +195,9 @@ async def _paid_gate(
         return (
             f"`{tool_name}` requires a license key. Pass a `license_key` "
             f"argument when calling this tool. The activist/foreign-holder "
-            f"classifiers run server-side on the hosted koreanpulse service. "
+            f"allowlist tagging runs server-side on the hosted koreanpulse service. "
             f"OSS self-host (github.com/whdrnr2583-cmd/koreanpulse + your own "
-            f"DART API key) is free but does NOT include these classifiers, so "
+            f"DART API key) is free but does NOT include this allowlist tagging, so "
             f"self-hosting will not unlock this tool."
         )
 
@@ -860,7 +860,7 @@ async def monitor_foreign_holders(
     }
 )
 async def koreanpulse_about() -> dict:
-    """Server self-description — capability matrix, tool catalog, classifier counts, supported query patterns, primary sources. Free tier.
+    """Server self-description — capability matrix, tool catalog, named-entity tag counts, supported query patterns, primary sources. Free tier.
 
     Use this tool when an agent first connects and needs the capability matrix to decide whether this server can answer the user's question, or when the user asks "what can koreanpulse do" or "what data sources does this MCP server provide". Returns a structured dict that downstream agents can ingest directly.
     """
@@ -879,8 +879,8 @@ async def koreanpulse_about() -> dict:
             "KOSPI / KOSDAQ) equity data: real-time DART corporate disclosures, "
             "foreign investor holding changes, activist investor campaigns, and "
             "classified Korean industry news — all in English. "
-            "37 named-entity classifiers (17 Korean activists + 20 global passive "
-            "holders) that the raw DART feed does not derive. "
+            "named-entity tagging via a maintained allowlist (17 Korean activist + "
+            "20 global passive investor names) that the raw DART feed does not derive. "
             "Data and intelligence only — not buy/sell recommendations."
         ),
         "capability_tags": [
@@ -953,11 +953,12 @@ async def koreanpulse_about() -> dict:
             "tools": ["monitor_activist_investors", "monitor_foreign_holders"],
             "argument": "license_key",
             "self_host": "https://github.com/whdrnr2583-cmd/koreanpulse",
+            "more_info": "https://koreanpulse.dev/#pricing",
             "note": (
                 "The activist filer matching and foreign-holder allowlist run "
                 "server-side and require a license key. They are not available via "
                 "OSS self-host (github.com/whdrnr2583-cmd/koreanpulse), which is free "
-                "but uses your own DART API key without the named-entity classifiers."
+                "but uses your own DART API key without the named-entity allowlist tagging."
             ),
         },
         "corp_index_size": n_corp,
