@@ -18,12 +18,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
-      url: `${BASE}/pricing`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
       url: `${BASE}/korean-stock-filings-in-english`,
       lastModified: now,
       changeFrequency: "monthly",
@@ -43,6 +37,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${BASE}/track-foreign-investors-activists-korea`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
+      url: `${BASE}/monitor-korean-governance-foreign-holders`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.8,

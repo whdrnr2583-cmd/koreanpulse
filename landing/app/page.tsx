@@ -1014,6 +1014,38 @@ activist filings from this week. Would you like to sign up?`}
               — four ways to access KOSPI/KOSDAQ disclosures in English,
               compared.
             </li>
+            <li>
+              <a
+                href="/best-korean-stock-mcp-server"
+                className="text-accent hover:underline"
+              >
+                The best MCP server for Korean stocks, compared
+              </a>{" "}
+              — self-hosted OpenDART wrappers, English-summary servers, and
+              the hosted koreanpulse endpoint, compared honestly.
+            </li>
+            <li>
+              <a
+                href="/track-foreign-investors-activists-korea"
+                className="text-accent hover:underline"
+              >
+                How to track foreign investors and activists in Korean stocks
+              </a>{" "}
+              — the 5%-rule disclosure, who the major foreign holders and
+              activists are, and how to monitor their filings from an AI
+              assistant.
+            </li>
+            <li>
+              <a
+                href="/monitor-korean-governance-foreign-holders"
+                className="text-accent hover:underline"
+              >
+                How to monitor Korean corporate governance disclosures and
+                foreign institutional holders
+              </a>{" "}
+              — governance/distress red-flag tags on every DART filing, plus
+              tracking foreign institutional 5%-rule holders in English.
+            </li>
           </ul>
         </section>
 

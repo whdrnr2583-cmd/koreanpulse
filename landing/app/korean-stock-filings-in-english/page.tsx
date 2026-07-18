@@ -30,12 +30,52 @@ const articleLd = {
   publisher: { "@type": "Organization", name: "koreanpulse", url: SITE },
 };
 
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "Is there an English version of DART?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text:
+          "The Financial Supervisory Service operates englishdart.fss.or.kr, " +
+          "an official English DART portal, but coverage is limited to a " +
+          "company's own filings rather than a classified view across the " +
+          "whole disclosure stream, and by the on-record admission of KRX " +
+          "itself, ASIFMA, Wellington, Aberdeen, and Matthews Asia, " +
+          "English coverage of Korean disclosures generally runs late or " +
+          "is absent.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How does koreanpulse get Korean stock filings into English?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text:
+          "koreanpulse is an MCP server that calls the same DART primary " +
+          "source, translates filing titles to English on demand, and tags " +
+          "5%-rule filers against a maintained named-entity allowlist " +
+          "(foreign holders, Korean activists) rather than a trained " +
+          "classifier. Every result is traceable back to its DART receipt " +
+          "number.",
+      },
+    },
+  ],
+};
+
 export default function KoreanFilingsGuide() {
   return (
     <main className="min-h-screen px-6 py-16 sm:px-10 lg:px-16">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
       <div className="mx-auto max-w-3xl">
         <header className="flex items-center gap-2 text-sm text-zinc-400">

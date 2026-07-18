@@ -72,6 +72,42 @@
   worse than no link. Correctness fix; no new MCP tool, env var, or commerce
   string.
 
+### AEO batch — commerce-safe pointer, wording softening, GEO harness (2026-07-18, PMF-auditor conditionally approved)
+
+- **`koreanpulse_about`'s `license_gated_tools` gains a `more_info` field** —
+  `"https://koreanpulse.dev/#pricing"`, a plain informational anchor URL with
+  no price or checkout string, so an LLM that hits the paid-tool license
+  notice has somewhere to point a willing user. Additive dict field only; no
+  new MCP tool, no dollar amount, no checkout/activation link anywhere on the
+  MCP-facing surface (policy-safe under the 2026-07-08 commerce-policy
+  remediation).
+- **Softened "named-entity classifiers" wording** in `koreanpulse_about`'s
+  description, docstring summary, the paid-tool license-required notice, and
+  the `license_gated_tools.note` field — now "named-entity tagging via a
+  maintained allowlist" throughout, removing the "trained classifier"
+  implication the allowlist-matching mechanism doesn't have. The
+  `classifier_counts` dict key is unchanged (structural, not prose) — the
+  same 17/20/16 counts it always returned.
+- **Landing**: removed `/pricing` from `sitemap.ts` (it 307-redirects to
+  `/#pricing`, a phantom crawl target); added homepage nav links to the two
+  guide pages that were previously reachable only via sitemap/llms.txt
+  (`/best-korean-stock-mcp-server`, `/track-foreign-investors-activists-korea`);
+  added a new guide page `/monitor-korean-governance-foreign-holders`
+  (governance/distress `red_flags` tagging on `track_korean_filings`, free
+  tier, plus `monitor_foreign_holders` foreign-institutional-holder
+  allowlist tracking) targeting the "Korean corporate governance monitoring"
+  query cluster that had zero tool-result coverage in the 2026-07-15
+  web-search proxy audit; added minimal `FAQPage` JSON-LD to
+  `korean-stock-filings-in-english` (the one guide page that lacked it) and
+  a single site-wide `Organization` JSON-LD block in `layout.tsx` (no
+  aggregateRating/reviews/awards — none of that data exists).
+- **New**: `_workspace/aeo_geo_tracking.md` — AI-citation measurement harness
+  (top-20 buy-intent query subset from `_workspace/gtm/13_ai_citation_baseline.md`,
+  weekly-capable log table, doc 11 §8 success/failure/kill criteria verbatim,
+  the Caddy-completion-time IP-attribution methodology from the 2026-07-17
+  pickup, and the `more_info` field logged as the first commerce-policy
+  revert-candidate).
+
 ## 0.1.13 — 2026-07-12 (product hardening — corp resolver ranking, red_flags expansion, activist denylist, preferred-stock hint, majorstock enrichment, news classification fix)
 
 No new MCP tools, no new env vars, no commerce strings. Quality/correctness
