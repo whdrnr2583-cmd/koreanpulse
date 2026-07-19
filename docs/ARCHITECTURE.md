@@ -7,7 +7,7 @@ Cloudflare (3 Workers + D1 + KV), the MCP itself runs locally on the
 customer's machine.
 
 > **Status note (2026-05-05).** Watchlist polling + alert dispatch are
-> on the Q3 2026 roadmap; today the customer-facing surface that ships
+> planned — not yet available; today the customer-facing surface that ships
 > is queries (DART filings + classification + foreign-holder + activist
 > tracking + industry news) and the hosted translation cache. The
 > alert primitives (`koreanpulse.alerts`) and per-tier limit constants
@@ -88,13 +88,13 @@ customer's machine.
                                 Discord webhook push
                                 (fire-and-forget)
 
-      Roadmap (Q3 2026): polling loop wiring watchlists → alert dispatch.
+      Roadmap (planned — not yet available): polling loop wiring watchlists → alert dispatch.
 
       ┌──────────────────────┐         Discord / Slack / Telegram
       │ koreanpulse.alerts   │ ──────▶  webhook delivery (fire-and-forget)
       │  (primitive shipped, │         (the cron loop that calls this on
-      │   not yet wired into │          watchlist matches is Q3 2026)
-      │   watchlist polling) │
+      │   not yet wired into │          watchlist matches is planned —
+      │   watchlist polling) │          not yet available)
       └──────────────────────┘
 ```
 
@@ -106,8 +106,8 @@ customer's machine.
 | Cache Worker | Cloudflare Workers + KV | Hosted translation cache, holds our OpenAI key, license-gated | Live |
 | Webhook Worker | Cloudflare Worker + D1 | **Polar** webhook handler + license validation endpoint (Polar is sole MoR; Lemon Squeezy not in use, store application declined 2026-05-06) | Live |
 | Daily Worker | Cloudflare Workers + KV (cron) | Builds `/today` daily snapshot, optional Discord push | Live |
-| Watchlist polling loop | (Q3 2026) — likely a fourth Worker cron consuming the D1 watchlist table | Cron-pulls DART changes for each watchlist, calls `koreanpulse.alerts` on hits | **Roadmap** |
-| True remote MCP transport | (Q3 2026) — HTTP-transport Worker so customers don't `pip install` | Eliminates local install for Cloud customers | **Roadmap** |
+| `mcp.koreanpulse.dev` | Lightsail (Seoul), systemd + Caddy | Streamable-HTTP remote MCP transport — ChatGPT / Claude.ai custom connectors, no local install | Live since 2026-05-06 |
+| Watchlist polling loop | (planned — not yet available) — likely a fourth Worker cron consuming the D1 watchlist table | Cron-pulls DART changes for each watchlist, calls `koreanpulse.alerts` on hits | **Roadmap** |
 
 ## Module responsibilities
 
@@ -203,12 +203,12 @@ key required).
 `PLAN_LIMITS` defines `calls_per_month`, `watchlists`, `alert_channels`,
 `seats`, `retention_days` for each plan. **As of 2026-05-05 only
 `calls_per_month` is enforced at runtime**; the other limits ship as
-paper constants until the polling loop and CRUD endpoints land in Q3
-2026. Customer-facing copy reflects this.
+paper constants until the polling loop and CRUD endpoints land —
+planned, not yet available. Customer-facing copy reflects this.
 
 ### `koreanpulse.activists`
 
-Korean activist-investor allowlist. 10 entries, each with both Korean and
+Korean activist-investor allowlist. 17 entries, each with both Korean and
 English aliases. `match_activist(filer_name)` returns the canonical
 English label or None. Used by the `monitor_activist_investors` tool to
 flag DART type-D shareholding disclosures.
@@ -224,7 +224,7 @@ Telegram supports both shortcut form (`tg://<bot_token>/<chat_id>`) and
 full sendMessage URL (`https://api.telegram.org/bot.../sendMessage?chat_id=...`).
 
 The primitive ships today; the cron polling loop that calls it on
-watchlist matches is Q3 2026.
+watchlist matches is planned — not yet available.
 
 ### `koreanpulse.models`
 

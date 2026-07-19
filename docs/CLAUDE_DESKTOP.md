@@ -131,7 +131,7 @@ If `koreanpulse` isn't on PATH, use the absolute Python path:
 
 ## 4. Restart Claude Desktop
 
-After restart you should see `koreanpulse` in the MCP tools list with six
+After restart you should see `koreanpulse` in the MCP tools list with seven
 tools:
 
 - `track_korean_filings`
@@ -139,6 +139,7 @@ tools:
 - `resolve_stock_code`
 - `search_korean_industry_news`
 - `monitor_activist_investors`
+- `monitor_foreign_holders`
 - `koreanpulse_about`
 
 ## 5. Try it

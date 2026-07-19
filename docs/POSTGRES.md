@@ -1,5 +1,9 @@
 # Postgres-backed LicenseStore — production setup
 
+> 🚫 **Legacy path — NOT the production license store.** Production uses
+> Cloudflare D1 via `webhook-worker/`. This doc is kept for OSS
+> self-hosting only.
+
 In-memory store is fine for local dev (resets on restart). For real customers
 you want persistence + indexed lookups + multi-process safety. That's Postgres.
 

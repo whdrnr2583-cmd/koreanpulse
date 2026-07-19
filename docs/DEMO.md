@@ -1,5 +1,9 @@
 # Demo recording guide
 
+> ⚠️ **On hold (2026-05-10 decision, SCHEDULE.md §9):** video demos are
+> deliberately not used — the live `/today` page serves as the demo.
+> Kept for reference only.
+
 A 60-second screen capture is the single highest-leverage piece of
 marketing content for an MCP product. Marketplaces autoplay it, X
 preview-cards play it, the README header gets it. One good demo replaces

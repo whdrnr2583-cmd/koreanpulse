@@ -24,10 +24,10 @@ account. The paid Cloud Solo / Analyst / Desk tiers are a different path
 | `/today` daily web snapshot | ✅ (free public, no install) | ✅ |
 | Translation cache | local JSONL file | global Cloudflare KV (cross-tenant reuse) |
 | OpenAI / Anthropic key | yours | ours |
-| Watchlists | ❌ | 🚧 Q3 2026 ship target |
-| Discord/Telegram/Email alerts | ❌ | 🚧 Q3 2026 ship target |
-| Archive search (30d / 1y) | ❌ | 🚧 Q3 2026 ship target |
-| Account sync, multi-seat | ❌ | 🚧 Q3 2026 ship target (Desk) |
+| Watchlists | ❌ | planned — not yet available |
+| Discord/Telegram/Email alerts | ❌ | planned — not yet available |
+| Archive search (30d / 1y) | ❌ | planned — not yet available |
+| Account sync, multi-seat | ❌ | planned — not yet available (Desk) |
 | Support | community (GitHub issues) | priority for Desk |
 
 ## Install
@@ -108,7 +108,7 @@ Claude calls `lookup_corp_code('삼성전자')` → `track_korean_filings(corp_c
 
 If you decide your time is more valuable than your OpenAI bill:
 
-1. Subscribe to a Cloud tier on the waitlist (Solo $29 / Analyst $79 / Desk $249).
+1. Subscribe to a Cloud tier (Solo $29 / Analyst $79 / Desk $249).
 2. You'll receive a license key (`kp_…`) by email.
 3. Edit your Claude Desktop config:
    ```json

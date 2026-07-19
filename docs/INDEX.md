@@ -18,7 +18,7 @@ Single jumping-off point for everything written about koreanpulse.
 |---|---|
 | [RUN_LIVE.md](RUN_LIVE.md) | How to run the MCP server against real DART |
 | [CLAUDE_DESKTOP.md](CLAUDE_DESKTOP.md) | How to wire koreanpulse into Claude Desktop / Cursor |
-| [POSTGRES.md](POSTGRES.md) | Production LicenseStore — Supabase / RDS schema + wiring |
+| [POSTGRES.md](POSTGRES.md) | Legacy / self-host only — production license store is Cloudflare D1 (webhook-worker) |
 | [LEMONSQUEEZY.md](LEMONSQUEEZY.md) | 🚫 **NOT IN USE** — historical Lemon Squeezy setup snapshot. LS store application was declined 2026-05-06; Polar (see root `README.md` Billing + `webhook-worker/README.md`) is our sole billing provider. |
 | [CI.md](CI.md) | GitHub Actions workflows, PyPI trusted publishing, cutting a release |
 

@@ -219,6 +219,8 @@ See `src/koreanpulse/cache.py`, `src/koreanpulse/dart.py:list_filings_cached`.
 
 Two ways to run the MCP, switched via `KOREANPULSE_CACHE_MODE`. **Both require a local install** (`pip install koreanpulse` + 4-line Claude Desktop config); the difference is whether translation calls go through our Worker or directly to OpenAI from your machine.
 
+(Quick-start comparison also appears in "Run it yourself" above — keep both in sync when editing.)
+
 | | `local` (OSS self-host) | `hosted` (Cloud Solo / Analyst / Desk) |
 |---|---|---|
 | Local MCP install | required | required (same `pip install`) |
@@ -288,10 +290,12 @@ Listing copy + submission checklists in [`docs/MARKETPLACE.md`](docs/MARKETPLACE
 
 - **First-party hosted endpoint** — `https://mcp.koreanpulse.dev/mcp` (ChatGPT / Claude.ai / OpenAI Responses API custom connectors)
 - [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse) — marketplace listing for Smithery CLI users
-- [PulseMCP](docs/listings/PULSEMCP.md) — submitted (hand-reviewed)
-- [Glama](docs/listings/GLAMA.md) — submitted (pending review)
+- [PulseMCP](docs/listings/PULSEMCP.md) — not yet submitted (deferred)
+- [Glama](docs/listings/GLAMA.md) — live (auto-discovered, score badge)
 - [Awesome MCP](https://github.com/punkpeye/awesome-mcp-servers) — [PR #5893](https://github.com/punkpeye/awesome-mcp-servers/pull/5893)
 - MCP Market — Smithery ingest (auto)
+- mcp.so — live (manual submission)
+- MCP Registry (registry.modelcontextprotocol.io) — published
 
 Beta acquisition (50 users in 30 days) plan + crypto-native channel mix in [`docs/BETA.md`](docs/BETA.md). Demo recording script in [`docs/DEMO.md`](docs/DEMO.md). CI / PyPI release pipeline in [`docs/CI.md`](docs/CI.md).
 

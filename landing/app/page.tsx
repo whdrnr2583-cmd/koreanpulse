@@ -366,8 +366,14 @@ never guessed.`}
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Capability</th>
                   <th className="px-4 py-3 text-left font-semibold">koreanpulse</th>
-                  <th className="px-4 py-3 text-left font-semibold">korea-stock-mcp</th>
-                  <th className="px-4 py-3 text-left font-semibold">korean-dart-mcp</th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    korea-stock-mcp
+                    <div className="font-normal normal-case text-zinc-500">jjlabsio</div>
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    korean-dart-mcp
+                    <div className="font-normal normal-case text-zinc-500">chrisryugj</div>
+                  </th>
                   <th className="px-4 py-3 text-left font-semibold">openregistry</th>
                 </tr>
               </thead>
@@ -455,7 +461,28 @@ never guessed.`}
                 </tr>
                 <tr>
                   <td className="px-4 py-3 font-medium text-zinc-200">
-                    Korean industry news (etnews / 한국경제 RSS, EN)
+                    Korean→English translation inside tool responses
+                    <div className="text-xs font-normal text-zinc-500">
+                      filing titles + company names translated in the returned
+                      data, not just in the docs
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span> Hosted
+                    translation cache
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">
+                    — data returned in Korean
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">
+                    — data returned in Korean
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">— registry data only</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">
+                    Korean industry news (etnews / 한국경제 / Korea Herald /
+                    ZDNet Korea RSS, EN)
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-emerald-400">✓</span> 16 industries
@@ -551,8 +578,15 @@ never guessed.`}
           </div>
 
           <p className="mt-4 max-w-2xl text-xs text-zinc-500">
-            Comparison last verified 2026-05-07 — other projects may have
+            Comparison last verified 2026-07-19 — other projects may have
             shipped changes since. Other servers in the space:{" "}
+            <a
+              href="https://github.com/OldTemple91/korea-filings-api"
+              className="underline hover:text-zinc-300"
+            >
+              OldTemple91/korea-filings-api
+            </a>{" "}
+            (English summaries, pay-per-call),{" "}
             <a
               href="https://github.com/SongT-50/korean-stock-mcp"
               className="underline hover:text-zinc-300"
@@ -576,6 +610,16 @@ never guessed.`}
             (Python lib). The MCP-server space for Korean equities is shaped by
             the underlying data scope, not by any one team — pick what fits your
             workflow.
+          </p>
+
+          <p className="mt-4 max-w-2xl text-sm text-zinc-400">
+            <strong className="text-zinc-200">
+              Where official English disclosure ends.
+            </strong>{" "}
+            KRX&apos;s mandatory English-disclosure regime reaches only the
+            largest listed issuers; most KOSDAQ and small/mid-cap filings have
+            no official English version. koreanpulse translates the DART feed
+            itself, so English coverage does not stop where the mandate does.
           </p>
         </section>
 

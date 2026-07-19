@@ -56,7 +56,7 @@ Implications already baked into the build:
 - Marketing copy: "Watchlist in, English alert out. The MCP plumbing is an
   implementation detail."
 
-## MVP slice — what shipped
+## MVP slice — what shipped (historical snapshot, W3-4 2026-04)
 
 Three tools end-to-end, plus two helpers:
 
@@ -93,6 +93,8 @@ steel, petrochem, construction, fintech, gaming, ecommerce, telco, energy.
 ### `koreanpulse_about`
 
 Server info, tool list, corp index size.
+
+Later additions (v0.1.x): `monitor_activist_investors`, `monitor_foreign_holders` (paid tier), `koreanpulse_about`.
 
 ## Pricing
 
