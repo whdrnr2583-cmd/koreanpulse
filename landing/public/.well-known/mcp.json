@@ -2,7 +2,7 @@
   "name": "koreanpulse",
   "displayName": "koreanpulse — Korean Stock Market Intelligence (DART, Foreign & Activist Investors)",
   "version": "0.1.13",
-  "description": "Real-time Korean stock market intelligence for AI assistants, as an MCP server. Track Korean DART (전자공시) corporate disclosures as they are filed, monitor foreign investor holding changes (BlackRock / Vanguard / Norges / GIC / Temasek + more) and activist investor campaigns (KCGI / Align / ValueAct / Elliott), and search classified Korean industry news — all KOSPI / KOSDAQ / KRX data, delivered in English with named-entity classification. Free public daily snapshot at koreanpulse.dev/today. A hosted Cloud tier adds a watchlist-to-alert workflow shipping Q3 2026 on top of the free daily snapshot. Data and intelligence only — not buy/sell recommendations. OSS self-host (AGPL) available.",
+  "description": "Korean stock market data for AI assistants, as an MCP server. Track Korean DART (전자공시) corporate disclosures as they are filed, monitor foreign investor holding changes (BlackRock / Vanguard / Norges / GIC / Temasek + more) and activist investor campaigns (KCGI / Align / ValueAct / Elliott), and search classified Korean industry news — all KOSPI / KOSDAQ / KRX data, delivered in English with allowlist-based filer tagging. Free public daily snapshot at koreanpulse.dev/today. A watchlist-to-alert workflow is planned for the hosted Cloud tier and is not yet available. Data only — not buy/sell recommendations. OSS self-host (AGPL) available.",
   "homepage": "https://koreanpulse.dev",
   "repository": "https://github.com/whdrnr2583-cmd/koreanpulse",
   "license": "AGPL-3.0-or-later",
@@ -111,39 +111,39 @@
   ],
   "oss_self_host": {
     "cost_usd": 0,
-    "note": "AGPL source. Run the MCP locally with your own DART_API_KEY + OPENAI_API_KEY. Community support only — no alerts, no hosted archive, no shared translation cache, no account sync. A separate deployment lane from the hosted Cloud tier. (A hosted remote MCP endpoint is live now at https://mcp.koreanpulse.dev/mcp — connect it from Claude.ai or ChatGPT with no local install; the watchlist-to-alert workflow remains the Q3 2026 roadmap item.)"
+    "note": "AGPL source. Run the MCP locally with your own DART_API_KEY + OPENAI_API_KEY. Community support only — no alerts, no hosted archive, no shared translation cache, no account sync. A separate deployment lane from the hosted Cloud tier. (A hosted remote MCP endpoint is available at https://mcp.koreanpulse.dev/mcp — connect it from Claude.ai or ChatGPT with no local install; the watchlist-to-alert workflow is a planned roadmap item, not yet available.)"
   },
   "data_sources": [
     {
       "name": "DART (전자공시시스템)",
       "url": "https://opendart.fss.or.kr/",
-      "license": "public — free to redistribute with attribution"
+      "usage": "retrieved via the DART open API; attribution and a link to the original filing on every item"
     },
     {
       "name": "전자신문 (etnews)",
       "url": "https://www.etnews.com/",
-      "license": "fair-use summaries with attribution + outbound link"
+      "usage": "short summaries from public RSS metadata with attribution + outbound link; no full-text republication"
     },
     {
       "name": "한국경제",
       "url": "https://www.hankyung.com/",
-      "license": "fair-use summaries with attribution + outbound link"
+      "usage": "short summaries from public RSS metadata with attribution + outbound link; no full-text republication"
     },
     {
       "name": "The Korea Herald",
       "url": "https://www.koreaherald.com/",
-      "license": "fair-use summaries with attribution + outbound link"
+      "usage": "short summaries from public RSS metadata with attribution + outbound link; no full-text republication"
     },
     {
       "name": "지디넷코리아 (zdnet)",
       "url": "https://zdnet.co.kr/",
-      "license": "fair-use summaries with attribution + outbound link"
+      "usage": "short summaries from public RSS metadata with attribution + outbound link; no full-text republication"
     }
   ],
   "legal_posture": {
-    "korean_news": "fair-use summaries only, no full-text republication",
-    "dart": "public data, free redistribution with attribution",
-    "broker_reports": "public-facing summaries only, paywalled reports excluded",
-    "investment_advice": "none — data + summary only (자본시장법 유사투자자문업 무관)"
+    "korean_news": "short summaries with attribution and outbound links only; no full-text republication",
+    "dart": "disclosure data retrieved via the DART open API with attribution; every item links to the original filing",
+    "broker_reports": "not ingested; paywalled reports excluded",
+    "investment_advice": "the service provides disclosure data, translation, filtering, and tagging; it does not execute trades or provide personalized buy/sell recommendations. Users should assess applicable licensing, data-use, and financial-services obligations for their jurisdiction and use case."
   }
 }

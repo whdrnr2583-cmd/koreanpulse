@@ -14,11 +14,11 @@ const PRICING = [
       "Korean activist filer match — KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform / ValueAct / Elliott",
       "Foreign-holder allowlist — BlackRock / Vanguard / Norges / GIC / Temasek / Goldman / JPM + 13 more",
       "Hosted translation cache (no OpenAI key needed)",
-      "~2,000 queries/mo (live today)",
-      "5 watchlists (Q3 2026)",
-      "30-day archive search (Q3 2026)",
-      "1 Discord or Telegram alert channel (Q3 2026)",
-      "Daily English digest (live today)",
+      "~2,000 queries/mo (available now)",
+      "5 watchlists (planned — not yet available)",
+      "30-day archive search (planned — not yet available)",
+      "1 Discord or Telegram alert channel (planned — not yet available)",
+      "Daily English digest (available now)",
     ],
   },
   {
@@ -30,12 +30,12 @@ const PRICING = [
       "https://buy.polar.sh/polar_cl_PmbLKURPhVZ1wuh6vqEKOXx4UNcii3bDqtFg62komUR",
     features: [
       "Everything in Solo (2 paid MCP tools + classification)",
-      "~15,000 queries/mo (live today)",
-      "25 watchlists (Q3 2026)",
-      "1-year archive search (Q3 2026)",
-      "Multi-channel alerts (Discord / Telegram / Email) (Q3 2026)",
-      "Saved searches (Q3 2026)",
-      "CSV / JSON export (Q3 2026)",
+      "~15,000 queries/mo (available now)",
+      "25 watchlists (planned — not yet available)",
+      "1-year archive search (planned — not yet available)",
+      "Multi-channel alerts (Discord / Telegram / Email) (planned — not yet available)",
+      "Saved searches (planned — not yet available)",
+      "CSV / JSON export (planned — not yet available)",
       "Priority cache + priority refresh",
     ],
   },
@@ -47,10 +47,10 @@ const PRICING = [
       "https://buy.polar.sh/polar_cl_l6B5yiFOQqWIkyFpHtkTl93YzaEGWnzHtxDQ4393h7j",
     features: [
       "Everything in Analyst (2 paid MCP tools + classification)",
-      "~100,000 queries/mo (live today)",
-      "3 seats, shared watchlists (Q3 2026)",
-      "Slack / webhook alerts (Q3 2026)",
-      "Team archive (Q3 2026)",
+      "~100,000 queries/mo (available now)",
+      "3 seats, shared watchlists (planned — not yet available)",
+      "Slack / webhook alerts (planned — not yet available)",
+      "Team archive (planned — not yet available)",
       "Priority support",
     ],
   },
@@ -59,7 +59,7 @@ const PRICING = [
 const TOOLS_FREE = [
   {
     name: "track_korean_filings",
-    blurb: "Real-time DART filings, optionally translated. Same source institutional analysts read.",
+    blurb: "DART filings as disclosed, optionally translated to English. Every item links to the original filing.",
   },
   {
     name: "search_korean_industry_news",
@@ -74,13 +74,17 @@ const TOOLS_FREE = [
     name: "resolve_stock_code",
     blurb: "KRX 6-digit ticker → DART corp entry. Pairs cleanly with track_korean_filings.",
   },
+  {
+    name: "koreanpulse_about",
+    blurb: "Server self-description — tool catalog, free vs license-gated split, data sources.",
+  },
 ];
 
 const TOOLS_PAID = [
   {
     name: "monitor_foreign_holders",
     blurb:
-      "Foreign 5%-rule filings by BlackRock / Vanguard / Norges / GIC / Temasek / Goldman / JPM + 13 more. Leading indicator of foreign capital flow.",
+      "Foreign 5%-rule filings tagged against a maintained list — BlackRock / Vanguard / Norges / GIC / Temasek / Goldman / JPM + 13 more.",
   },
   {
     name: "monitor_activist_investors",
@@ -103,21 +107,24 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
   const [consent, setConsent] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [formState, setFormState] = useState<"idle" | "submitting" | "success" | "error">("idle");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!consent) return;
+    if (!consent || formState === "submitting") return;
+    setFormState("submitting");
     try {
-      await fetch("/api/notify", {
+      const res = await fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role }),
+        body: JSON.stringify({ email, role, consent }),
       });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean };
+      // Success is only shown once the server confirms the signup was stored.
+      setFormState(res.ok && data.ok === true ? "success" : "error");
     } catch {
-      // ignore — capture is best-effort here
+      setFormState("error");
     }
-    setSubmitted(true);
   }
 
   return (
@@ -159,17 +166,17 @@ export default function Home() {
 
         <section className="mt-16">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/5 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-accent">
-            Live today — activist &amp; foreign-holder filing classifier for KRX
+            Hosted MCP — activist &amp; foreign-holder filing tagging for KRX
           </div>
           <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
-            When KCGI or Elliott files a 5%-rule disclosure on a Korean stock, your AI assistant sees it in English — classified, not raw.
+            When KCGI or Elliott files a 5%-rule disclosure on a Korean stock, your AI assistant sees it in English — tagged, not raw.
           </h1>
           <p className="mt-5 max-w-2xl text-base font-medium text-zinc-200">
-            koreanpulse is a hosted MCP server that classifies Korean DART
+            koreanpulse is a hosted MCP server that tags Korean DART
             filings by known activist investors (KCGI, Align Partners, Elliott,
             ValueAct, Truston, Anda, Cha, VIP…) and global foreign holders
             (BlackRock, Vanguard, Norges Bank, GIC, Temasek…) — translated
-            to English, available today from Claude.ai, ChatGPT, or Cursor in
+            to English, callable from Claude.ai, ChatGPT, or Cursor in
             one click.
           </p>
           <p className="mt-4 max-w-2xl text-zinc-300">
@@ -180,13 +187,11 @@ export default function Home() {
             not provide. That classification is what koreanpulse ships.
           </p>
           <p className="mt-4 max-w-2xl text-zinc-300">
-            The same endpoint also surfaces foreign 5%-rule entries from
-            sovereign wealth funds, global asset managers, and event-driven
-            hedge funds — the kind of filing that signals a position change
-            before it hits English-language news. Bloomberg charges $24K/yr
-            and still misses the front page of 전자신문. koreanpulse routes
-            the same primary-source data to your AI workflow at a fraction of
-            the cost.
+            The same endpoint also surfaces foreign 5%-rule entries whose
+            filer matches a maintained list of sovereign wealth funds, global
+            asset managers, and hedge funds. koreanpulse translates, tags,
+            and filters the primary-source DART feed and links every item to
+            the original filing — inside your AI workflow.
           </p>
           <p className="mt-4 max-w-2xl text-sm text-zinc-400">
             <strong className="text-zinc-200">1-click connect.</strong> Add{" "}
@@ -213,8 +218,9 @@ export default function Home() {
             </a>
           </div>
           <p className="mt-4 text-xs text-zinc-500">
-            Beta — activist + foreign-holder classification and DART queries
-            are live today. Watchlist polling and alert dispatch ship Q3 2026.
+            Beta — activist + foreign-holder tagging and DART queries work
+            now. Watchlist polling and alert dispatch are planned and not yet
+            available.
           </p>
         </section>
 
@@ -226,32 +232,35 @@ export default function Home() {
             </span>
           </div>
           <p className="mt-3 text-sm text-zinc-300">
-            Ask Claude.ai:{" "}
-            <em>&quot;What activist filings appeared on Samsung Electronics
-            in the last 7 days?&quot;</em>
+            Two real 5%-rule filings from July 2026, exactly as the
+            classifier tags them (verify both on DART via the receipt
+            numbers):
           </p>
           <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded bg-black/60 p-4 text-xs text-zinc-200">
-{`koreanpulse returned 2 filings:
+{`1. Hanyang Securities 한양증권 (001750)
+   Filer: 케이씨지아이제2호사모투자 → tagged ACTIVIST — KCGI
+   Type:  주식등의대량보유상황보고서(일반)
+          → "Report on Large Holdings of Stocks, Etc. (General)"
+   Filed: 2026-07-15 | DART receipt 20260715000397
+   https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260715000397
 
-1. Samsung C&T (028260)
-   Filer: 국민연금공단 — classified as PASSIVE (National Pension Service)
-   Type: 주식등의대량보유상황보고서 (일반)
-         → "Report on Large Holdings of Stocks, Etc. (General)"
-   Filed: 2026-05-04 | Stake change: 9.81% → 10.02%
+2. Coway 코웨이 (021240)
+   Filer: 얼라인파트너스자산운용 → tagged ACTIVIST — Align Partners
+   Type:  주식등의대량보유상황보고서(일반)
+   Filed: 2026-07-07 | DART receipt 20260707000434
+   https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260707000434
 
-2. Samsung Electronics (005930)
-   Filer: Ha Ji-hoon — classified as ACTIVIST (independent)
-   Type: 임원ㆍ주요주주특정증권등소유상황보고서
-         → "Report on Ownership of Specific Securities by Officers / Major Shareholders"
-   Filed: 2026-04-29
-
-The raw DART feed lists both as the same filing type.
-Only koreanpulse distinguishes passive institutional from activist filers.`}
+Every 5%-rule filer — passive fund, individual, or activist — uses this
+same DART filing type, and the raw feed names the filer in Korean
+free text only. koreanpulse tags the filer against a maintained
+allowlist of named funds; filers not on the list are left untagged,
+never guessed.`}
           </pre>
           <p className="mt-3 text-xs text-zinc-500">
-            Actual output from a live Claude.ai session, 2026-05-06. Company
-            names translated automatically; no Korean reading required.
-            Not investment advice.
+            Real filings, reproducible with{" "}
+            <code className="text-zinc-400">monitor_activist_investors</code>{" "}
+            (allowlist matching on the filer of record). Company names
+            translated automatically. Not investment advice.
           </p>
         </section>
 
@@ -259,39 +268,34 @@ Only koreanpulse distinguishes passive institutional from activist filers.`}
         <section className="mt-12 rounded-md border border-emerald-800/40 bg-emerald-500/5 p-6">
           <div className="flex items-baseline gap-3">
             <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300">
-              2026 inflection
+              Why now
             </span>
             <h2 className="text-xl font-semibold">
-              Foreign retail just got direct access to KRX
+              Foreign access to KRX keeps getting easier
             </h2>
           </div>
           <ul className="mt-4 space-y-2 text-sm text-zinc-300">
             <li>
-              <strong className="text-zinc-100">2025-12:</strong> IRC (Investor
-              Registration Certificate) abolished — foreign account openings
-              accelerated <strong>3–4×</strong>.
+              <strong className="text-zinc-100">2023-12-14:</strong> the
+              Investor Registration Certificate (IRC) requirement for foreign
+              investors was abolished, removing the decades-old registration
+              step for direct KRX access.
             </li>
             <li>
-              <strong className="text-zinc-100">2026-04 (last week):</strong>{" "}
-              Hana Securities × Futu Securities (3.3M HK fintech retail)
-              launched Korean stock trading.
+              <strong className="text-zinc-100">2026-04:</strong> Hana
+              Securities and Futu Securities launched Korean stock trading for
+              Futu&apos;s Hong Kong retail customers.
             </li>
             <li>
-              <strong className="text-zinc-100">2026-05-04 (yesterday):</strong>{" "}
-              Samsung Securities × Interactive Brokers (4.6M global retail)
-              pilot launched. Same day: foreigners net-bought a record{" "}
-              <strong>3.9 trillion KRW (~$2.7B)</strong> on KOSPI+NXT.
-            </li>
-            <li>
-              <strong className="text-zinc-100">~7.9M foreign retail accounts</strong>{" "}
-              now have a wired path into Korean equities — up from ~0 two
-              years ago.
+              <strong className="text-zinc-100">2026-05:</strong> Samsung
+              Securities and Interactive Brokers launched a Korean stock
+              trading pilot for IBKR customers.
             </li>
           </ul>
           <p className="mt-4 text-xs text-zinc-500">
-            Sources: FSC, KRX Data, Korea Times, KED Global, 주간한국. The
-            English-language data layer for this audience is what koreanpulse
-            ships.
+            More foreign investors can reach KRX directly, while the primary
+            disclosure source (DART) remains Korean-only. That English-language
+            gap is what koreanpulse works on.
           </p>
         </section>
 
@@ -323,8 +327,8 @@ Only koreanpulse distinguishes passive institutional from activist filers.`}
             </li>
             <li>
               <strong className="text-zinc-100">MSCI Developed Market reclassification path.</strong>{" "}
-              Korea sits on the watchlist. Foreign capital inflow expected if
-              upgraded. The mid-curve window opens before the headline trade.
+              Korea has been under review for reclassification — one of the
+              reasons global investors track Korean market-access changes.
             </li>
             <li>
               <strong className="text-zinc-100">K-themes are global themes.</strong>{" "}
@@ -333,9 +337,10 @@ Only koreanpulse distinguishes passive institutional from activist filers.`}
               microstructure and faster filings.
             </li>
             <li>
-              <strong className="text-zinc-100">Crypto-grade volatility, equity-grade infra.</strong>{" "}
-              KOSPI / KOSDAQ small-mid caps move 10–30% on a single filing.
-              T+2 settlement, low fees, retail-accessible.
+              <strong className="text-zinc-100">Disclosure-driven market.</strong>{" "}
+              Korean small/mid caps are heavily covered by retail flow that
+              reacts to DART disclosures — reading the filing itself, fast,
+              matters more here than in most markets.
             </li>
           </ul>
         </section>
@@ -347,7 +352,7 @@ Only koreanpulse distinguishes passive institutional from activist filers.`}
             There are a handful of Korean-data MCP servers in the wild. Pick the
             one that matches your job. We focus on{" "}
             <strong className="text-zinc-200">
-              English-first equity intelligence with named-entity classification,
+              English-first equity data with allowlist-based filer tagging,
               served as a hosted endpoint your LLM client can connect to in one
               click.
             </strong>{" "}
@@ -407,14 +412,15 @@ Only koreanpulse distinguishes passive institutional from activist filers.`}
                 </tr>
                 <tr>
                   <td className="px-4 py-3 font-medium text-zinc-200">
-                    Activist filer classification
+                    Activist filer tagging (allowlist)
                     <div className="text-xs font-normal text-zinc-500">
                       KCGI, Align, Truston, Anda, Cha, VIP, Life, Platform,
-                      ValueAct, Elliott
+                      Must, Dalton, FCP, Oasis, Palliser, Whitebox, City of
+                      London, ValueAct, Elliott
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-emerald-400">✓</span> 10 labels
+                    <span className="text-emerald-400">✓</span> 17 labels
                   </td>
                   <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
                   <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
@@ -502,7 +508,7 @@ Only koreanpulse distinguishes passive institutional from activist filers.`}
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-emerald-400">✓</span> N→1 hosted
-                    (~9,500 MAU on a single DART key)
+                    (one shared DART key, cached)
                   </td>
                   <td className="px-4 py-3 text-zinc-500">
                     1:1 (one process per user on user&apos;s machine)
@@ -545,7 +551,8 @@ Only koreanpulse distinguishes passive institutional from activist filers.`}
           </div>
 
           <p className="mt-4 max-w-2xl text-xs text-zinc-500">
-            Comparison verified 2026-05-07. Other servers in the space:{" "}
+            Comparison last verified 2026-05-07 — other projects may have
+            shipped changes since. Other servers in the space:{" "}
             <a
               href="https://github.com/SongT-50/korean-stock-mcp"
               className="underline hover:text-zinc-300"
@@ -581,8 +588,8 @@ Only koreanpulse distinguishes passive institutional from activist filers.`}
             foreign-holder 5%-rule disclosures (BlackRock, Vanguard, Norges, GIC,
             Temasek, Goldman, JPM, Morgan Stanley…), Korean activist filings,
             major DART disclosures — all summarised in English. Public, no
-            login. Treat it as a preview of the daily digest paying customers
-            get pushed to their channel of choice.
+            login. The page shows its data date and flags itself when a
+            snapshot is stale.
           </p>
           <p className="mt-3 text-sm text-zinc-500">
             Machine-readable JSON at <code>/today.json</code>. Last 30 days at{" "}
@@ -595,27 +602,46 @@ Only koreanpulse distinguishes passive institutional from activist filers.`}
           <div className="mb-6 rounded-md border border-amber-700/50 bg-amber-500/5 p-4">
             <div className="flex items-baseline gap-2">
               <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-300">
-                Beta
-              </span>
-              <span className="text-sm font-medium text-amber-200">
-                Activist + foreign-holder classification is live today
+                Beta — what works now vs. what is planned
               </span>
             </div>
-            <p className="mt-2 text-xs text-zinc-300">
-              The two paid MCP tools ({" "}
-              <code>monitor_activist_investors</code> and{" "}
-              <code>monitor_foreign_holders</code>) are callable today via
-              Claude.ai, ChatGPT, or the OpenAI Responses API. Watchlist
-              polling, alert dispatch, and per-tier retention windows ship
-              Q3 2026. Today the only runtime-enforced difference between
-              tiers is the monthly query cap (2K / 15K / 100K).
+            <div className="mt-3 grid gap-4 text-xs text-zinc-300 sm:grid-cols-2">
+              <div>
+                <p className="font-semibold text-emerald-300">Available now</p>
+                <ul className="mt-1.5 list-disc space-y-1 pl-4">
+                  <li>Hosted remote MCP endpoint (<code>mcp.koreanpulse.dev/mcp</code>)</li>
+                  <li>5 free tools: DART filings, company/ticker resolution, industry news, server info</li>
+                  <li>2 license-gated tools: <code>monitor_activist_investors</code>, <code>monitor_foreign_holders</code></li>
+                  <li>Hosted English translation for filing titles</li>
+                  <li>Public daily snapshot at <a href="/today" className="underline">/today</a></li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-semibold text-amber-300">Not yet available (planned)</p>
+                <ul className="mt-1.5 list-disc space-y-1 pl-4">
+                  <li>Continuous watchlist polling</li>
+                  <li>Discord / Telegram / Email / Slack alerts</li>
+                  <li>Saved searches, CSV/JSON export</li>
+                  <li>Archive search &amp; retention windows</li>
+                  <li>Team seats &amp; shared watchlists</li>
+                </ul>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-zinc-400">
+              Until the planned features ship, the runtime differences between
+              paid tiers are the monthly query cap (2K / 15K / 100K) and
+              support level — most tier differentiation is roadmap. If a
+              planned feature matters to you, wait for it to ship before
+              subscribing, or ask us first.
             </p>
           </div>
           <h2 className="text-2xl font-semibold">Pricing</h2>
           <p className="mt-2 text-sm text-zinc-400 max-w-2xl">
-            Solo $29/mo unlocks the two classification tools (activist +
-            foreign-holder) today. Watchlist polling and alert dispatch ship
-            Q3 2026 — early subscribers keep the launch rate when they land.
+            Solo $29/mo unlocks the two allowlist-tagging tools (activist +
+            foreign-holder) now. Subscribing via Polar starts a paid monthly
+            subscription that charges immediately at checkout. Watchlist
+            polling and alert dispatch are planned and not yet available —
+            early subscribers keep their signup rate when those features land.
           </p>
 
           {/* 3b — Free vs Paid comparison box (clarify what subscribing actually unlocks) */}
@@ -651,7 +677,8 @@ Only koreanpulse distinguishes passive institutional from activist filers.`}
                 <li>
                   · <code>monitor_activist_investors</code> — Korean activist
                   filer match (KCGI, Align Partners, Truston, Anda, Cha, VIP,
-                  Life, Platform, ValueAct, Elliott)
+                  Life, Platform, Must, Dalton, FCP, Oasis, Palliser,
+                  Whitebox, City of London, ValueAct, Elliott)
                 </li>
                 <li>
                   · <code>monitor_foreign_holders</code> — global allowlist
@@ -673,34 +700,24 @@ Only koreanpulse distinguishes passive institutional from activist filers.`}
           {/* 3e — what the paid gate actually looks like in your AI client (live demo) */}
           <div className="mt-6 rounded-md border border-zinc-800 bg-zinc-950/50 p-5">
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              What the paid gate looks like in your AI client (live, 2026-05-07)
+              What the license gate returns without a key
             </div>
             <p className="mt-2 text-sm text-zinc-400">
-              When a Claude.ai or ChatGPT user asks{" "}
-              <em>&quot;what activist filings happened on Samsung Electronics
-              this week?&quot;</em> without a Koreanpulse license, the
-              hosted endpoint refuses to fall back silently. Claude.ai
-              renders this verbatim:
+              Calling a license-gated tool without a <code>license_key</code>{" "}
+              never fails silently — the tool returns this notice, which your
+              AI client relays:
             </p>
             <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded bg-black/60 p-4 text-xs text-zinc-200">
-{`I need a Koreanpulse license to identify activist investor filings on
-Samsung Electronics.
-
-The monitor_activist_investors tool that identifies known activist
-filers (KCGI, Align Partners, Truston, Anda, VIP, Cha, Life, Platform,
-ValueAct, Elliott, etc.) is a paid-tier feature ($29/mo Solo plan).
-This classification work isn't available from raw DART filings alone.
-
-To subscribe: https://buy.polar.sh/polar_cl_ETpLepEvpGkGBXAOJjQhi7gwizO8GkOW3YaHw4IgHAr
-
-Once you have a license key, I can fetch Samsung Electronics' recent
-activist filings from this week. Would you like to sign up?`}
+{`\`monitor_activist_investors\` requires a license key. Pass a
+\`license_key\` argument when calling this tool. The activist /
+foreign-holder allowlist tagging runs server-side on the hosted
+koreanpulse service. OSS self-host (github.com/whdrnr2583-cmd/
+koreanpulse + your own DART API key) is free but does NOT include
+this allowlist tagging, so self-hosting will not unlock this tool.`}
             </pre>
             <p className="mt-3 text-xs text-zinc-500">
-              Verified end-to-end against Claude.ai 2026-05-07. ChatGPT
-              behaviour varies — its system prompt sometimes routes around
-              the gate via web search. For the strongest paid-tool UX, use
-              Claude.ai or the OpenAI Responses API directly.
+              How the surrounding assistant text reads varies by client and
+              model. Your license key arrives by email after checkout.
             </p>
           </div>
 
@@ -752,11 +769,9 @@ activist filings from this week. Would you like to sign up?`}
               <code className="text-accent">
                 {"{license_key: \"kp_…\", ticker: \"005930\"}"}
               </code>
-              . Stdio env-var fallback (
-              <code className="text-accent">KOREANPULSE_LICENSE_KEY</code>) and
-              one-time HTTP Bearer config ship after the first paid signup;
-              for now, include the key per-prompt or in your client&apos;s
-              system prompt.
+              . A stdio env-var option and one-time HTTP Bearer config are
+              planned but not yet available; for now, include the key
+              per-prompt or in your client&apos;s system prompt.
             </p>
           </div>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
@@ -768,11 +783,10 @@ activist filings from this week. Would you like to sign up?`}
             </a>
           </div>
           <p className="mt-6 text-xs text-zinc-500">
-            Annual billing −20% at launch. Cloud customers still install the
-            local MCP (one `pip install` + 4-line Claude Desktop config); the
-            Cloudflare Worker holds our OpenAI key and validates your license,
-            so no OpenAI key is needed on your side. Enterprise / SLA: contact
-            us.
+            Cloud licenses work on the hosted endpoint (no install) or with
+            the local stdio install; hosted translation uses our OpenAI key
+            and validates your license, so no OpenAI key is needed on your
+            side. Enterprise / SLA: contact us.
           </p>
           <p className="mt-3 text-xs text-zinc-500">
             By subscribing you agree to our{" "}
@@ -783,9 +797,11 @@ activist filings from this week. Would you like to sign up?`}
             <a href="/privacy" className="underline hover:text-zinc-300">
               Privacy Policy
             </a>
-            . koreanpulse provides data only —{" "}
-            <strong className="text-zinc-300">not investment advice</strong>{" "}
-            (자본시장법 §101 면제 영역).
+            . koreanpulse provides disclosure data, translation, filtering,
+            and tagging only —{" "}
+            <strong className="text-zinc-300">not investment advice</strong>.
+            It does not execute trades or provide personalized buy/sell
+            recommendations.
           </p>
         </section>
 
@@ -821,9 +837,9 @@ activist filings from this week. Would you like to sign up?`}
           </ul>
           <p className="mt-3 text-xs text-zinc-500">
             Streamable HTTP transport (single-region node, Let&apos;s Encrypt
-            cert). Validated end-to-end against ChatGPT and Claude.ai 2026-05-06.
-            For max privacy or self-hosting, the local stdio path below is
-            still canonical.
+            cert). Last validated end-to-end against ChatGPT and Claude.ai on
+            2026-05-06. For max privacy or self-hosting, the local stdio path
+            below is still canonical.
           </p>
         </section>
 
@@ -835,8 +851,8 @@ activist filings from this week. Would you like to sign up?`}
             with their own DART and OpenAI keys — community support only, no
             hosted archive, no shared translation cache, no alerts. This path
             is for hackers and max-privacy users; the paid Cloud tiers above
-            are what designed to ship you the watchlist-to-alert workflow once
-            polling/dispatch lands (Q3 2026).
+            are where the planned watchlist-to-alert workflow will land once
+            polling and dispatch ship.
           </p>
           <div className="mt-4 flex gap-3">
             <a
@@ -860,11 +876,11 @@ activist filings from this week. Would you like to sign up?`}
           <p className="mt-3 text-zinc-400 text-sm max-w-2xl">
             7 MCP tools split into <strong className="text-zinc-200">5 free</strong> (raw
             DART + RSS surface, no signup) and{" "}
-            <strong className="text-zinc-200">2 paid</strong> — the
-            classification work that takes a Korean speaker by hand
-            (5%-rule foreign-holder + Korean activist filer matching).
-            ChatGPT and Claude.ai render the inline subscription link
-            automatically when a paid tool is called without a license.
+            <strong className="text-zinc-200">2 license-gated</strong> —
+            5%-rule foreign-holder and Korean activist filer matching against
+            a maintained allowlist. Calling a gated tool without a license
+            returns a clear license-required notice (shown above), never a
+            silent failure.
           </p>
 
           <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-400">
@@ -898,7 +914,8 @@ activist filings from this week. Would you like to sign up?`}
           </div>
 
           <p className="mt-4 text-sm text-zinc-500">
-            More shipping: <code>summarize_korean_earnings_call</code>,{" "}
+            Planned, not yet available:{" "}
+            <code>summarize_korean_earnings_call</code>,{" "}
             <code>get_ma_pipeline</code>, <code>track_government_policy</code>,
             and webhook alert delivery (Discord / Telegram / Slack).
           </p>
@@ -908,8 +925,8 @@ activist filings from this week. Would you like to sign up?`}
         <section id="waitlist" className="mt-20 scroll-mt-20">
           <h2 className="text-2xl font-semibold">Get notified at launch</h2>
           <p className="mt-2 text-sm text-zinc-400">
-            One email when the Solo trial opens and the marketplaces accept us.
-            The role field is optional — it helps us figure out who&apos;s
+            One email when the planned watchlist-alert workflow ships. The
+            role field is optional — it helps us figure out who&apos;s
             actually showing up.
           </p>
           <form
@@ -954,15 +971,21 @@ activist filings from this week. Would you like to sign up?`}
             </label>
             <button
               type="submit"
-              disabled={!consent}
+              disabled={!consent || formState === "submitting"}
               className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Notify me when Solo trial opens
+              {formState === "submitting" ? "Saving…" : "Notify me at launch"}
             </button>
           </form>
-          {submitted && (
+          {formState === "success" && (
             <p className="mt-3 text-sm text-accent">
               Got it. You&apos;ll hear from us once.
+            </p>
+          )}
+          {formState === "error" && (
+            <p className="mt-3 text-sm text-red-400">
+              We couldn&apos;t save your signup — please check the email address
+              and try again in a moment.
             </p>
           )}
         </section>

@@ -53,8 +53,8 @@ const faqLd = {
           "The 5%-rule disclosure (주식등의대량보유상황보고서, 대량보유보고) must be " +
           "filed in DART when an investor crosses 5% ownership of a listed " +
           "Korean company, and again whenever the holding shifts by 1% or more. " +
-          "It is the leading public indicator of foreign capital entering a name " +
-          "and of activist accumulation. It is filed in Korean.",
+          "It is the primary public disclosure showing when a large foreign holder " +
+          "or activist crosses a reporting threshold in a name. It is filed in Korean.",
       },
     },
     {
@@ -139,9 +139,8 @@ export default function TrackForeignInvestorsActivistsKorea() {
           </p>
           <p className="mt-4 text-zinc-300">
             It is the single most-watched DART filing type for anyone following
-            capital flow, because it is a leading indicator: it shows
-            accumulation as it happens, before it shows up in news or quarterly
-            holdings data.
+            capital flow, because it shows position changes as they are
+            disclosed, typically earlier than quarterly holdings data.
           </p>
 
           <h2 className="mt-12 text-2xl font-semibold">Who files them</h2>
@@ -292,7 +291,7 @@ export default function TrackForeignInvestorsActivistsKorea() {
             service — it performs no individualized analysis and makes no
             recommendation to buy, sell, or hold any security. Identifying that
             an investor filed a disclosure is not a view on the security.
-            자본시장법 §101 면제 영역 — 일반 정보 데이터 제공.
+            일반 정보 데이터 제공 — 투자자문·투자권유에 해당하지 않습니다.
           </p>
         </article>
       </div>

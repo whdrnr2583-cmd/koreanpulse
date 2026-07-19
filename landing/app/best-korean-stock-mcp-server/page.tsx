@@ -218,7 +218,7 @@ export default function BestKoreanStockMcpServer() {
             </li>
             <li>
               <strong className="text-zinc-100">
-                Cross-investor classification
+                Cross-investor tagging
               </strong>{" "}
               — 5%-rule (대량보유보고) disclosures auto-tagged by who filed them:
               global passive holders (BlackRock, Vanguard, Norges Bank, GIC,
@@ -303,7 +303,7 @@ export default function BestKoreanStockMcpServer() {
             service — it performs no individualized analysis and makes no
             recommendation to buy, sell, or hold any security. Comparisons
             describe setup and data-access trade-offs, not investment merit.
-            자본시장법 §101 면제 영역 — 일반 정보 데이터 제공.
+            일반 정보 데이터 제공 — 투자자문·투자권유에 해당하지 않습니다.
           </p>
         </article>
       </div>

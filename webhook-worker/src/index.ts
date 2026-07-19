@@ -5,6 +5,7 @@
  *   GET  /health                     → liveness
  *   POST /webhook/lemonsqueezy       → LS billing webhook
  *   POST /v1/validate                → license validate (Worker-to-Worker)
+ *   POST /v1/signup                  → durable waitlist signup (from Vercel landing)
  *
  * Replaces the old Lightsail FastAPI deployment. Whole stack is now
  * 100% Cloudflare:
@@ -15,8 +16,9 @@
 import { handleEvent, verifyLsSignature, type Env as LsEnv } from "./lemonsqueezy";
 import { handlePolarEvent, verifyPolarSignature, type PolarEnv } from "./polar";
 import { validateAndCharge } from "./license";
+import { handleSignup, type SignupEnv } from "./signup";
 
-export type Env = LsEnv & PolarEnv;
+export type Env = LsEnv & PolarEnv & SignupEnv;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -40,6 +42,10 @@ export default {
 
     if (url.pathname === "/v1/validate") {
       return await handleValidate(request, env);
+    }
+
+    if (url.pathname === "/v1/signup") {
+      return await handleSignup(request, env);
     }
 
     return json({ error: "not found" }, 404);

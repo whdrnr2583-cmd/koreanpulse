@@ -39,8 +39,16 @@ id = "113ccc7528044c5584f9e7a58579f048"
 preview_id = "7b1196a4fce84bb39abdca6f3ad74a90"
 
 # Cron — KST 16:30 = UTC 07:30 (KOSPI close at 15:30, +1h buffer for late filings).
+#
+# ⚠ Day-of-week MUST use names here. Cloudflare cron numbers days 1=Sunday …
+# 7=Saturday (unlike POSIX cron where 0/7=Sunday), so the old "30 7 * * 1-5"
+# actually meant Sunday–Thursday. That single character class was the root
+# cause of the repeated Friday misses (2026-05-08 / 05-15 / 05-22: no Friday
+# build, /today/<date> 404) and of the phantom Sunday builds (2026-07-05,
+# 07-12 at 07:30 UTC). Verified against KV snapshot history + the official
+# docs ("Days of the week go from 1 = Sunday to 7 = Saturday") on 2026-07-19.
 [triggers]
-crons = ["30 7 * * 1-5"]
+crons = ["30 7 * * MON-FRI"]
 
 # Workers Logs — persist console.log/error so a cron failure is visible
 # after the fact. The cron runs at 07:30 UTC with nobody tailing live;

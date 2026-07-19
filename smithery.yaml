@@ -18,7 +18,7 @@ description: |
   Cloud tiers for the watchlist-to-alert workflow (ships Q3 2026).
 homepage: https://koreanpulse.dev
 repository: https://github.com/whdrnr2583-cmd/koreanpulse
-license: AGPL-3.0
+license: AGPL-3.0-or-later
 icon: https://raw.githubusercontent.com/whdrnr2583-cmd/koreanpulse/main/docs/assets/logo.svg
 
 tags:

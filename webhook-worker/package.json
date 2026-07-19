@@ -8,12 +8,14 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "migrate:local": "wrangler d1 execute koreanpulse_db --local --file ./migrations/0001_licenses.sql && wrangler d1 execute koreanpulse_db --local --file ./migrations/0002_pricing_v2.sql",
     "migrate:prod": "wrangler d1 execute koreanpulse_db --remote --file ./migrations/0001_licenses.sql && wrangler d1 execute koreanpulse_db --remote --file ./migrations/0002_pricing_v2.sql"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250101.0",
     "typescript": "^5.4.0",
+    "vitest": "^2.1.0",
     "wrangler": "^3.78.0"
   }
 }

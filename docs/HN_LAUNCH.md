@@ -37,7 +37,7 @@ One sentence: give koreanpulse your KRX tickers and it pings you in English the 
 Why now:
 - Late April: Hana Securities x Futu (3.3M HK retail accounts) went live on Korean stocks.
 - May 4: Samsung Securities x Interactive Brokers (4.6M global retail) opened a pilot. Same day, foreigners net-bought a record 3.9T KRW (~$2.7B) on KOSPI+NXT — the largest single-day print on record.
-- Dec 2025: the IRC (foreign investor registration certificate) was abolished; foreign account openings are running 3-4x the 2023 baseline.
+- 2023-12-14: the IRC (foreign investor registration certificate) requirement was abolished, removing the decades-old registration step for direct foreign access to KRX.
 
 Honest counterpoint: 2025 net foreign flow was still -11.8T KRW and the IBKR side is a pilot — so "early to a real trend," not "arrived." But the wiring is now in place for ~7.9M foreign retail accounts that had no path in before.
 
@@ -48,7 +48,7 @@ Three lanes, one stack:
 2. Cloud (waitlist, early-supporter rate locked): Solo $29/mo, Analyst $79/mo, Desk $249/mo — rising query caps, archive length, channels, seats; full breakdown at koreanpulse.dev/pricing. Hosted translation means no OpenAI key needed (a Cloudflare Worker holds ours + validates your license). No auto-charge until the polling/alert workflow ships; today the only enforced tier delta is the monthly query cap + seat count.
 3. OSS self-host — AGPL, bring your own DART + OpenAI keys, community support only. A separate lane, not a pricing tier.
 
-Under the hood — 7 MCP tools: track_korean_filings (DART filings, EN-translated on demand); monitor_foreign_holders (20 global passive holders tagged — BlackRock, Vanguard, Norges Bank, GIC, Capital Group, Matthews, etc.); monitor_activist_investors (10 Korean activists — KCGI, Align Partners, Anda, Cha Partners, etc.; plus Elliott/ValueAct when they file in Korea); lookup_corp_code / resolve_stock_code (117K Korean entities, auto-translated English names); search_korean_industry_news (etnews + 한국경제, 16 industry tags). FastMCP server, Cloudflare Workers + KV + D1 in front, zero servers I run, source AGPL.
+Under the hood — 7 MCP tools: track_korean_filings (DART filings, EN-translated on demand); monitor_foreign_holders (20 global passive holders tagged — BlackRock, Vanguard, Norges Bank, GIC, Capital Group, Matthews, etc.); monitor_activist_investors (17 Korean activist funds tagged — KCGI, Align Partners, Must, Dalton, Oasis, Palliser, etc.; plus Elliott/ValueAct when they file in Korea); lookup_corp_code / resolve_stock_code (117K Korean entities, auto-translated English names); search_korean_industry_news (etnews + 한국경제, 16 industry tags). FastMCP server, Cloudflare Workers + KV + D1 in front, zero servers I run, source AGPL.
 
 A few other Korean-equity MCP servers exist (korea-stock-mcp, SongT-50/korean-stock-mcp, etc.) — mostly stdio-only, so a user has to npx-install and edit a JSON config first. Koreanpulse runs the latest Streamable HTTP transport at mcp.koreanpulse.dev/mcp — a ChatGPT or Claude.ai user adds it as a custom connector with one URL paste, no install, no config. Pair that with 30 named-entity classifications that raw DART feeds can't derive, and that's our lane. If you need raw KRX OHLCV or XBRL financials, korea-stock-mcp is excellent for that and we keep it out of scope.
 

@@ -112,7 +112,7 @@ export default function KoreanFilingsGuide() {
             <li>
               <strong className="text-zinc-100">5%-rule disclosures</strong> (대량보유보고) —
               filed when an investor crosses 5% ownership or shifts holdings by 1% or more.
-              The leading indicator of foreign capital flow and activist accumulation.
+              The primary public disclosure of large foreign-holder and activist position changes.
             </li>
             <li>
               <strong className="text-zinc-100">Activist filings</strong> — Korean activists
@@ -137,7 +137,7 @@ export default function KoreanFilingsGuide() {
             </li>
             <li>
               <strong className="text-zinc-100">2. Bloomberg / FactSet.</strong> English,
-              but roughly $24K per year, and thin on Korean primary-source depth.
+              but enterprise-priced and thin on Korean primary-source depth.
             </li>
             <li>
               <strong className="text-zinc-100">3. English wire services</strong> (KED
@@ -215,7 +215,7 @@ export default function KoreanFilingsGuide() {
             <strong className="text-zinc-400">Not investment advice.</strong> koreanpulse
             translates and classifies primary-source public data (DART filings, Korean
             industry news). It is not investment advice and performs no individualized
-            analysis or recommendation. 자본시장법 §101 면제 영역 — 일반 정보 데이터 제공.
+            analysis or recommendation. 일반 정보 데이터 제공 — 투자자문·투자권유에 해당하지 않습니다.
           </p>
         </article>
       </div>

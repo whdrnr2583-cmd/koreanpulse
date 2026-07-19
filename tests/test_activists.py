@@ -257,3 +257,39 @@ class TestAliasDenylistFalsePositives:
         assert v is not None and v.canonical == "Vanguard"
         assert match_activist("KCGI 제일호 사모투자합자회사") == "KCGI"
         assert match_activist("얼라인파트너스자산운용") == "Align Partners"
+
+
+class TestNoActivistLabelForNonAllowlistFilers:
+    """Regression for the 2026-07-19 landing-example incident.
+
+    A marketing example labelled an individual officer/major-shareholder
+    filer ("하지훈") an "ACTIVIST (independent)" and the National Pension
+    Service "PASSIVE" — neither of which the implementation produces. The
+    product rule is: only filers matching the maintained allowlist are
+    tagged; individuals, pension funds, and unknown filers return no match
+    and must never be presented as activists.
+    """
+
+    def test_individual_officer_name_is_not_tagged(self):
+        assert match_investor("하지훈") is None
+        assert match_activist("하지훈") is None
+
+    def test_random_individual_is_not_tagged(self):
+        assert match_investor("김철수") is None
+
+    def test_national_pension_service_is_not_tagged(self):
+        # NPS is a domestic pension fund — on neither allowlist.
+        assert match_investor("국민연금공단") is None
+        assert match_foreign_holder("국민연금공단") is None
+
+    def test_real_july_2026_filers_still_tag_correctly(self):
+        # The reproducible landing example (DART receipts 20260715000397 /
+        # 20260707000434) relies on these exact filer-of-record strings.
+        kcgi = match_investor("케이씨지아이제2호사모투자")
+        assert kcgi is not None
+        assert kcgi.klass is InvestorClass.ACTIVIST
+        assert kcgi.canonical == "KCGI"
+        align = match_investor("얼라인파트너스자산운용")
+        assert align is not None
+        assert align.klass is InvestorClass.ACTIVIST
+        assert align.canonical == "Align Partners"

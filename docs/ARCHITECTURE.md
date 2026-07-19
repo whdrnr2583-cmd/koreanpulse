@@ -344,7 +344,7 @@ For the 12-month customer-mix forecast (~756 MAU mostly free + ~86 paying):
 
 ## Test surface
 
-- 181 tests passing, 1 skipped (Postgres test needs a live DB)
+- 433 tests passing, 1 skipped (Postgres test needs a live DB)
 - Unit tests cover every module; integration tests cover the legacy
   Python webhook via `fastapi.testclient.TestClient`
 - DART tests use `httpx.MockTransport` — no live API required for CI

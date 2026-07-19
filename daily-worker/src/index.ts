@@ -31,6 +31,7 @@ import {
   type ForeignFlowEnriched,
 } from "./render";
 import { postToDiscord } from "./discord";
+import { computeFreshness, type Freshness } from "./freshness";
 
 export interface Env {
   DAILY: KVNamespace;
@@ -55,9 +56,12 @@ export default {
     ctx: ExecutionContext,
   ): Promise<void> {
     // Observability: scheduled() previously logged nothing, so a failed
-    // cron build vanished silently (the 2026-05-08 + 05-15 Friday misses
-    // left no trace). Log the invocation + wrap buildDaily so a throw is
-    // captured via console.error instead of disappearing inside waitUntil.
+    // cron build vanished silently. (The 2026-05-08/05-15 Friday misses that
+    // motivated this turned out to be no-fires — the "1-5" day-of-week field
+    // meant Sun–Thu under Cloudflare's 1=Sunday numbering, see wrangler.toml —
+    // but the logging stays: it is what distinguishes "cron did not run" from
+    // "cron ran and failed".) Log the invocation + wrap buildDaily so a throw
+    // is captured via console.error instead of disappearing inside waitUntil.
     console.log(
       `[cron] fired cron="${event.cron}" ` +
         `scheduledTime=${new Date(event.scheduledTime).toISOString()}`,
@@ -81,7 +85,19 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "GET" && url.pathname === "/health") {
-      return json({ status: "ok" });
+      // Freshness-aware health: lets an external monitor distinguish
+      // "worker up, snapshot current" from "worker up, cron silently dead"
+      // without parsing the full snapshot.
+      const freshness = await latestFreshness(env);
+      return json({
+        status: "ok",
+        snapshot: {
+          state: freshness.state,
+          snapshot_date: freshness.snapshot_date,
+          generated_at: freshness.generated_at,
+          expected_date: freshness.expected_date,
+        },
+      });
     }
 
     // Manual rebuild trigger for ops / first-time setup. POST + dedicated
@@ -110,26 +126,41 @@ export default {
     }
 
     if (url.pathname === "/today") {
-      const html = await env.DAILY.get(KV_HTML_LATEST);
+      const [html, freshness] = await Promise.all([
+        env.DAILY.get(KV_HTML_LATEST),
+        latestFreshness(env),
+      ]);
       if (!html) {
         return new Response(
-          renderEmptyState("Daily build hasn't run yet — first cron at KST 16:30 on weekdays."),
+          renderEmptyState(
+            "No daily snapshot is available yet. Builds run on the weekday cron at 16:30 KST.",
+          ),
           { status: 200, headers: htmlHeaders(60) },
         );
       }
-      return new Response(html, { status: 200, headers: htmlHeaders(300) });
+      return new Response(withFreshnessBanner(html, freshness), {
+        status: 200,
+        headers: htmlHeaders(300),
+      });
     }
 
     if (url.pathname === "/today.json") {
       const data = await env.DAILY.get(KV_JSON_LATEST);
       if (!data) {
-        return json({ error: "daily build pending" }, 404);
+        return json(
+          {
+            error: "no snapshot available",
+            freshness: computeFreshness(null, null, Date.now()),
+          },
+          404,
+        );
       }
-      return new Response(data, {
+      return new Response(withFreshnessField(data), {
         status: 200,
         headers: {
           "Content-Type": "application/json; charset=utf-8",
-          "Cache-Control": "public, max-age=300",
+          // Short cache so the embedded freshness assessment can't drift far.
+          "Cache-Control": "public, max-age=60",
         },
       });
     }
@@ -146,7 +177,8 @@ export default {
   },
 };
 
-async function buildDaily(
+// Exported for the regression tests in test/ (last-known-good preservation).
+export async function buildDaily(
   env: Env,
 ): Promise<{
   activists: number;
@@ -220,19 +252,28 @@ async function buildDaily(
       { name: "DART (전자공시시스템)", url: "https://opendart.fss.or.kr/" },
     ],
     legal_notice:
-      "DART data is public; redistributed with attribution. No investment advice — data + summary only.",
+      "Disclosure data sourced from the DART open API with attribution; each item links to the " +
+      "original filing. Not investment advice — data and summaries only.",
   };
 
   const html = renderDaily(snap);
   const jsonStr = JSON.stringify(snap);
 
   const ttl = (parseInt(env.HISTORY_DAYS, 10) || 30) * 86400;
-  await Promise.all([
-    env.DAILY.put(KV_HTML_LATEST, html),
-    env.DAILY.put(KV_JSON_LATEST, jsonStr),
-    env.DAILY.put(`daily:html:${date}`, html, { expirationTtl: ttl }),
-    env.DAILY.put(`daily:json:${date}`, jsonStr, { expirationTtl: ttl }),
-  ]);
+  try {
+    await Promise.all([
+      env.DAILY.put(KV_HTML_LATEST, html),
+      env.DAILY.put(KV_JSON_LATEST, jsonStr),
+      env.DAILY.put(`daily:html:${date}`, html, { expirationTtl: ttl }),
+      env.DAILY.put(`daily:json:${date}`, jsonStr, { expirationTtl: ttl }),
+    ]);
+  } catch (exc) {
+    // Distinguish "built fine but couldn't persist" from a DART/LLM failure
+    // in the logs — the remediation is completely different.
+    const message = exc instanceof Error ? exc.message : String(exc);
+    console.error(`[kv] snapshot write FAILED for ${date}: ${message}`);
+    throw exc;
+  }
 
   if (env.DISCORD_WEBHOOK_URL) {
     const result = await postToDiscord(env.DISCORD_WEBHOOK_URL, snap);
@@ -388,6 +429,69 @@ async function tryTopFilings(
     console.error(`[dart] fetchTopFilings FAILED: ${message}`);
     return { ok: false, error: message };
   }
+}
+
+/** Freshness of the latest stored snapshot (KV read of the JSON copy). */
+async function latestFreshness(env: Env): Promise<Freshness> {
+  let snapshotDate: string | null = null;
+  let generatedAt: string | null = null;
+  try {
+    const raw = await env.DAILY.get(KV_JSON_LATEST);
+    if (raw) {
+      const snap = JSON.parse(raw) as { date?: string; generated_at?: string };
+      snapshotDate = snap.date ?? null;
+      generatedAt = snap.generated_at ?? null;
+    }
+  } catch (exc) {
+    console.error(
+      `[freshness] could not read latest snapshot: ${exc instanceof Error ? exc.message : String(exc)}`,
+    );
+  }
+  return computeFreshness(snapshotDate, generatedAt, Date.now());
+}
+
+/**
+ * Serve-time augmentation: parse the stored snapshot and attach a `freshness`
+ * object computed against the current clock. Falls back to the raw stored
+ * bytes if the stored value is somehow unparseable.
+ */
+export function withFreshnessField(storedJson: string, nowMs = Date.now()): string {
+  try {
+    const snap = JSON.parse(storedJson) as { date?: string; generated_at?: string };
+    const freshness = computeFreshness(snap.date ?? null, snap.generated_at ?? null, nowMs);
+    return JSON.stringify({ ...snap, freshness });
+  } catch {
+    return storedJson;
+  }
+}
+
+/**
+ * Serve-time stale banner. Stored HTML is a static render, so the honesty
+ * signal ("this page is NOT current") has to be injected per-request. Injects
+ * right after <body> so it also works for snapshots rendered by older worker
+ * versions.
+ */
+export function withFreshnessBanner(html: string, freshness: Freshness): string {
+  if (freshness.state === "fresh") return html;
+  const color =
+    freshness.state === "pending"
+      ? "border-sky-500/50 bg-sky-500/10 text-sky-200"
+      : "border-red-500/50 bg-red-500/10 text-red-200";
+  const label =
+    freshness.state === "pending"
+      ? "Today's build is running."
+      : "This snapshot is stale.";
+  const banner =
+    `<div class="max-w-3xl mx-auto px-4 pt-6"><div class="rounded-lg border ${color} px-4 py-3 text-sm">` +
+    `<strong class="font-semibold">${label}</strong> ` +
+    `${escapeText(freshness.note)} <span class="opacity-70">(checked ${escapeText(
+      freshness.checked_at,
+    )})</span></div></div>`;
+  return html.replace(/(<body[^>]*>)/i, `$1${banner}`);
+}
+
+function escapeText(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function json(data: unknown, status = 200): Response {

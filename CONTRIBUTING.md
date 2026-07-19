@@ -44,7 +44,7 @@ Hits real DART. First run downloads the corp-code index (~5 MB, cached 7d).
 
 ## Tests
 
-- `pytest -q` runs the full suite (134 tests + 1 skipped without DB)
+- `pytest -q` runs the full suite (433 tests + 1 skipped without a live Postgres)
 - New code should ship with tests in `tests/` matching the existing style:
   one file per module, classes for grouping, `@pytest.mark.asyncio` for
   coroutines.

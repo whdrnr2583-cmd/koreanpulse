@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+### Added (internal — watchlist-alert foundation, feature-flagged, 2026-07-19)
+
+- **`koreanpulse.watchlist` — smallest internal foundation for the planned
+  watchlist→alert workflow.** Not an MCP tool, disabled by default
+  (`KOREANPULSE_WATCHLIST_ENABLED=1` gates the polling entrypoint), one
+  delivery channel (existing `koreanpulse.alerts` webhook primitive, Discord
+  for the internal design-partner test). Watchlist records (≤10 corp codes,
+  enabled flag, `last_checked` checkpoint, per-company delivered-receipt
+  ledger) persist to an atomically-written local JSON file. Materiality
+  reuses existing product logic only: title red-flag tags + 5%-rule filings
+  whose filer matches the maintained activist/foreign-holder allowlist.
+  Idempotent by receipt number; a delivery failure keeps the receipt pending
+  (retried next poll, never delivered twice); the checkpoint never advances
+  past an undelivered filing or a failed company fetch. 17 tests.
+
+### Fixed (docs/copy honesty pass, 2026-07-19)
+
+- Public claims audit: IRC abolition date corrected to 2023-12-14 everywhere;
+  removed static relative-date copy ("live today", "yesterday", "last week",
+  "in the last 7 days"), unsupported summed account totals, and definitive
+  legal-exemption assertions from the landing page, README, mcp.json, and
+  llms.txt. The landing example now uses two real, reproducible July 2026
+  DART filings (receipts 20260715000397, 20260707000434) with a regression
+  test asserting individuals/NPS are never tagged as activists.
+
 ### Added (experimental — agent batch-scan, validation phase)
 
 - **`track_korean_filings` gains an experimental multi-company scan-since-

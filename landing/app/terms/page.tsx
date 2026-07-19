@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     "Terms of service for koreanpulse, including service definition, license use, refunds, and the data-only / no-investment-advice disclaimer.",
 };
 
-const LAST_UPDATED = "2026-05-05";
+const LAST_UPDATED = "2026-07-19";
 
 export default function TermsPage() {
   return (
@@ -141,9 +141,12 @@ export default function TermsPage() {
               Beta status is disclosed plainly on the pricing page. Several
               tier features (watchlist polling, alert dispatch, multi-channel
               alerts, archive retention windows, seat enforcement) are
-              scheduled for Q3 2026. We will not auto-charge you for the
-              workflow until it ships if you signed up at the locked-in
-              waitlist rate.
+              planned and not yet available. Subscribing starts a paid
+              monthly subscription immediately; what you receive today is
+              described in the &quot;Available now&quot; section of the
+              pricing page. If a planned feature you subscribed for is
+              delayed, the 30-day refund window above applies, and you can
+              cancel at any time.
             </li>
           </ul>
 
@@ -199,10 +202,15 @@ export default function TermsPage() {
               research; you may not republish it as a competing news service.
             </li>
             <li>
-              <strong>Source data</strong> from DART is public domain
-              (Korean public-data scheme). News-source quotes are used under
-              fair-use / 공정이용 with attribution and outbound links; no
-              full-text republication.
+              <strong>Source data</strong> from DART is retrieved through the
+              DART open API operated by the Financial Supervisory Service;
+              underlying filings remain subject to their own applicable
+              rules, and each item links back to the original filing with
+              attribution. Korean news items are used as short summaries
+              with attribution and outbound links only — no full-text
+              republication. Users who redistribute data downstream should
+              assess the licensing, data-use, and financial-services
+              obligations that apply in their own jurisdiction and use case.
             </li>
           </ul>
 

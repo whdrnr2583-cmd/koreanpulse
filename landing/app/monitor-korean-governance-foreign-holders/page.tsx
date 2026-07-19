@@ -326,7 +326,7 @@ export default function MonitorKoreanGovernanceForeignHolders() {
             service — it performs no individualized analysis and makes no
             recommendation to buy, sell, or hold any security. A red-flag tag
             or a foreign-holder allowlist match is not a view on the
-            security. 자본시장법 §101 면제 영역 — 일반 정보 데이터 제공.
+            security. 일반 정보 데이터 제공 — 투자자문·투자권유에 해당하지 않습니다.
           </p>
         </article>
       </div>

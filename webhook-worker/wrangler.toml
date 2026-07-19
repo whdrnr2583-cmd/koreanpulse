@@ -38,6 +38,8 @@ VALIDATE_CACHE_TTL_SECONDS = "60"
 #   POLAR_PRODUCT_SOLO              — UUID of Cloud Solo product
 #   POLAR_PRODUCT_ANALYST           — UUID of Cloud Analyst product
 #   POLAR_PRODUCT_DESK              — UUID of Cloud Desk product
+#   ── Signup (Vercel landing → /v1/signup) ──
+#   SIGNUP_SHARED_SECRET            — shared with the Vercel env var SIGNUP_INGEST_SECRET
 #   ── Shared ─────────────────────────────────────────────────────────────
 #   KOREANPULSE_CACHE_SHARED_SECRET — same value as in cache-worker
 #   ── Lemon Squeezy (NOT IN USE — store application declined 2026-05-06;

@@ -16,32 +16,31 @@ Cloud pricing reference: **Solo $29/mo · Analyst $79/mo · Desk $249/mo.**
 | Provider key | your `OPENAI_API_KEY` | ours (you don't need one) |
 | Translation cache | local `.data/cache/` only | global Cloudflare KV (cross-tenant reuse) |
 | Per-call cost | OpenAI billed to you | absorbed into Solo |
-| Watchlist polling + alerts | not included | **Q3 2026 ship target** (waitlist) |
-| Hosted archive | none | **Q3 2026 ship target** (30 days) |
+| Watchlist polling + alerts | not included | **planned — not yet available** |
+| Hosted archive | none | **planned — not yet available** (30 days) |
 | License key required | no | yes (`kp_…`) |
 | Support | community only (issues/PRs) | included |
 | Best for | hackers, OSS contributors, max-privacy envs | anyone who'll want the watchlist-to-alert workflow once it ships |
 
-> **Beta status (2026-05-05).** Watchlist polling, alert dispatch,
-> per-tier limit enforcement (watchlist count, channel count, retention,
-> seats), and the true HTTP-transport remote MCP (no local install) are
-> all on the **Q3 2026** ship target. Today, signing up to a Cloud tier
-> gets you: hosted English translation cache (no OpenAI key needed) +
+> **Beta status.** Watchlist polling, alert dispatch, and per-tier limit
+> enforcement (watchlist count, channel count, retention, seats) are
+> planned and **not yet available**. The hosted remote MCP (no local
+> install) IS available at `https://mcp.koreanpulse.dev/mcp`. Signing up
+> to a Cloud tier today gets you: the two license-gated allowlist-tagging
+> tools + hosted English translation cache (no OpenAI key needed) +
 > license-gated query metering (Solo 2K/mo / Analyst 15K/mo / Desk
-> 100K/mo) + the locked-in launch rate. Public free `/today` snapshot is
-> live too.
+> 100K/mo). Public free `/today` snapshot is available too.
 
 **Rule of thumb**: if you want to be pinged the moment a 5%-rule filing
-hits one of your tickers, you want a Cloud tier — but the polling/dispatch
-that powers that workflow ships Q3 2026. OSS self-host gets you the
-engine, not the workflow. Subscribe at
-<https://koreanpulse.dev/pricing> (Cloud Solo $29/mo, Cloud Analyst $79/mo,
-Cloud Desk $249/mo) to lock in the launch rate.
+hits one of your tickers, that workflow is planned but has not shipped —
+don't subscribe for it yet. OSS self-host gets you the engine, not the
+workflow. Pricing at <https://koreanpulse.dev/pricing> (Cloud Solo $29/mo,
+Cloud Analyst $79/mo, Cloud Desk $249/mo).
 
 ## 1. Install koreanpulse
 
 ```bash
-pip install -e .  # from this repo for now; PyPI later
+pip install koreanpulse   # from PyPI; or `pip install -e .` from this repo
 ```
 
 This installs the `koreanpulse` console script.

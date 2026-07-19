@@ -157,8 +157,8 @@ export default function TrackDartWithAiGuide() {
               (주식등의대량보유상황보고서) — filed when an investor crosses 5%
               ownership of a listed company, or shifts an existing holding by
               1% or more. This is the single most-watched filing type: it is
-              the leading indicator of foreign capital entering a name and of
-              activist accumulation.
+              the primary public disclosure of large foreign-holder and
+              activist position changes.
             </li>
             <li>
               <strong className="text-zinc-100">Major business events</strong>{" "}
@@ -442,8 +442,8 @@ export default function TrackDartWithAiGuide() {
             koreanpulse translates and classifies primary-source public data
             (DART filings, Korean industry news). It is a data and intelligence
             service — it performs no individualized analysis and makes no
-            recommendation to buy, sell, or hold any security. 자본시장법 §101
-            면제 영역 — 일반 정보 데이터 제공.
+            recommendation to buy, sell, or hold any security. 일반 정보 데이터
+            제공 — 투자자문·투자권유에 해당하지 않습니다.
           </p>
         </article>
       </div>

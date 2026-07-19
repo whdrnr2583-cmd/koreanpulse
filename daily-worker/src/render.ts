@@ -162,19 +162,19 @@ export function renderDaily(snap: DailySnapshot): string {
     ? snap.activist_filings.map(activistRow).join("\n")
     : failed("activist and foreign-holder filings")
       ? unavailable("activist filings")
-      : `<p class="text-stone-500 text-sm">No activist filings in the last 7 days.</p>`;
+      : `<p class="text-stone-500 text-sm">No activist filings in the 7 days ending ${escapeHtml(snap.date)}.</p>`;
 
   const foreignSection = snap.foreign_flows.length
     ? snap.foreign_flows.map(foreignFlowRow).join("\n")
     : failed("activist and foreign-holder filings")
       ? unavailable("foreign-holder filings")
-      : `<p class="text-stone-500 text-sm">No foreign-holder 5%-rule filings in the last 7 days.</p>`;
+      : `<p class="text-stone-500 text-sm">No foreign-holder 5%-rule filings in the 7 days ending ${escapeHtml(snap.date)}.</p>`;
 
   const topSection = snap.top_filings.length
     ? `<ul class="space-y-3">${snap.top_filings.map(filingRow).join("\n")}</ul>`
     : failed("major filings")
       ? unavailable("major filings")
-      : `<p class="text-stone-500 text-sm">No major filings today.</p>`;
+      : `<p class="text-stone-500 text-sm">No major filings on ${escapeHtml(snap.date)}.</p>`;
 
   const takeawaySection = snap.takeaway.length
     ? `<ul class="space-y-2 text-zinc-200">${snap.takeaway
@@ -235,28 +235,12 @@ export function renderDaily(snap: DailySnapshot): string {
       </div>
     </section>
 
-    <section class="mb-10 rounded-md border border-emerald-800/40 bg-emerald-500/5 p-4">
-      <div class="flex items-baseline gap-2 mb-2">
-        <span class="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300">2026 inflection</span>
-        <span class="text-xs text-stone-400">why this dashboard exists right now</span>
-      </div>
-      <p class="text-sm text-stone-300 leading-relaxed">
-        Foreign retail just got direct access to KRX in the last 7 days:
-        <strong class="text-stone-100">Hana × Futu</strong> (3.3M HK retail) launched late April 2026,
-        <strong class="text-stone-100">Samsung × Interactive Brokers</strong> (4.6M global retail) pilot launched May 4 — same day foreigners net-bought a record
-        <strong class="text-stone-100">3.9 trillion KRW (~$2.7B)</strong> on KOSPI+NXT.
-        ~7.9M foreign retail accounts now wired in, up from ~0 two years ago.
-        The English-data layer for this audience is what koreanpulse ships.
-        <a href="https://github.com/whdrnr2583-cmd/koreanpulse/blob/main/_workspace/foreign_retail_inflow_2026-05-05.md" rel="noopener noreferrer" target="_blank" class="text-emerald-400 hover:underline">Sources →</a>
-      </p>
-    </section>
-
     <section class="mb-10">
       <h2 class="text-xl font-semibold text-stone-100 mb-1 flex items-center gap-2">
         <span>Foreign capital activity</span>
         <span class="text-xs font-normal text-stone-500">${snap.foreign_flows.length} matched</span>
       </h2>
-      <p class="text-xs text-stone-500 mb-4">5%-rule disclosures by global asset managers / sovereign wealth funds. Leading indicator of foreign money entering or exiting a Korean ticker.</p>
+      <p class="text-xs text-stone-500 mb-4">5%-rule disclosures whose filer matched a maintained list of global asset managers and sovereign wealth funds. Each item links to the original DART filing.</p>
       <div class="space-y-3">${foreignSection}</div>
     </section>
 
@@ -265,13 +249,13 @@ export function renderDaily(snap: DailySnapshot): string {
         <span>Activist filings</span>
         <span class="text-xs font-normal text-stone-500">${snap.activist_filings.length} matched</span>
       </h2>
-      <p class="text-xs text-stone-500 mb-4">Type-D shareholding disclosures filed by funds known for governance pressure (KCGI, Align Partners, Truston, ValueAct, Elliott, etc.).</p>
+      <p class="text-xs text-stone-500 mb-4">Type-D shareholding disclosures whose filer matched a maintained list of funds known for governance campaigns (KCGI, Align Partners, Truston, ValueAct, Elliott, etc.).</p>
       <div class="space-y-3">${activistSection}</div>
     </section>
 
     <section class="mb-10">
       <h2 class="text-xl font-semibold text-stone-100 mb-4 flex items-center gap-2">
-        <span>Major filings (last 24h)</span>
+        <span>Major filings — ${escapeHtml(snap.date)}</span>
         <span class="text-xs font-normal text-stone-500">${snap.top_filings.length} latest</span>
       </h2>
       ${topSection}
@@ -279,8 +263,8 @@ export function renderDaily(snap: DailySnapshot): string {
 
     <footer class="border-t border-stone-800 pt-6 mt-12 text-xs text-stone-500 space-y-2">
       <p>Generated ${escapeHtml(snap.generated_at)} · ${escapeHtml(snap.attribution)}</p>
-      <p>Want this every weekday in your inbox / Discord? <a href="/pricing" class="text-amber-400 hover:underline">Subscribe</a> · <a href="/today.json" class="text-amber-400 hover:underline">JSON</a> · <a href="https://github.com/whdrnr2583-cmd/koreanpulse" rel="noopener noreferrer" target="_blank" class="hover:underline">Source (AGPL-3.0)</a></p>
-      <p class="text-stone-600">No investment advice — data + summary only. Korean broker reports excluded. Fair-use attribution per source.</p>
+      <p>Snapshot data date: ${escapeHtml(snap.date)} · rebuilt each weekday after KOSPI close (16:30 KST) · <a href="/today.json" class="text-amber-400 hover:underline">JSON</a> · <a href="/pricing" class="text-amber-400 hover:underline">Pricing</a> · <a href="https://github.com/whdrnr2583-cmd/koreanpulse" rel="noopener noreferrer" target="_blank" class="hover:underline">Source (AGPL-3.0)</a></p>
+      <p class="text-stone-600">Not investment advice — disclosure data and summaries only. Each item links to the original DART filing.</p>
     </footer>
   </div>
 </body>
