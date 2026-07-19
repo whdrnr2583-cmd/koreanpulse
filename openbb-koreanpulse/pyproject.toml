@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openbb-koreanpulse"
+version = "0.1.0"
+description = "OpenBB Platform provider extension for koreanpulse — English-translated Korean stock market disclosures (DART) as obb.equity.fundamental.filings(..., provider=\"koreanpulse\")."
+readme = "README.md"
+license = { text = "AGPL-3.0-or-later" }
+requires-python = ">=3.10"
+keywords = [
+    "openbb", "openbb-extension", "openbb-provider",
+    "korea", "korean", "dart", "dart-api", "kospi", "kosdaq",
+    "company-filings", "disclosures", "finance",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "openbb-core>=1.6.0",
+    "koreanpulse>=0.1.13",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0", "pytest-asyncio>=0.21"]
+dev = ["openbb-koreanpulse[test]", "ruff>=0.1"]
+
+[project.urls]
+Homepage = "https://koreanpulse.dev"
+Repository = "https://github.com/whdrnr2583-cmd/koreanpulse"
+Issues = "https://github.com/whdrnr2583-cmd/koreanpulse/issues"
+
+[project.entry-points."openbb_provider_extension"]
+openbb_koreanpulse = "openbb_koreanpulse:koreanpulse_provider"
+
+[tool.hatch.build.targets.wheel]
+packages = ["openbb_koreanpulse"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
