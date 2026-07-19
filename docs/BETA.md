@@ -10,7 +10,7 @@ If conversion is too low, this document doubles as the diagnostic for which leve
 
 - **Outbound channels = Gmail + HN only** (set 2026-05-14, reaffirmed 2026-05-23, per `feedback_gmail_only_outbound`). All external outbound is restricted to: (a) Gmail email, (b) Hacker News (warming comments + one Show HN). Everything else — platform DMs and comments on LinkedIn / Substack / Twitter / Reddit / Discord / Slack / Telegram / global Product Hunt — is **banned**. **This supersedes the per-channel list below:** any channel that is not Gmail or HN (or fully passive, e.g. marketplace listings / SEO) is blocked regardless of how it's described in this doc.
 - **No SNS broadcasting.** No Twitter/X, no LinkedIn posts, no Instagram, no YouTube. (User constraint, multiple times pinned.)
-- **No paid ads.** Capital-increase block applies — bootstrap discovery only.
+- **Paid ads — conditionally lifted 2026-07-19** (user decision: overseas promotion only, effectiveness measurement mandatory). Execution requires: AEO-measurement isolation (paid-flight ledger so ad-driven MCP connects are never credited as organic discovery), per-channel UTM, pre-defined kill criteria, and PMF-auditor effectiveness review before spend. Plan of record: `_workspace/overseas_promo_plan_2026-07-19.md`. Unmeasured brand advertising remains banned. **Korean-community posting remains banned (user decision, same date). "No own posts" below remains in force — the ads lift does not lift self-broadcasting.**
 - **No cold sales calls or demos.** comm-0 constraint. All outreach is async, opt-in, self-serve.
 - **No ethnic / nationality gating.** (Discrimination meta-rule.)
 - All written outreach must include 1-line opt-out.
