@@ -481,6 +481,22 @@ never guessed.`}
                 </tr>
                 <tr>
                   <td className="px-4 py-3 font-medium text-zinc-200">
+                    Correction-filing linkage
+                    <div className="text-xs font-normal text-zinc-500">
+                      정정공시 tagged and linked back to the filing it corrects
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-emerald-400">✓</span>{" "}
+                    <code className="text-xs">is_correction</code> +{" "}
+                    <code className="text-xs">previous_receipt_no</code> fields
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">— not linked</td>
+                  <td className="px-4 py-3 text-zinc-500">— not linked</td>
+                  <td className="px-4 py-3 text-zinc-500">— registry data only</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-zinc-200">
                     Korean industry news (etnews / 한국경제 / Korea Herald /
                     ZDNet Korea RSS, EN)
                   </td>
