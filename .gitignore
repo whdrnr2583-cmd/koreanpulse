@@ -42,3 +42,12 @@ dist-mcpb/
 
 # Local Claude memory (project SoT, not committed)
 .claude/memory/
+
+# Local operating SoT — NEVER COMMIT.
+# CLAUDE.md에는 GitHub PAT·Lightsail webhook secret 등 실제 자격증명이 평문으로 들어 있다.
+# 지금까지 커밋 이력 0건이라 원격에 유출된 적은 없지만, .gitignore에 없어서
+# `git add .` 한 번이면 public origin에 올라가는 상태였다 (2026-08-15 확인 후 추가).
+CLAUDE.md
+
+# Vercel 링크 백업 디렉터리 — .vercel/ 패턴이 이 이름에는 매치되지 않아 빠져나갔다.
+.vercel.bak*/
