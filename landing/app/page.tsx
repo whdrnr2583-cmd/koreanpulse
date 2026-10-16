@@ -7,8 +7,6 @@ const PRICING = [
     name: "Cloud Solo",
     price: "$29/mo",
     audience: "Individual traders, solo analysts",
-    checkoutUrl:
-      "https://buy.polar.sh/polar_cl_ETpLepEvpGkGBXAOJjQhi7gwizO8GkOW3YaHw4IgHAr",
     features: [
       "Unlocks 2 paid MCP tools (hosted service only; paused since 2026-09-21): monitor_activist_investors + monitor_foreign_holders",
       "Korean activist filer match — KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform / ValueAct / Elliott",
@@ -26,8 +24,6 @@ const PRICING = [
     price: "$79/mo",
     audience: "Boutique fund analysts, paid-research-budget retail",
     highlighted: true,
-    checkoutUrl:
-      "https://buy.polar.sh/polar_cl_PmbLKURPhVZ1wuh6vqEKOXx4UNcii3bDqtFg62komUR",
     features: [
       "Everything in Solo (2 paid MCP tools + classification)",
       "~15,000 queries/mo (metered; paused with the hosted service)",
@@ -43,8 +39,6 @@ const PRICING = [
     name: "Cloud Desk",
     price: "$249/mo",
     audience: "Small research teams, boutique long/short desks",
-    checkoutUrl:
-      "https://buy.polar.sh/polar_cl_l6B5yiFOQqWIkyFpHtkTl93YzaEGWnzHtxDQ4393h7j",
     features: [
       "Everything in Analyst (2 paid MCP tools + classification)",
       "~100,000 queries/mo (metered; paused with the hosted service)",
@@ -220,7 +214,7 @@ export default function Home() {
               href="#pricing"
               className="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-ink hover:opacity-90"
             >
-              Subscribe — Solo $29/mo →
+              Solo $29/mo — checkout paused →
             </a>
             <a
               href="/today"
@@ -718,8 +712,9 @@ never guessed.`}
           <p className="mt-2 text-sm text-zinc-400 max-w-2xl">
             Solo $29/mo is the plan for the two allowlist-tagging tools
             (activist + foreign-holder), which run only on the hosted service
-            and are unavailable while it is paused since 2026-09-21. Subscribing via Polar starts a paid monthly
-            subscription that charges immediately at checkout. Watchlist
+            and are unavailable while it is paused since 2026-09-21. Checkout is
+            closed while the hosted endpoint is paused; plan names and prices
+            are kept below for when it resumes. Watchlist
             polling and alert dispatch are planned and not yet available —
             early subscribers keep their signup rate when those features land.
           </p>
@@ -803,7 +798,7 @@ this allowlist tagging, so self-hosting will not unlock this tool.`}
             </pre>
             <p className="mt-3 text-xs text-zinc-500">
               How the surrounding assistant text reads varies by client and
-              model. Your license key arrives by email after checkout.
+              model. Once checkout reopens, your license key arrives by email.
             </p>
           </div>
 
@@ -828,24 +823,18 @@ this allowlist tagging, so self-hosting will not unlock this tool.`}
                     </li>
                   ))}
                 </ul>
-                <a
-                  href={p.checkoutUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={
-                    p.highlighted
-                      ? "mt-5 block rounded-md bg-accent px-4 py-2.5 text-center text-sm font-semibold text-ink hover:opacity-90"
-                      : "mt-5 block rounded-md border border-accent/60 px-4 py-2.5 text-center text-sm font-semibold text-accent hover:bg-accent/5"
-                  }
+                <div
+                  aria-disabled="true"
+                  className="mt-5 block rounded-md border border-zinc-700 px-4 py-2.5 text-center text-sm font-semibold text-zinc-500"
                 >
-                  Subscribe to {p.name.replace("Cloud ", "")} {p.price} →
-                </a>
+                  Paused — checkout closed while the hosted endpoint is paused
+                </div>
               </div>
             ))}
           </div>
           <div className="mt-6 rounded-md border border-zinc-800 bg-zinc-950 p-4 text-xs text-zinc-400">
             <p>
-              <strong className="text-zinc-200">After subscribing.</strong>{" "}
+              <strong className="text-zinc-200">After subscribing (once checkout reopens).</strong>{" "}
               Polar emails your license key (format{" "}
               <code className="text-accent">kp_…</code>) to the
               checkout email. Pass it as a tool argument when calling{" "}

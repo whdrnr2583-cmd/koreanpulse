@@ -71,7 +71,7 @@ The free daily snapshot at [`/today`](https://koreanpulse.dev/today) (no login, 
 
 ## Pricing
 
-> 🚧 **Beta.** Solo $29 / Analyst $79 / Desk $249. Subscribing via Polar starts a paid monthly subscription that charges immediately at checkout; a 30-day refund window applies. Once the hosted service resumes, a paying user receives immediately: the two license-gated allowlist-tagging tools, hosted translation, and the metered query cap (2K / 15K / 100K). Watchlist polling, alert dispatch, seat enforcement, and per-tier retention windows are **planned and not yet available** — until they ship, seat counts, watchlist counts, alert-channel limits, and archive-retention windows are paper limits, and most tier differentiation is roadmap. Early subscribers keep their signup rate when those features land. The hosted service has been paused since 2026-09-21, so the two license-gated tools are currently unavailable to everyone, license holders included.
+> 🚧 **Beta.** Solo $29 / Analyst $79 / Desk $249. Checkout is closed while the hosted service is paused (since 2026-09-21); plan names and prices are kept below for when it resumes. Once the hosted service resumes, a paying user receives immediately: the two license-gated allowlist-tagging tools, hosted translation, and the metered query cap (2K / 15K / 100K). Watchlist polling, alert dispatch, seat enforcement, and per-tier retention windows are **planned and not yet available** — until they ship, seat counts, watchlist counts, alert-channel limits, and archive-retention windows are paper limits, and most tier differentiation is roadmap. Early subscribers keep their signup rate when those features land. The hosted service has been paused since 2026-09-21, so the two license-gated tools are currently unavailable to everyone, license holders included.
 
 | Tier | $/mo | Watchlists | Queries/mo | Archive | Alert channels |
 |---|---|---|---|---|---|
@@ -81,7 +81,7 @@ The free daily snapshot at [`/today`](https://koreanpulse.dev/today) (no login, 
 
 30-day refund window on first payment.
 
-**Subscribe**: [koreanpulse.dev/#pricing](https://koreanpulse.dev/#pricing) — per-tier Polar checkouts (Solo / Analyst / Desk), each covered by Polar as Merchant of Record (sales tax / VAT / refunds handled). The license key is emailed by the webhook worker on `subscription.created`.
+**Subscribe**: paused — checkout is closed while the hosted endpoint is paused (since 2026-09-21). Plans stay listed at [koreanpulse.dev/#pricing](https://koreanpulse.dev/#pricing). Per-tier Polar checkouts (Solo / Analyst / Desk) return when it resumes, each covered by Polar as Merchant of Record (sales tax / VAT / refunds handled); the license key is emailed by the webhook worker on `subscription.created`.
 
 > **Enterprise / SLA**: contact us. No published price.
 
