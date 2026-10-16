@@ -23,21 +23,24 @@ jobs:
           cache: pip
 
       # agentprod is a path dep in pyproject.toml. The CI checkout doesn't
-      # contain ../agentprod, so we vendor it via git into a sibling dir.
+      # contain ../agentprod, so we clone it into a sibling dir. If the clone
+      # fails, the install step falls back to the PyPI release; if that fails
+      # too the job fails (no stub: a stub would hide import errors).
       - name: Fetch agentprod sibling
         run: |
           git clone --depth 1 https://github.com/whdrnr2583-cmd/agentprod.git ../agentprod || \
-            (echo "::warning::agentprod repo not yet public; using stub" && \
-             mkdir -p ../agentprod/src/agentprod && \
-             echo "from typing import Any" > ../agentprod/src/agentprod/__init__.py)
+            echo "::warning::agentprod sibling clone failed; falling back to PyPI"
 
       - name: Install package + dev extras
         run: |
           python -m pip install --upgrade pip
-          # Install agentprod first if it has a real package
+          # Install agentprod first: sibling clone if present, else PyPI.
           if [ -f ../agentprod/pyproject.toml ]; then
             pip install -e ../agentprod
+          else
+            pip install agentprod
           fi
+          python -c "from agentprod import CostTracker, Throttle, retry_async"
           pip install -e '.[dev]'
 
       - name: Run pytest

@@ -18,7 +18,8 @@
 #   3. Confirm the Friday miss is a CF no-fire (this backstop fixes it), not an
 #      app throw inside buildDaily (then fix code instead — backstop would fail too).
 #
-# Until secret + reachable URL are set, the job SKIPS cleanly (no failure noise).
+# Until secret + reachable URL are set, the job FAILS (red) so a missing
+# backstop is visible instead of silently passing.
 
 name: daily-build-backstop
 
@@ -45,8 +46,8 @@ jobs:
       - name: POST /admin/rebuild (backstop)
         run: |
           if [ -z "$ADMIN_KEY" ]; then
-            echo "::warning::KOREANPULSE_ADMIN_SECRET not set — skipping backstop. Add it in repo Settings -> Secrets -> Actions."
-            exit 0
+            echo "::error::KOREANPULSE_ADMIN_SECRET not set — backstop cannot run. Add it in repo Settings -> Secrets -> Actions."
+            exit 1
           fi
           code=$(curl -sS -m 60 -o /tmp/resp.json -w "%{http_code}" -X POST \
             "$REBUILD_URL" -H "x-admin-key: $ADMIN_KEY")
