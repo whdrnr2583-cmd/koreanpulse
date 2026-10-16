@@ -31,7 +31,7 @@ import {
   type ForeignFlowEnriched,
 } from "./render";
 import { postToDiscord } from "./discord";
-import { computeFreshness, type Freshness } from "./freshness";
+import { buildSnapshotDate, computeFreshness, type Freshness } from "./freshness";
 
 export interface Env {
   DAILY: KVNamespace;
@@ -66,8 +66,11 @@ export default {
       `[cron] fired cron="${event.cron}" ` +
         `scheduledTime=${new Date(event.scheduledTime).toISOString()}`,
     );
+    // Floor the clock at the scheduled instant: the runtime can read the clock a
+    // few ms before 07:30:00.000Z, which would date the build to the previous
+    // business day.
     ctx.waitUntil(
-      buildDaily(env)
+      buildDaily(env, Math.max(Date.now(), event.scheduledTime))
         .then((result) => {
           console.log(`[cron] buildDaily ok ${JSON.stringify(result)}`);
         })
@@ -112,6 +115,8 @@ export default {
       if (!env.KOREANPULSE_ADMIN_SECRET || provided !== env.KOREANPULSE_ADMIN_SECRET) {
         return json({ error: "forbidden" }, 403);
       }
+      // Behaviour change: before 16:30 KST on a weekday, or on a weekend, a
+      // manual rebuild now rebuilds the previous business day.
       try {
         const result = await buildDaily(env);
         return json({ ok: true, ...result });
@@ -180,6 +185,7 @@ export default {
 // Exported for the regression tests in test/ (last-known-good preservation).
 export async function buildDaily(
   env: Env,
+  nowMs: number = Date.now(),
 ): Promise<{
   activists: number;
   foreign: number;
@@ -188,16 +194,20 @@ export async function buildDaily(
   date: string;
   degraded: string[];
 }> {
-  // KST date — DART is filed in KST and the dashboard targets KOSPI close.
-  const nowKst = new Date(Date.now() + 9 * 3600 * 1000);
-  const date = nowKst.toISOString().slice(0, 10);
+  // Snapshot date = the most recent KST business day whose 16:30 publish time
+  // has passed, not the wall-clock date. A build that runs late (the backstop
+  // landing after midnight KST) must rebuild the prior business day rather
+  // than write a snapshot labelled with the next KST date (whose 16:30 publish
+  // time has not passed) while carrying the previous business day's filings
+  // over latest.
+  const date = buildSnapshotDate(nowMs);
 
   // Single DART API call services both activist + foreign-flow streams.
   // 7-day window catches bursty 5%-rule filings without overwhelming the
   // page. Both streams sorted most-recent first. Major filings: last 1 day,
   // top 10 — the "what big companies actually said today" feed.
-  const classified = await tryClassifiedFilings(env, 7);
-  const top = await tryTopFilings(env, 1, 10);
+  const classified = await tryClassifiedFilings(env, 7, date);
+  const top = await tryTopFilings(env, 1, 10, date);
 
   // Every stream failing means DART is down, not that KRX went quiet. Bail
   // before the KV writes below — they are unconditional, so continuing would
@@ -407,9 +417,10 @@ type DartOutcome<T> = { ok: true; data: T } | { ok: false; error: string };
 async function tryClassifiedFilings(
   env: Env,
   daysBack: number,
+  asOf: string,
 ): Promise<DartOutcome<Awaited<ReturnType<typeof fetchClassifiedFilings>>>> {
   try {
-    return { ok: true, data: await fetchClassifiedFilings(env, daysBack) };
+    return { ok: true, data: await fetchClassifiedFilings(env, daysBack, asOf) };
   } catch (exc) {
     const message = exc instanceof Error ? exc.message : String(exc);
     console.error(`[dart] fetchClassifiedFilings FAILED: ${message}`);
@@ -421,9 +432,10 @@ async function tryTopFilings(
   env: Env,
   daysBack: number,
   limit: number,
+  asOf: string,
 ): Promise<DartOutcome<Awaited<ReturnType<typeof fetchTopFilings>>>> {
   try {
-    return { ok: true, data: await fetchTopFilings(env, daysBack, limit) };
+    return { ok: true, data: await fetchTopFilings(env, daysBack, limit, asOf) };
   } catch (exc) {
     const message = exc instanceof Error ? exc.message : String(exc);
     console.error(`[dart] fetchTopFilings FAILED: ${message}`);

@@ -145,7 +145,51 @@ const SYSTEM_TAKEAWAY =
   "the single most material moves. Lead with foreign-holder filings if they " +
   "exist. Mention specific names (KCGI / BlackRock / Norges / etc.) and " +
   "tickers when present. No commentary, no investment advice — factual " +
-  "extraction only. Output bullets as plain text, one per line, no markdown.";
+  "extraction only. Output bullets as plain text, one per line, no markdown. " +
+  "Write every bullet in English. Company names may keep their Korean name " +
+  "in parentheses.";
+
+// Used for the single retry after a Korean-language answer.
+const SYSTEM_TAKEAWAY_STRICT =
+  SYSTEM_TAKEAWAY +
+  " IMPORTANT: a previous answer was written in Korean, which is not " +
+  "acceptable. Respond in English only. Do not output Hangul except for a " +
+  "Korean company name placed in parentheses after its English name.";
+
+/**
+ * A bullet is treated as Korean when more than this share of its letters are
+ * Hangul syllables. A bullet that merely carries a Korean company name in
+ * parentheses normally sits below it; a bullet written in Korean normally sits
+ * above it. It is a heuristic with known limits: a Korean sentence with long
+ * English proper names can fall under the threshold and be missed, and an
+ * English bullet with a long Hangul company name and little other English can
+ * exceed it and be rejected.
+ */
+export const KOREAN_RATIO_THRESHOLD = 0.4;
+
+/**
+ * Share of a text's letters (whitespace, digits and symbols excluded) that
+ * are Hangul syllables. 0 when the text has no letters.
+ */
+export function koreanRatio(text: string): number {
+  const letters = text.match(/\p{L}/gu);
+  if (!letters || letters.length === 0) return 0;
+  const hangul = text.match(/[\uAC00-\uD7A3]/g);
+  return (hangul ? hangul.length : 0) / letters.length;
+}
+
+export function hasKoreanBullet(bullets: string[]): boolean {
+  return bullets.some((b) => koreanRatio(b) > KOREAN_RATIO_THRESHOLD);
+}
+
+function parseBullets(raw: string): string[] {
+  // Strip markdown, drop empties, cap at 3.
+  return raw
+    .split("\n")
+    .map((line) => line.replace(/^\s*[-*•]\s*/, "").trim())
+    .filter((line) => line.length > 0)
+    .slice(0, 3);
+}
 
 interface TakeawayDigestItem {
   kind: "foreign" | "activist" | "major";
@@ -167,24 +211,30 @@ export async function generateTakeaway(
   const cached = await env.DAILY.get(key);
   if (cached !== null) {
     try {
-      return JSON.parse(cached) as string[];
+      const parsed = JSON.parse(cached) as string[];
+      // Entries cached before the English-only check may hold Korean bullets.
+      if (!hasKoreanBullet(parsed)) return parsed;
     } catch {
       // fall through to regenerate
     }
   }
 
   const user = `Date: ${date}\n\nDigest:\n${digestJson}`;
-  const raw = await callOpenAI(env, SYSTEM_TAKEAWAY, user, 1024);
+  let bullets = parseBullets(await callOpenAI(env, SYSTEM_TAKEAWAY, user, 1024));
 
-  // Parse to bullets — strip markdown, drop empties, cap at 3.
-  const bullets = raw
-    .split("\n")
-    .map((line) => line.replace(/^\s*[-*•]\s*/, "").trim())
-    .filter((line) => line.length > 0)
-    .slice(0, 3);
+  // The page is English-only. If the model answered in Korean, retry once
+  // with a stronger instruction; if it still does, publish no takeaway
+  // rather than a Korean one.
+  if (hasKoreanBullet(bullets)) {
+    bullets = parseBullets(await callOpenAI(env, SYSTEM_TAKEAWAY_STRICT, user, 1024));
+    if (hasKoreanBullet(bullets)) return [];
+  }
 
-  await env.DAILY.put(key, JSON.stringify(bullets), {
-    expirationTtl: 60 * 60 * 24 * 30,
-  });
+  // Never cache an empty result — the next build should be able to retry.
+  if (bullets.length > 0) {
+    await env.DAILY.put(key, JSON.stringify(bullets), {
+      expirationTtl: 60 * 60 * 24 * 30,
+    });
+  }
   return bullets;
 }

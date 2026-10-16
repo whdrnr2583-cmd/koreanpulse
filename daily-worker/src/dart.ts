@@ -91,6 +91,15 @@ function parseFiling(row: DartListItem, requestedType: string | null): DartFilin
   };
 }
 
+/**
+ * End of a DART query window. `asOf` (yyyy-mm-dd, the snapshot's KST date)
+ * pins the window to that date so a late build queries the same days the
+ * snapshot is labelled with; omitted, it is the current instant as before.
+ */
+function windowEnd(asOf?: string): Date {
+  return asOf ? new Date(`${asOf}T00:00:00Z`) : new Date();
+}
+
 interface ListFilingsArgs {
   bgnDe: Date;
   endDe: Date;
@@ -155,8 +164,9 @@ export async function listFilings(env: Env, args: ListFilingsArgs): Promise<Dart
 export async function fetchClassifiedFilings(
   env: Env,
   daysBack: number,
+  asOf?: string,
 ): Promise<{ activists: ActivistFiling[]; foreign_flows: ForeignFlowFiling[] }> {
-  const endDe = new Date();
+  const endDe = windowEnd(asOf);
   const bgnDe = new Date(endDe.getTime() - daysBack * 86400 * 1000);
   const filings = await listFilings(env, {
     bgnDe,
@@ -206,8 +216,9 @@ export async function fetchTopFilings(
   env: Env,
   daysBack: number,
   limit: number,
+  asOf?: string,
 ): Promise<DartFiling[]> {
-  const endDe = new Date();
+  const endDe = windowEnd(asOf);
   const bgnDe = new Date(endDe.getTime() - daysBack * 86400 * 1000);
 
   const [typeA, typeB] = await Promise.all([

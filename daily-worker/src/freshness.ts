@@ -82,6 +82,26 @@ export function expectedSnapshotDate(nowMs: number): string {
   return lastWeekdayOnOrBefore(shiftDate(date, -1));
 }
 
+/**
+ * The snapshot date a build running at `nowMs` should produce: the most recent
+ * KST weekday whose publish time (16:30 KST) has already passed. Unlike
+ * expectedSnapshotDate this has no 17:00 grace — the cron itself fires at
+ * 16:30 and must build "today". A build that runs late (e.g. the GitHub
+ * Actions backstop landing after midnight KST) therefore rebuilds the prior
+ * business day instead of producing a snapshot labelled with the next KST date
+ * (whose 16:30 publish time has not passed) while carrying the previous
+ * business day's filings.
+ *   - Weekday at/after 16:30 KST → today.
+ *   - Weekday before 16:30 KST → previous weekday.
+ *   - Saturday / Sunday → the preceding Friday.
+ */
+export function buildSnapshotDate(nowMs: number): string {
+  const { date, weekday, minutes } = kstParts(nowMs);
+  const isWeekday = weekday >= 1 && weekday <= 5;
+  if (isWeekday && minutes >= BUILD_START_MIN) return date;
+  return lastWeekdayOnOrBefore(shiftDate(date, -1));
+}
+
 export function computeFreshness(
   snapshotDate: string | null,
   generatedAt: string | null,

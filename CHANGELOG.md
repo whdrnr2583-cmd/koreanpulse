@@ -4,6 +4,22 @@
 
 ### Fixed (correctness batch, 2026-10-06)
 
+- **daily-worker: a late backstop build no longer overwrites latest with a
+  snapshot labelled with the next KST date.** Before this, a late run
+  (15:00-24:00 UTC) produced a snapshot labelled with the next KST date (whose
+  16:30 publish time had not passed) while carrying the previous business
+  day's filings, because the DART query window was UTC-date based.
+  `buildDaily` now dates the snapshot by the most
+  recent KST business day whose 16:30 publish time has passed
+  (`buildSnapshotDate`) instead of the wall-clock date, and pins both DART
+  query windows to that date. Rebuilding a business day overwrites the same
+  KV keys. Regular cron (16:30 KST weekdays) behaviour is unchanged. A manual
+  `/admin/rebuild` before 16:30 KST on a weekday, or on a weekend, now
+  rebuilds the previous business day.
+- **daily-worker: "Today's takeaway" is English-only.** The prompt now
+  requires English, a Hangul-ratio check rejects Korean bullets, one retry
+  uses a stronger instruction, and a still-Korean result yields no takeaway
+  (empty, not cached). A previously cached Korean takeaway is regenerated.
 - **mcp_http: DART API key no longer written to `mcp.log`.** `httpx` and
   `httpcore` loggers are set to WARNING (httpx logs request URLs at INFO and
   DART URLs carry the key). `tool_call` INFO logs are unchanged.
