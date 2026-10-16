@@ -25,12 +25,6 @@
     "industry",
     "english"
   ],
-  "remotes": [
-    {
-      "type": "streamable-http",
-      "url": "https://mcp.koreanpulse.dev/mcp"
-    }
-  ],
   "packages": [
     {
       "registryType": "pypi",
@@ -41,7 +35,7 @@
       "environmentVariables": [
         {
           "name": "DART_API_KEY",
-          "description": "Korea FSS DART OpenAPI key — required only for self-hosting; the hosted remote MCP's five free tools need no user-managed DART key.",
+          "description": "Korea FSS DART OpenAPI key — required for the self-hosted server. The hosted remote MCP endpoint is paused since 2026-09-21.",
           "isRequired": true,
           "isSecret": true
         }
@@ -111,7 +105,7 @@
   ],
   "oss_self_host": {
     "cost_usd": 0,
-    "note": "AGPL source. Run the MCP locally with your own DART_API_KEY + OPENAI_API_KEY. Community support only — no alerts, no hosted archive, no shared translation cache, no account sync. A separate deployment lane from the hosted Cloud tier. (A hosted remote MCP endpoint is available at https://mcp.koreanpulse.dev/mcp — connect it from Claude.ai or ChatGPT with no local install; the watchlist-to-alert workflow is a planned roadmap item, not yet available.)"
+    "note": "AGPL source. Run the MCP locally with your own DART_API_KEY + OPENAI_API_KEY. Community support only — no alerts, no hosted archive, no shared translation cache, no account sync. A separate deployment lane from the hosted Cloud tier. (The hosted remote MCP endpoint at https://mcp.koreanpulse.dev/mcp has been paused since 2026-09-21; the watchlist-to-alert workflow is a planned roadmap item, not yet available.)"
   },
   "data_sources": [
     {

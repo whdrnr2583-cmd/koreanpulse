@@ -166,18 +166,18 @@ export default function Home() {
 
         <section className="mt-16">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/5 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-accent">
-            Hosted MCP — activist &amp; foreign-holder filing tagging for KRX
+            MCP server — activist &amp; foreign-holder filing tagging for KRX
           </div>
           <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
             When KCGI or Elliott files a 5%-rule disclosure on a Korean stock, your AI assistant sees it in English — tagged, not raw.
           </h1>
           <p className="mt-5 max-w-2xl text-base font-medium text-zinc-200">
-            koreanpulse is a hosted MCP server that tags Korean DART
+            koreanpulse is an MCP server that tags Korean DART
             filings by known activist investors (KCGI, Align Partners, Elliott,
             ValueAct, Truston, Anda, Cha, VIP…) and global foreign holders
             (BlackRock, Vanguard, Norges Bank, GIC, Temasek…) — translated
-            to English, callable from Claude.ai, ChatGPT, or Cursor in
-            one click.
+            to English, callable from Claude Desktop or Cursor after a
+            self-hosted install.
           </p>
           <p className="mt-4 max-w-2xl text-zinc-300">
             DART publishes activist 5% disclosures in hours, but the raw feed
@@ -187,20 +187,29 @@ export default function Home() {
             not provide. That classification is what koreanpulse ships.
           </p>
           <p className="mt-4 max-w-2xl text-zinc-300">
-            The same endpoint also surfaces foreign 5%-rule entries whose
+            The same server also surfaces foreign 5%-rule entries whose
             filer matches a maintained list of sovereign wealth funds, global
             asset managers, and hedge funds. koreanpulse translates, tags,
             and filters the primary-source DART feed and links every item to
             the original filing — inside your AI workflow.
           </p>
           <p className="mt-4 max-w-2xl text-sm text-zinc-400">
-            <strong className="text-zinc-200">1-click connect.</strong> Add{" "}
+            <strong className="text-zinc-200">Hosted endpoint paused.</strong>{" "}
+            The hosted MCP endpoint{" "}
             <code className="rounded bg-zinc-900 px-1.5 py-0.5 text-xs text-accent">
-              https://mcp.koreanpulse.dev/mcp
+              mcp.koreanpulse.dev/mcp
             </code>{" "}
-            as a custom connector in ChatGPT or Claude.ai — no{" "}
-            <code className="text-xs">npx</code> install, no JSON config, no
-            local secrets, no DART API key needed for the 5 free tools.
+            has been paused since 2026-09-21. Use the self-hosted install:{" "}
+            <code className="text-xs">pip install koreanpulse</code> with your
+            own DART API key (see the{" "}
+            <a
+              href="https://github.com/whdrnr2583-cmd/koreanpulse/blob/main/docs/SELF_HOSTING.md"
+              className="underline"
+            >
+              self-hosting guide
+            </a>
+            ). The free daily snapshot at <a href="/today" className="underline">/today</a> is
+            unaffected.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -353,8 +362,8 @@ never guessed.`}
             one that matches your job. We focus on{" "}
             <strong className="text-zinc-200">
               English-first equity data with allowlist-based filer tagging,
-              served as a hosted endpoint your LLM client can connect to in one
-              click.
+              with a self-hosted install (the hosted endpoint is paused since
+              2026-09-21).
             </strong>{" "}
             If you need raw KRX OHLCV or Korean-language financial statement
             tables, others do that better.
@@ -393,8 +402,8 @@ never guessed.`}
                 <tr>
                   <td className="px-4 py-3 font-medium text-zinc-200">Hosted endpoint</td>
                   <td className="px-4 py-3">
-                    <span className="text-emerald-400">✓</span>{" "}
-                    <code className="text-xs">mcp.koreanpulse.dev/mcp</code>
+                    <code className="text-xs">mcp.koreanpulse.dev/mcp</code>{" "}
+                    <span className="text-amber-400">paused since 2026-09-21</span>
                   </td>
                   <td className="px-4 py-3 text-zinc-500">— (self-install)</td>
                   <td className="px-4 py-3 text-zinc-500">— (self-install)</td>
@@ -407,8 +416,8 @@ never guessed.`}
                   <td className="px-4 py-3 font-medium text-zinc-200">
                     1-click connect (ChatGPT / Claude.ai)
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="text-emerald-400">✓</span> Yes
+                  <td className="px-4 py-3 text-amber-400">
+                    Paused since 2026-09-21
                   </td>
                   <td className="px-4 py-3 text-zinc-500">No (stdio)</td>
                   <td className="px-4 py-3 text-zinc-500">No (stdio)</td>
@@ -550,8 +559,8 @@ never guessed.`}
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-emerald-400">✓</span> N→1 hosted
-                    (one shared DART key, cached)
+                    N→1 hosted design (one shared DART key, cached); endpoint
+                    paused since 2026-09-21
                   </td>
                   <td className="px-4 py-3 text-zinc-500">
                     1:1 (one process per user on user&apos;s machine)
@@ -568,7 +577,8 @@ never guessed.`}
                     DART API key required from end user
                   </td>
                   <td className="px-4 py-3 text-zinc-500">
-                    No (free tools use our shared key)
+                    Yes while the hosted endpoint is paused (the hosted design
+                    used a shared key)
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-amber-400">Yes</span> (each user signs up)
@@ -669,7 +679,6 @@ never guessed.`}
               <div>
                 <p className="font-semibold text-emerald-300">Available now</p>
                 <ul className="mt-1.5 list-disc space-y-1 pl-4">
-                  <li>Hosted remote MCP endpoint (<code>mcp.koreanpulse.dev/mcp</code>)</li>
                   <li>5 free tools: DART filings, company/ticker resolution, industry news, server info</li>
                   <li>2 license-gated tools: <code>monitor_activist_investors</code>, <code>monitor_foreign_holders</code></li>
                   <li>Hosted English translation for filing titles</li>
@@ -721,9 +730,10 @@ never guessed.`}
                 <li>· <code>koreanpulse_about</code> — server info, free vs paid tool list</li>
               </ul>
               <p className="mt-3 text-xs text-zinc-500">
-                No signup, no API key. Connect via{" "}
-                <code>https://mcp.koreanpulse.dev/mcp</code> from ChatGPT or
-                Claude.ai and these answer immediately.
+                The hosted endpoint (<code>mcp.koreanpulse.dev/mcp</code>) is
+                paused since 2026-09-21. Self-install with{" "}
+                <code>pip install koreanpulse</code> and your own DART API key
+                to use these tools.
               </p>
             </div>
             <div className="rounded-md border border-amber-700/50 bg-amber-500/5 p-5">
@@ -865,41 +875,20 @@ this allowlist tagging, so self-hosting will not unlock this tool.`}
           </p>
         </section>
 
-        {/* Hosted remote MCP — for ChatGPT / Claude.ai / Responses API users */}
+        {/* Hosted remote MCP — paused since 2026-09-21 */}
         <section className="mt-16 rounded-md border border-zinc-800 p-6">
           <h2 className="text-xl font-semibold">
-            Connect from ChatGPT or Claude.ai (no install)
+            Hosted endpoint for ChatGPT / Claude.ai: paused
           </h2>
           <p className="mt-3 text-sm text-zinc-300">
-            Add the hosted endpoint as a custom connector. The 7 tools (DART
-            filings, foreign-holder + activist tracking, Korean industry news)
-            return Korean→English translated results in your existing chat —
-            no <code>pip install</code>, no local config. Read-only data layer;
-            not investment advice.
-          </p>
-          <div className="mt-4 rounded bg-zinc-900 p-3 font-mono text-sm text-zinc-200 break-all">
-            https://mcp.koreanpulse.dev/mcp
-          </div>
-          <ul className="mt-4 ml-5 list-disc text-sm text-zinc-400 space-y-1">
-            <li>
-              <strong className="text-zinc-200">ChatGPT</strong> — Settings →
-              Connectors → Add custom connector → paste URL. Authentication:
-              None.
-            </li>
-            <li>
-              <strong className="text-zinc-200">Claude.ai</strong> — Settings →
-              Connectors → Add custom connector → paste URL.
-            </li>
-            <li>
-              <strong className="text-zinc-200">OpenAI Responses API</strong>{" "}
-              — <code>{`tools=[{type: "mcp", server_url: "https://mcp.koreanpulse.dev/mcp"}]`}</code>
-            </li>
-          </ul>
-          <p className="mt-3 text-xs text-zinc-500">
-            Streamable HTTP transport (single-region node, Let&apos;s Encrypt
-            cert). Last validated end-to-end against ChatGPT and Claude.ai on
-            2026-05-06. For max privacy or self-hosting, the local stdio path
-            below is still canonical.
+            The hosted remote MCP endpoint{" "}
+            <code>https://mcp.koreanpulse.dev/mcp</code> has been paused since
+            2026-09-21 and is not accepting connections, so it cannot be added
+            as a custom connector in ChatGPT, Claude.ai or the OpenAI Responses
+            API right now. To use the 7 tools (DART filings, foreign-holder +
+            activist tracking, Korean industry news), run the server yourself:{" "}
+            <code>pip install koreanpulse</code> and the local stdio path
+            below. Read-only data layer; not investment advice.
           </p>
         </section>
 

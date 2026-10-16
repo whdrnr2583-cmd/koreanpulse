@@ -81,8 +81,10 @@ const faqLd = {
           "Yes. koreanpulse translates the filings and tags each 5%-rule filer " +
           "against named global asset managers (BlackRock, Vanguard, Norges " +
           "Bank, GIC, Temasek and more) and activists (KCGI, Align Partners, " +
-          "Truston, ValueAct, Elliott and more), delivered inside ChatGPT or " +
-          "Claude via the hosted MCP endpoint https://mcp.koreanpulse.dev/mcp.",
+          "Truston, ValueAct, Elliott and more), delivered inside Claude " +
+          "Desktop or Cursor via a self-installed MCP server (pip install " +
+          "koreanpulse). The hosted endpoint https://mcp.koreanpulse.dev/mcp " +
+          "has been paused since 2026-09-21.",
       },
     },
   ],
@@ -245,17 +247,17 @@ export default function TrackForeignInvestorsActivistsKorea() {
             Connecting it
           </h3>
           <p className="mt-3 text-zinc-300">
-            Add the hosted endpoint as a custom connector in ChatGPT (Settings →
-            Connectors) or Claude:
+            The hosted endpoint <code className="text-accent">https://mcp.koreanpulse.dev/mcp</code>{" "}
+            has been paused since 2026-09-21, so it cannot be added as a custom
+            connector right now. Install the server yourself:
           </p>
           <div className="mt-3 rounded bg-zinc-900 p-3 font-mono text-sm text-zinc-200 break-all">
-            https://mcp.koreanpulse.dev/mcp
+            pip install koreanpulse
           </div>
           <p className="mt-3 text-sm text-zinc-400">
-            The five free tools (including live filing retrieval and
-            translation) need no key. The two classification tools above are
-            part of the Cloud tier (Solo $29/mo and up); the server is also AGPL
-            open source if you prefer to self-host with your own keys.
+            Self-hosting needs your own DART API key. The two classification
+            tools above are part of the Cloud tier (Solo $29/mo and up); the
+            server is AGPL open source.
           </p>
 
           <h2 className="mt-12 text-2xl font-semibold">See it for free first</h2>
@@ -266,7 +268,7 @@ export default function TrackForeignInvestorsActivistsKorea() {
             </a>{" "}
             already shows the classified foreign-holder flows and activist
             filings for the latest Korean market close — no login, no key — so
-            you can see the shape of the output before connecting anything.
+            you can see the shape of the output before installing anything.
           </p>
 
           <div className="mt-10 flex flex-wrap gap-3">

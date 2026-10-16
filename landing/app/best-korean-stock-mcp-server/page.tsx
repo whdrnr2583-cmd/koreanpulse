@@ -5,7 +5,7 @@ const PAGE_URL = `${SITE}/best-korean-stock-mcp-server`;
 const DESC =
   "MCP servers that give an AI assistant access to Korean (KOSPI/KOSDAQ) stock " +
   "data, compared honestly: self-hosted OpenDART wrappers, korea-stock-mcp, " +
-  "English-summary servers, and the hosted koreanpulse endpoint. Which to pick " +
+  "English-summary servers, and koreanpulse (hosted endpoint paused). Which to pick " +
   "for raw data, self-hosting, or English-first use.";
 
 export const metadata: Metadata = {
@@ -52,10 +52,10 @@ const faqLd = {
           "data on your own machine, a self-hosted OpenDART wrapper such as " +
           "jjlabsio/korea-stock-mcp is a good free choice (bring your own DART " +
           "key). If you want English-translated filings and cross-investor " +
-          "classification without registering a key or installing anything, a " +
-          "hosted endpoint like koreanpulse (https://mcp.koreanpulse.dev/mcp) " +
-          "is the lowest-friction option — add one URL as a custom connector " +
-          "in ChatGPT or Claude.",
+          "classification, koreanpulse provides them; install it yourself " +
+          "(pip install koreanpulse, with your own DART key). Its hosted " +
+          "endpoint (https://mcp.koreanpulse.dev/mcp) has been paused since " +
+          "2026-09-21, so a one-URL connector setup is not available right now.",
       },
     },
     {
@@ -66,9 +66,9 @@ const faqLd = {
         text:
           "Most do. Self-hosted servers wrap the DART OpenAPI and require you " +
           "to register a free key at opendart.fss.or.kr (40,000 calls/day). " +
-          "koreanpulse's hosted endpoint uses a shared key for its free filing " +
-          "tools, so you do not need your own key to start; self-hosting " +
-          "koreanpulse still uses your own key.",
+          "koreanpulse's hosted endpoint used a shared key for its free filing " +
+          "tools, but that endpoint has been paused since 2026-09-21; " +
+          "self-hosting koreanpulse uses your own key.",
       },
     },
     {
@@ -80,8 +80,9 @@ const faqLd = {
           "Yes, if the server exposes a remote HTTP endpoint (Streamable HTTP " +
           "or SSE). Add the URL as a custom connector. Many Korean-data MCP " +
           "servers are stdio-only, which works in Claude Desktop or Cursor but " +
-          "not as a remote ChatGPT/Claude.ai connector. koreanpulse exposes a " +
-          "hosted remote endpoint at https://mcp.koreanpulse.dev/mcp.",
+          "not as a remote ChatGPT/Claude.ai connector. koreanpulse's hosted " +
+          "remote endpoint (https://mcp.koreanpulse.dev/mcp) has been paused " +
+          "since 2026-09-21; the server can be self-hosted over stdio.",
       },
     },
   ],
@@ -145,7 +146,8 @@ export default function BestKoreanStockMcpServer() {
             <li>
               <strong className="text-zinc-100">Friction</strong> — do you have
               to register a DART key and install/run a process, or can you paste
-              one URL?
+              one URL? (koreanpulse&apos;s one-URL endpoint is paused since
+              2026-09-21, so it currently needs a self-install.)
             </li>
             <li>
               <strong className="text-zinc-100">Language</strong> — does it
@@ -193,7 +195,7 @@ export default function BestKoreanStockMcpServer() {
           </p>
 
           <h3 className="mt-8 text-lg font-semibold text-zinc-100">
-            3. Hosted endpoint with translation + classification (koreanpulse)
+            3. Translation + classification (koreanpulse; hosted endpoint paused)
           </h3>
           <p className="mt-3 text-zinc-300">
             <a href="/" className="text-accent hover:underline">
@@ -203,13 +205,13 @@ export default function BestKoreanStockMcpServer() {
           </p>
           <ul className="mt-3 space-y-2 text-zinc-300">
             <li>
-              <strong className="text-zinc-100">A hosted remote endpoint</strong>{" "}
+              <strong className="text-zinc-100">A hosted remote endpoint (paused)</strong>{" "}
               at{" "}
               <code className="text-accent">https://mcp.koreanpulse.dev/mcp</code>{" "}
-              (Streamable HTTP + SSE). Add the URL as a custom connector in
-              ChatGPT or Claude.ai — no install, no JSON config, and no DART key
-              of your own for the free filing tools. This is the part most other
-              Korean-stock MCP servers do not offer.
+              (Streamable HTTP + SSE). It has been paused since 2026-09-21 and
+              does not accept connections, so for now run the server yourself
+              with <code className="text-accent">pip install koreanpulse</code>{" "}
+              and your own DART key.
             </li>
             <li>
               <strong className="text-zinc-100">English translation</strong> of
@@ -231,12 +233,10 @@ export default function BestKoreanStockMcpServer() {
           <p className="mt-3 text-zinc-300">
             The trade-off is honest: the hosted convenience tiers are paid
             (Cloud Solo $29/mo and up), and the cross-investor classification
-            tools are part of those tiers. The five free tools — including live
-            DART filing retrieval and translation — work with no key and no
-            payment. The whole server is also AGPL open source, so you can
-            self-host it with your own keys instead.{" "}
+            tools are part of those tiers. The whole server is AGPL open source,
+            so you can self-host it with your own keys.{" "}
             <strong className="text-zinc-100">Best if</strong> you want
-            English-first answers and lowest-friction setup, or you specifically
+            English-first answers, or you specifically
             need to know <em>who</em> is crossing 5% in a name.
           </p>
 
@@ -257,10 +257,10 @@ export default function BestKoreanStockMcpServer() {
             </li>
             <li>
               <strong className="text-zinc-100">
-                I want the fastest path inside ChatGPT/Claude with no key, in
-                English, and I care who is buying:
+                I want English answers and I care who is buying:
               </strong>{" "}
-              the koreanpulse hosted endpoint (option 3).
+              self-hosted koreanpulse (option 3; the hosted endpoint is paused
+              since 2026-09-21).
             </li>
           </ul>
 
@@ -276,9 +276,10 @@ export default function BestKoreanStockMcpServer() {
             <a href="/today.json" className="text-accent hover:underline">
               /today.json
             </a>
-            . To try the MCP itself, add{" "}
-            <code className="text-accent">https://mcp.koreanpulse.dev/mcp</code>{" "}
-            as a custom connector and ask it for recent filings on a ticker.
+            . The hosted MCP endpoint (
+            <code className="text-accent">mcp.koreanpulse.dev/mcp</code>) is
+            paused since 2026-09-21; to try the MCP itself, self-install it with{" "}
+            <code className="text-accent">pip install koreanpulse</code>.
           </p>
 
           <div className="mt-10 flex flex-wrap gap-3">

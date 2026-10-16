@@ -255,14 +255,14 @@ export default function MonitorKoreanGovernanceForeignHolders() {
             <a href="/" className="text-accent hover:underline">
               koreanpulse
             </a>{" "}
-            is a hosted MCP server that wraps the DART primary source. Add the
-            endpoint as a custom connector and ask a normal question — the
-            assistant picks the tool and cites the underlying DART receipt
-            number for every result:
+            is an MCP server that wraps the DART primary source. Once it is
+            installed (<code className="text-accent">pip install koreanpulse</code>{" "}
+            with your own DART API key), ask a normal question — the assistant
+            picks the tool and cites the underlying DART receipt number for
+            every result. The hosted endpoint (
+            <code className="text-accent">mcp.koreanpulse.dev/mcp</code>) has
+            been paused since 2026-09-21.
           </p>
-          <div className="mt-3 rounded bg-zinc-900 p-3 font-mono text-sm text-zinc-200 break-all">
-            https://mcp.koreanpulse.dev/mcp
-          </div>
           <p className="mt-4 text-zinc-300">Prompts that work:</p>
           <ul className="mt-2 space-y-2 text-zinc-300">
             <li>

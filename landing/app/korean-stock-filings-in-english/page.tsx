@@ -177,7 +177,7 @@ export default function KoreanFilingsGuide() {
               <code className="text-accent">koreanpulse_about</code>.
             </li>
           </ul>
-          <p className="mt-6 text-zinc-300">Two free ways to start:</p>
+          <p className="mt-6 text-zinc-300">Two ways to start:</p>
           <ul className="mt-2 space-y-2 text-zinc-300">
             <li>
               <strong className="text-zinc-100">Public daily snapshot.</strong> A daily
@@ -189,10 +189,12 @@ export default function KoreanFilingsGuide() {
               — no login, no key.
             </li>
             <li>
-              <strong className="text-zinc-100">Connect the MCP.</strong> Add{" "}
-              <code className="text-accent">https://mcp.koreanpulse.dev/mcp</code> as a
-              custom connector in ChatGPT or Claude.ai, then ask it for new DART filings on
-              a ticker and get an English answer in the chat.
+              <strong className="text-zinc-100">Self-install the MCP.</strong> Run{" "}
+              <code className="text-accent">pip install koreanpulse</code> with your own
+              DART API key, then ask it for new DART filings on a ticker and get an English
+              answer in the chat. The hosted endpoint{" "}
+              <code className="text-accent">mcp.koreanpulse.dev/mcp</code> has been paused
+              since 2026-09-21.
             </li>
           </ul>
 

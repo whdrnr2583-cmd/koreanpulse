@@ -13,9 +13,9 @@ Korean stock disclosures, activist filings & foreign-holder flows in English —
 
 **The pitch**: koreanpulse translates, tags, and filters Korean primary-source disclosure data — foreign-holder 5%-rule disclosures, Korean activist filings, major DART events — for AI assistants. KRX itself, ASIFMA, and several global asset managers are on record that Korean disclosure flow into English is structurally thin. Free public daily snapshot at `/today`; paid Cloud tiers (Solo $29/mo, Analyst $79/mo, Desk $249/mo) unlock the two allowlist-tagging tools now — **watchlist polling + alert dispatch are planned and not yet available; early subscribers keep their signup rate when those land**. OSS self-host available for hackers — see [Run it yourself](#run-it-yourself-oss).
 
-> **For AI/MCP agent builders.** koreanpulse plugs Korean equity primary sources into your existing Claude Desktop / Cursor / FastMCP agent — same MCP shape your agent already uses for US data. Three connection modes: **(a) hosted remote MCP at `https://mcp.koreanpulse.dev/mcp`** for ChatGPT / Claude.ai / OpenAI Responses API custom connectors, **(b) `pip install koreanpulse` + 4-line config** for Claude Desktop / Cursor stdio, **(c) [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse) marketplace listing** for Smithery CLI users. The 7 tools surface DART filings, foreign-holder 5%-rule flows, Korean activist filings, and 16-sector industry news as typed function calls; the rest of your trading-agent stack stays unchanged.
+> **For AI/MCP agent builders.** koreanpulse plugs Korean equity primary sources into your existing Claude Desktop / Cursor / FastMCP agent — same MCP shape your agent already uses for US data. Two connection modes: **(a) `pip install koreanpulse` + 4-line config** for Claude Desktop / Cursor stdio, **(b) [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse) marketplace listing** for Smithery CLI users. The first-party hosted remote MCP endpoint (`https://mcp.koreanpulse.dev/mcp`) has been paused since 2026-09-21; use the self-hosted install. The 7 tools surface DART filings, foreign-holder 5%-rule flows, Korean activist filings, and 16-sector industry news as typed function calls; the rest of your trading-agent stack stays unchanged.
 
-> **Claude.ai / ChatGPT (remote MCP).** Add `https://mcp.koreanpulse.dev/mcp` as a custom connector in Claude.ai (Settings → Connectors), ChatGPT (Settings → Connectors or Apps SDK), or wire it directly from the OpenAI Responses API: `tools=[{type: "mcp", server_url: "https://mcp.koreanpulse.dev/mcp"}]`. Read-only — surfaces filings and disclosures only. No trading execution, no investment advice.
+> **Claude.ai / ChatGPT (remote MCP) — hosted endpoint paused.** The first-party hosted endpoint `https://mcp.koreanpulse.dev/mcp` has been paused since 2026-09-21 and does not respond, so it cannot be added as a custom connector right now. Use the self-hosted install instead: `pip install koreanpulse` and the Claude Desktop / Cursor config in [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) (you supply your own DART API key). The free public `/today` snapshot at koreanpulse.dev is unaffected. Read-only — surfaces filings and disclosures only. No trading execution, no investment advice.
 
 > **What this server answers (capability vector for agent retrieval).** Korean DART (전자공시) filings on any KOSPI / KOSDAQ / KONEX / KRX ticker; 5%-rule shareholding disclosures tagged against a maintained allowlist — Korean activist filers (KCGI / Align Partners / Truston Asset / Anda Asset / Cha Partners / VIP Asset / Life Asset / Platform Partners / Must Asset Management / Dalton Investments / Flashlight Capital Partners / Oasis Management / Palliser Capital / Whitebox Advisors / City of London Investment Management + ValueAct / Elliott when filing in Korea) and global foreign holders (BlackRock / Vanguard / State Street / Fidelity / Capital Group / T. Rowe Price / Wellington / Matthews Asia / Templeton / Aberdeen / Schroders / Norges Bank / GIC / Temasek / Goldman Sachs / JPMorgan / Morgan Stanley / Citadel / Millennium / Bridgewater); Korean industry news across 16 sectors (semiconductor / shipbuilding / battery / biotech / defense / auto / EV charging / AI / steel / petrochem / construction / fintech / gaming / e-commerce / telco / energy) sourced from 전자신문 + 한국경제 + The Korea Herald (English-native) + 지디넷코리아. All with on-demand English translation cached server-side. Tool catalog and example queries are also returned by `koreanpulse_about` for agent-side capability discovery.
 
@@ -101,7 +101,7 @@ Source is AGPL-3.0. Self-hosters can run the MCP server locally with their own D
 | Support | community only (issues/PRs) | priority support on Analyst / Desk |
 | Best for | hackers, privacy-strict envs, OSS contributors | anyone who'll want the watchlist-to-alert workflow once it ships |
 
-OSS self-host is **not** in the pricing table above — it's a separate lane. See [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) for the install + key wiring. Note: the OSS-vs-Cloud table above covers the **pip-install** paths. There is also a **zero-install path** — the hosted remote MCP at `https://mcp.koreanpulse.dev/mcp` answers the 5 free tools (including DART filings) with no local install and no DART API key of your own; add the URL as a custom connector in ChatGPT / Claude.ai (license-gated tools take a `license_key` argument).
+OSS self-host is **not** in the pricing table above — it's a separate lane. See [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) for the install + key wiring. Note: the OSS-vs-Cloud table above covers the **pip-install** paths. A zero-install path existed — the hosted remote MCP at `https://mcp.koreanpulse.dev/mcp` — but it has been paused since 2026-09-21; use the self-hosted `pip install koreanpulse` path for now.
 
 ## Tools
 
@@ -141,16 +141,16 @@ When a paid tool is called without a license, the server returns a short notice 
 
 A handful of Korean-data MCP servers exist. Pick what matches your job. We
 focus on **English-first equity data with allowlist-based filer tagging,
-served as a hosted endpoint your LLM client can connect to in one click.** If
+with a self-hosted install (the hosted endpoint is paused since 2026-09-21).** If
 you need raw KRX OHLCV or Korean-language financial-statement tables, others
 do that better.
 
 | Capability | **koreanpulse** | korea-stock-mcp ([jjlabsio](https://github.com/jjlabsio/korea-stock-mcp), 137★) | korean-dart-mcp ([chrisryugj](https://github.com/chrisryugj/korean-dart-mcp), 35★) | openregistry ([sophymarine](https://github.com/sophymarine/openregistry)) |
 |---|---|---|---|---|
 | Transport | **Streamable HTTP + SSE** | stdio only (`npx`) | stdio only (`npx`) | Streamable HTTP |
-| Hosted endpoint | **`mcp.koreanpulse.dev/mcp`** | — (self-install) | — (self-install) | `openregistry.sophymarine.com/mcp` |
-| 1-click connect (ChatGPT / Claude.ai) | **Yes** | No (stdio) | No (stdio) | Yes |
-| Your own DART API key to start | **No** — hosted endpoint serves DART for you | Yes (register + configure) | Yes (register + configure) | n/a |
+| Hosted endpoint | `mcp.koreanpulse.dev/mcp` — **paused since 2026-09-21** | — (self-install) | — (self-install) | `openregistry.sophymarine.com/mcp` |
+| 1-click connect (ChatGPT / Claude.ai) | Paused (hosted endpoint down since 2026-09-21) | No (stdio) | No (stdio) | Yes |
+| Your own DART API key to start | Yes while the hosted endpoint is paused (register + configure) | Yes (register + configure) | Yes (register + configure) | n/a |
 | Activist filer tagging (KCGI / Align / Truston / Anda / Cha / VIP / Life / Platform / Must / Dalton / FCP / Oasis / Palliser / Whitebox / City of London / ValueAct / Elliott) | **17 labels** | — raw filings only | — raw filings only | — registry data only |
 | Foreign-holder 5%-rule allowlist (BlackRock / Vanguard / Norges / GIC / Temasek + 15 more) | **20 labels** | — raw filings only | — raw filings only | — registry data only |
 | English-first docstrings (LLM-friendly) | **All tools** | Korean primary, English secondary | Korean primary | Yes |
@@ -158,8 +158,8 @@ do that better.
 | KRX OHLCV (daily prices) | — out of scope | **Yes** (KOSPI / KOSDAQ / KONEX) | — | — |
 | XBRL financial statements | — out of scope | **Yes** | **Yes** | — |
 | HWP / PDF attachment → markdown | — out of scope | — | **Yes** | — |
-| **Multi-user architecture** (one endpoint, N AI agents in parallel) | **N→1 hosted** (quota-ceiling estimate ~9,500 MAU at 70% cache hit — derivation in [Capacity](#capacity-dart-quota-math)) | 1:1 (one process per user on user's machine) | 1:1 (one process per user on user's machine) | Hosted |
-| **DART API key required from end user** | **No** (free tools use our shared key) | Yes (each user signs up) | Yes (each user signs up) | No |
+| **Multi-user architecture** (one endpoint, N AI agents in parallel) | N→1 hosted design, currently paused (quota-ceiling estimate ~9,500 MAU at 70% cache hit — derivation in [Capacity](#capacity-dart-quota-math)) | 1:1 (one process per user on user's machine) | 1:1 (one process per user on user's machine) | Hosted |
+| **DART API key required from end user** | Yes while the hosted endpoint is paused (the hosted design used a shared key) | Yes (each user signs up) | Yes (each user signs up) | No |
 | Pricing | Free 5 tools · Solo $29 · Analyst $79 · Desk $249/mo | Free OSS (BYO API keys) | Free OSS (BYO API keys) | Free anonymous tier |
 
 Other servers in the space (different scope or smaller install base):
@@ -190,7 +190,7 @@ See `src/koreanpulse/cache.py`, `src/koreanpulse/dart.py:list_filings_cached`.
 
 ## Roadmap
 
-**Available now**: queries (DART filings, foreign-holder + activist tracking, industry news), hosted translation cache (Cloud `KOREANPULSE_CACHE_MODE=hosted`), `/today` daily snapshot, **Polar → D1 license issuance** (Polar is our sole billing provider and Merchant of Record), **first-party hosted MCP endpoint at `https://mcp.koreanpulse.dev/mcp`** (Streamable HTTP transport for ChatGPT / Claude.ai / OpenAI Responses API custom connectors — no `pip install`).
+**Available now**: queries (DART filings, foreign-holder + activist tracking, industry news), hosted translation cache (Cloud `KOREANPULSE_CACHE_MODE=hosted`), `/today` daily snapshot, **Polar → D1 license issuance** (Polar is our sole billing provider and Merchant of Record). The first-party hosted MCP endpoint (`https://mcp.koreanpulse.dev/mcp`) is paused since 2026-09-21; use the self-hosted `pip install koreanpulse` path.
 
 **Planned — not yet available**:
 - Watchlist polling loop (Cloudflare cron + `koreanpulse.alerts`)
@@ -232,7 +232,7 @@ Two ways to run the MCP, switched via `KOREANPULSE_CACHE_MODE`. **Both require a
 
 Cache hits are the entire reason a $29/mo Solo plan can sustain healthy gross margin: the same Korean filing title gets translated once, then served to every other tenant on the same plan from KV. See [`docs/CLAUDE_DESKTOP.md`](docs/CLAUDE_DESKTOP.md) for the env-var split between modes.
 
-> **Hosted HTTP transport (no local install).** First-party endpoint at `https://mcp.koreanpulse.dev/mcp` (Streamable HTTP, single-region node fronted by Caddy + Let's Encrypt cert). Add as a custom connector in ChatGPT (Settings → Connectors), Claude.ai (Settings → Connectors), or wire it directly from the OpenAI Responses API. Last validated end-to-end against ChatGPT and Claude.ai on 2026-05-06 — `monitor_activist_investors` chains `lookup_corp_code` and returns Korean→English translated 5%-rule filings without any client-side install. The local stdio install path remains canonical for self-hosters and max-privacy users; the [Smithery listing](https://smithery.ai/servers/whdrnr2583/koreanpulse) keeps Smithery CLI users in the discovery path.
+> **Hosted HTTP transport — paused since 2026-09-21.** The first-party endpoint `https://mcp.koreanpulse.dev/mcp` (Streamable HTTP) was last validated end-to-end against ChatGPT and Claude.ai on 2026-05-06 and is currently switched off; it does not respond. The HTTP transport code (`koreanpulse.mcp_http`) remains in the repository for self-hosters. The local stdio install path remains canonical for self-hosters and max-privacy users; the [Smithery listing](https://smithery.ai/servers/whdrnr2583/koreanpulse) keeps Smithery CLI users in the discovery path.
 
 ## Legal posture
 
@@ -288,7 +288,7 @@ The earlier path (Python `koreanpulse-webhook` FastAPI on Lightsail + Postgres) 
 
 Listing copy + submission checklists in [`docs/MARKETPLACE.md`](docs/MARKETPLACE.md):
 
-- **First-party hosted endpoint** — `https://mcp.koreanpulse.dev/mcp` (ChatGPT / Claude.ai / OpenAI Responses API custom connectors)
+- **First-party hosted endpoint** — `https://mcp.koreanpulse.dev/mcp` — paused since 2026-09-21; use `pip install koreanpulse`
 - [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse) — marketplace listing for Smithery CLI users
 - [PulseMCP](docs/listings/PULSEMCP.md) — not yet submitted (deferred)
 - [Glama](docs/listings/GLAMA.md) — live (auto-discovered, score badge)
@@ -311,7 +311,7 @@ Fire-and-forget — transport / formatting failures return `AlertResult(ok=False
 
 ## Example prompts
 
-Copy-paste these into Claude.ai, ChatGPT, or any MCP client connected to `https://mcp.koreanpulse.dev/mcp`:
+Copy-paste these into Claude.ai, ChatGPT, or any MCP client connected to a self-installed koreanpulse server (the hosted endpoint is paused since 2026-09-21):
 
 ```
 Ask Claude: "What DART filings were submitted for Samsung Electronics in the last 7 days?"

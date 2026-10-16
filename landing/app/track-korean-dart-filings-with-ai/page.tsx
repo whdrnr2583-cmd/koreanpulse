@@ -74,9 +74,9 @@ const faqLd = {
         "@type": "Answer",
         text:
           "The DART OpenAPI itself requires a free key from opendart.fss.or.kr " +
-          "(40,000 calls/day). If you connect koreanpulse's hosted endpoint, the " +
-          "free filing tools use a shared key, so you do not need to register " +
-          "your own. Self-hosting the open-source server requires your own key.",
+          "(40,000 calls/day). koreanpulse's hosted endpoint used a shared key " +
+          "for its free filing tools, but it has been paused since 2026-09-21. " +
+          "Self-hosting the open-source server requires your own key.",
       },
     },
   ],
@@ -255,13 +255,13 @@ export default function TrackDartWithAiGuide() {
             </li>
             <li>
               <strong className="text-zinc-100">
-                3. Connect a hosted Korean stock market MCP server.
+                3. Use a Korean stock market MCP server with translation.
               </strong>{" "}
-              A hosted endpoint means no local install and no key wrangling —
-              you add one URL as a custom connector. koreanpulse (below) is
-              one such server; it also does the English translation and
-              filer classification, which is the part that otherwise takes a
-              Korean speaker by hand.
+              koreanpulse (below) is one such server; it does the English
+              translation and filer classification, which is the part that
+              otherwise takes a Korean speaker by hand. Its hosted endpoint
+              (one URL as a custom connector, no key wrangling) has been
+              paused since 2026-09-21, so for now it is a self-install.
             </li>
           </ol>
 
@@ -281,36 +281,14 @@ export default function TrackDartWithAiGuide() {
           </p>
 
           <h3 className="mt-8 text-lg font-semibold text-zinc-100">
-            ChatGPT or Claude (hosted, no install)
+            ChatGPT or Claude.ai (hosted endpoint paused)
           </h3>
           <p className="mt-3 text-zinc-300">
-            Add the hosted endpoint as a custom connector:
-          </p>
-          <div className="mt-3 rounded bg-zinc-900 p-3 font-mono text-sm text-zinc-200 break-all">
-            https://mcp.koreanpulse.dev/mcp
-          </div>
-          <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-300">
-            <li>
-              <strong className="text-zinc-100">ChatGPT</strong> — Settings →
-              Connectors → Add custom connector → paste the URL. Authentication:
-              None.
-            </li>
-            <li>
-              <strong className="text-zinc-100">Claude</strong> — Settings →
-              Connectors → Add custom connector → paste the URL.
-            </li>
-            <li>
-              <strong className="text-zinc-100">OpenAI Responses API</strong> —
-              add{" "}
-              <code className="text-accent">
-                {`{type: "mcp", server_url: "https://mcp.koreanpulse.dev/mcp"}`}
-              </code>{" "}
-              to your <code className="text-accent">tools</code> array.
-            </li>
-          </ul>
-          <p className="mt-3 text-sm text-zinc-400">
-            The free filing tools work without any DART key of your own — the
-            hosted server uses a shared key for them.
+            The hosted endpoint{" "}
+            <code className="text-accent">https://mcp.koreanpulse.dev/mcp</code>{" "}
+            has been paused since 2026-09-21 and does not accept connections, so
+            it cannot be added as a custom connector in ChatGPT, Claude.ai or
+            the OpenAI Responses API right now. Use the local install below.
           </p>
 
           <h3 className="mt-8 text-lg font-semibold text-zinc-100">
