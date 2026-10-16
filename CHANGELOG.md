@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed (correctness batch, 2026-10-06)
+
+- **mcp_http: DART API key no longer written to `mcp.log`.** `httpx` and
+  `httpcore` loggers are set to WARNING (httpx logs request URLs at INFO and
+  DART URLs carry the key). `tool_call` INFO logs are unchanged.
+
 ### Added (internal — watchlist-alert foundation, feature-flagged, 2026-07-19)
 
 - **`koreanpulse.watchlist` — smallest internal foundation for the planned

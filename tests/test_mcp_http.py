@@ -163,3 +163,37 @@ class TestBasicConfigOrderBehavioral:
         # is WARNING, so an INFO-level tool_call log is not enabled —
         # i.e. it would be dropped, reproducing the pre-3ac65b3 bug.
         assert "is_info_enabled_before_basicConfig=False" in result.stdout
+
+
+class TestHttpLibraryLogLevels:
+    """httpx logs request URLs at INFO and DART URLs carry the API key, so
+    the HTTP client loggers must stay quiet while tool_call INFO logs from
+    koreanpulse.server keep reaching mcp.log (AEO instrumentation)."""
+
+    def test_httpx_quiet_and_tool_call_logging_kept(self):
+        script = textwrap.dedent(
+            """
+            import logging
+            import os
+
+            os.environ.setdefault("DART_API_KEY", "dummy")
+
+            import koreanpulse.mcp_http  # noqa: F401
+
+            assert logging.getLogger("httpx").getEffectiveLevel() >= logging.WARNING
+            assert logging.getLogger("httpcore").getEffectiveLevel() >= logging.WARNING
+            assert logging.getLogger("koreanpulse.server").isEnabledFor(logging.INFO)
+            print("PASS")
+            """
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            cwd=str(MCP_HTTP_PATH.parent.parent.parent),
+            timeout=30,
+        )
+        assert result.returncode == 0, (
+            f"subprocess failed\nstdout={result.stdout}\nstderr={result.stderr}"
+        )
+        assert "PASS" in result.stdout

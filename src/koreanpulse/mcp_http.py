@@ -35,6 +35,11 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(name)s %(levelname)s: %(message)s",
 )
+# httpx logs every request URL at INFO, and DART request URLs carry the API
+# key as a query parameter. Raise these two loggers so the key never reaches
+# mcp.log; the koreanpulse.server tool_call INFO lines are unaffected.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 from starlette.applications import Starlette  # noqa: E402 — must follow basicConfig above
 from starlette.responses import PlainTextResponse  # noqa: E402
