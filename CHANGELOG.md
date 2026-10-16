@@ -7,6 +7,9 @@
 - **mcp_http: DART API key no longer written to `mcp.log`.** `httpx` and
   `httpcore` loggers are set to WARNING (httpx logs request URLs at INFO and
   DART URLs carry the key). `tool_call` INFO logs are unchanged.
+- **CI: ruff pinned below 0.16** (`dev` extra `ruff>=0.1,<0.16`). ruff 0.16
+  widens the default rule set and reports 206 errors (UP045, DTZ001, I001,
+  RUF100, ...) on unchanged code; 0.15.12 passes.
 
 ### Added (internal — watchlist-alert foundation, feature-flagged, 2026-07-19)
 

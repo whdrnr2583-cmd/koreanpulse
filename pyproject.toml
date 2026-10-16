@@ -42,7 +42,7 @@ dependencies = [
 billing = ["fastapi>=0.110", "uvicorn>=0.27"]
 postgres = ["asyncpg>=0.29"]
 test = ["pytest>=7.0", "pytest-asyncio>=0.21", "respx>=0.20", "fastapi>=0.110"]
-dev = ["koreanpulse[billing,postgres,test]", "ruff>=0.1"]
+dev = ["koreanpulse[billing,postgres,test]", "ruff>=0.1,<0.16"]
 
 [project.urls]
 Homepage = "https://koreanpulse.dev"
