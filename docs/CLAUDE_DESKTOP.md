@@ -25,8 +25,10 @@ Cloud pricing reference: **Solo $29/mo · Analyst $79/mo · Desk $249/mo.**
 > **Beta status.** Watchlist polling, alert dispatch, and per-tier limit
 > enforcement (watchlist count, channel count, retention, seats) are
 > planned and **not yet available**. The hosted remote MCP (no local
-> install) IS available at `https://mcp.koreanpulse.dev/mcp`. Signing up
-> to a Cloud tier today gets you: the two license-gated allowlist-tagging
+> install) at `https://mcp.koreanpulse.dev/mcp` has been paused since
+> 2026-09-21 and does not respond; the two license-gated tools run only
+> there, so they are unavailable until it resumes. When the hosted service
+> is running, a Cloud tier gets you: the two license-gated allowlist-tagging
 > tools + hosted English translation cache (no OpenAI key needed) +
 > license-gated query metering (Solo 2K/mo / Analyst 15K/mo / Desk
 > 100K/mo). Public free `/today` snapshot is available too.
@@ -58,6 +60,10 @@ This installs the `koreanpulse` console script.
 | `KOREANPULSE_TRANSLATE_MODEL` | optional | Override model (default: `gpt-5-mini` for openai, `claude-haiku-4-5-20251001` for anthropic). |
 
 ### Cloud mode (paid: Solo / Analyst / Desk)
+
+> Paused: the hosted service has been paused since 2026-09-21, so Cloud
+> licenses cannot currently be used and a local install does not include the
+> two license-gated tools. This section applies once it resumes.
 
 Drop `OPENAI_API_KEY` (the Cloudflare Worker holds it for you) and add:
 
@@ -155,7 +161,7 @@ For activist watching:
 
 > Use koreanpulse to show me KCGI / Align Partners 5%-rule filings in the last 14 days.
 
-Claude should call `monitor_activist_investors(days=14, activist_only=true)`.
+Claude should call `monitor_activist_investors(days=14, activist_only=true)`. This tool is license-gated and runs only on the hosted service, which is paused since 2026-09-21; a self-install returns a license-required notice.
 
 ## Failure modes
 

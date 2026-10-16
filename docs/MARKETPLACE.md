@@ -1,5 +1,7 @@
 # Marketplace listing checklist
 
+> Historical draft — hosted endpoint paused since 2026-09-21.
+
 One repo, multiple listing surfaces. Each listing's exact copy lives in `docs/listings/`.
 
 ## Submission status (verified 2026-05-07)

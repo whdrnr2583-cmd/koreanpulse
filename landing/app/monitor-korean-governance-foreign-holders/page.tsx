@@ -288,9 +288,10 @@ export default function MonitorKoreanGovernanceForeignHolders() {
             The governance/distress red-flag tagging on{" "}
             <code className="text-accent">track_korean_filings</code> is part
             of the five free tools — no key, no license. Foreign-holder
-            allowlist tagging is part of the Cloud tier (Solo $29/mo and up);
-            the server is also AGPL open source if you prefer to self-host
-            with your own DART key.
+            allowlist tagging is part of the Cloud tier (Solo $29/mo and up)
+            and runs only on the hosted service, which is paused since
+            2026-09-21; the AGPL server can be self-hosted with your own DART
+            key for the free tools.
           </p>
 
           <h2 className="mt-12 text-2xl font-semibold">See it for free first</h2>

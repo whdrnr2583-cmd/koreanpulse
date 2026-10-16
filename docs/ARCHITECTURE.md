@@ -106,7 +106,7 @@ customer's machine.
 | Cache Worker | Cloudflare Workers + KV | Hosted translation cache, holds our OpenAI key, license-gated | Live |
 | Webhook Worker | Cloudflare Worker + D1 | **Polar** webhook handler + license validation endpoint (Polar is sole MoR; Lemon Squeezy not in use, store application declined 2026-05-06) | Live |
 | Daily Worker | Cloudflare Workers + KV (cron) | Builds `/today` daily snapshot, optional Discord push | Live |
-| `mcp.koreanpulse.dev` | Lightsail (Seoul), systemd + Caddy | Streamable-HTTP remote MCP transport — ChatGPT / Claude.ai custom connectors, no local install | Live since 2026-05-06 |
+| `mcp.koreanpulse.dev` | Lightsail (Seoul), systemd + Caddy | Streamable-HTTP remote MCP transport — ChatGPT / Claude.ai custom connectors, no local install | Paused since 2026-09-21 (was live 2026-05-06 to 2026-09-21) |
 | Watchlist polling loop | (planned — not yet available) — likely a fourth Worker cron consuming the D1 watchlist table | Cron-pulls DART changes for each watchlist, calls `koreanpulse.alerts` on hits | **Roadmap** |
 
 ## Module responsibilities

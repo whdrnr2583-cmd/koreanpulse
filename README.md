@@ -11,11 +11,11 @@ Korean stock disclosures, activist filings & foreign-holder flows in English —
 
 > The goal: get pinged in English when a 5%-rule filing or DART event hits a stock you care about. **(Beta — watchlist polling + alert dispatch are planned and not yet available; what works today is on-demand queries.)**
 
-**The pitch**: koreanpulse translates, tags, and filters Korean primary-source disclosure data — foreign-holder 5%-rule disclosures, Korean activist filings, major DART events — for AI assistants. KRX itself, ASIFMA, and several global asset managers are on record that Korean disclosure flow into English is structurally thin. Free public daily snapshot at `/today`; paid Cloud tiers (Solo $29/mo, Analyst $79/mo, Desk $249/mo) unlock the two allowlist-tagging tools now — **watchlist polling + alert dispatch are planned and not yet available; early subscribers keep their signup rate when those land**. OSS self-host available for hackers — see [Run it yourself](#run-it-yourself-oss).
+**The pitch**: koreanpulse translates, tags, and filters Korean primary-source disclosure data — foreign-holder 5%-rule disclosures, Korean activist filings, major DART events — for AI assistants. KRX itself, ASIFMA, and several global asset managers are on record that Korean disclosure flow into English is structurally thin. Free public daily snapshot at `/today`; paid Cloud tiers (Solo $29/mo, Analyst $79/mo, Desk $249/mo) cover the two allowlist-tagging tools, which run only on the hosted service and are unavailable while it is paused since 2026-09-21 — **watchlist polling + alert dispatch are planned and not yet available; early subscribers keep their signup rate when those land**. OSS self-host available for hackers — see [Run it yourself](#run-it-yourself-oss).
 
-> **For AI/MCP agent builders.** koreanpulse plugs Korean equity primary sources into your existing Claude Desktop / Cursor / FastMCP agent — same MCP shape your agent already uses for US data. Two connection modes: **(a) `pip install koreanpulse` + 4-line config** for Claude Desktop / Cursor stdio, **(b) [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse) marketplace listing** for Smithery CLI users. The first-party hosted remote MCP endpoint (`https://mcp.koreanpulse.dev/mcp`) has been paused since 2026-09-21; use the self-hosted install. The 7 tools surface DART filings, foreign-holder 5%-rule flows, Korean activist filings, and 16-sector industry news as typed function calls; the rest of your trading-agent stack stays unchanged.
+> **For AI/MCP agent builders.** koreanpulse plugs Korean equity primary sources into your existing Claude Desktop / Cursor / FastMCP agent — same MCP shape your agent already uses for US data. Two connection modes: **(a) `pip install koreanpulse` + 4-line config** for Claude Desktop / Cursor stdio, **(b) [Smithery](https://smithery.ai/servers/whdrnr2583/koreanpulse) marketplace listing** for Smithery CLI users. The first-party hosted remote MCP endpoint (`https://mcp.koreanpulse.dev/mcp`) has been paused since 2026-09-21; use the self-hosted install, which runs the 5 free tools (the 2 license-gated tools, activist and foreign-holder tagging, run only on the hosted service). The 7 tools surface DART filings, foreign-holder 5%-rule flows, Korean activist filings, and 16-sector industry news as typed function calls; the rest of your trading-agent stack stays unchanged.
 
-> **Claude.ai / ChatGPT (remote MCP) — hosted endpoint paused.** The first-party hosted endpoint `https://mcp.koreanpulse.dev/mcp` has been paused since 2026-09-21 and does not respond, so it cannot be added as a custom connector right now. Use the self-hosted install instead: `pip install koreanpulse` and the Claude Desktop / Cursor config in [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) (you supply your own DART API key). The free public `/today` snapshot at koreanpulse.dev is unaffected. Read-only — surfaces filings and disclosures only. No trading execution, no investment advice.
+> **Claude.ai / ChatGPT (remote MCP) — hosted endpoint paused.** The first-party hosted endpoint `https://mcp.koreanpulse.dev/mcp` has been paused since 2026-09-21 and does not respond, so it cannot be added as a custom connector right now. Use the self-hosted install instead: `pip install koreanpulse` and the Claude Desktop / Cursor config in [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) (you supply your own DART API key; this covers the 5 free tools, since the 2 license-gated tools run only on the hosted service). The free public `/today` snapshot at koreanpulse.dev is unaffected. Read-only — surfaces filings and disclosures only. No trading execution, no investment advice.
 
 > **What this server answers (capability vector for agent retrieval).** Korean DART (전자공시) filings on any KOSPI / KOSDAQ / KONEX / KRX ticker; 5%-rule shareholding disclosures tagged against a maintained allowlist — Korean activist filers (KCGI / Align Partners / Truston Asset / Anda Asset / Cha Partners / VIP Asset / Life Asset / Platform Partners / Must Asset Management / Dalton Investments / Flashlight Capital Partners / Oasis Management / Palliser Capital / Whitebox Advisors / City of London Investment Management + ValueAct / Elliott when filing in Korea) and global foreign holders (BlackRock / Vanguard / State Street / Fidelity / Capital Group / T. Rowe Price / Wellington / Matthews Asia / Templeton / Aberdeen / Schroders / Norges Bank / GIC / Temasek / Goldman Sachs / JPMorgan / Morgan Stanley / Citadel / Millennium / Bridgewater); Korean industry news across 16 sectors (semiconductor / shipbuilding / battery / biotech / defense / auto / EV charging / AI / steel / petrochem / construction / fintech / gaming / e-commerce / telco / energy) sourced from 전자신문 + 한국경제 + The Korea Herald (English-native) + 지디넷코리아. All with on-demand English translation cached server-side. Tool catalog and example queries are also returned by `koreanpulse_about` for agent-side capability discovery.
 
@@ -23,7 +23,7 @@ Korean stock disclosures, activist filings & foreign-holder flows in English —
 
 ## Status
 
-**Pre-alpha (v0.1.13).** 7 MCP tools shipped — 5 free + 2 license-gated (activist + foreign-holder allowlist tagging, Solo $29/mo+). 433 tests pass, 1 skipped. Beta — watchlist polling + alert dispatch are planned and not yet available. Beta acquisition plan in `docs/BETA.md`.
+**Pre-alpha (v0.1.13).** 7 MCP tools shipped — 5 free + 2 license-gated (activist + foreign-holder allowlist tagging, Solo $29/mo+; these two run only on the hosted service, which is paused since 2026-09-21). 433 tests pass, 1 skipped. Beta — watchlist polling + alert dispatch are planned and not yet available. Beta acquisition plan in `docs/BETA.md`.
 
 ---
 
@@ -71,7 +71,7 @@ The free daily snapshot at [`/today`](https://koreanpulse.dev/today) (no login, 
 
 ## Pricing
 
-> 🚧 **Beta.** Solo $29 / Analyst $79 / Desk $249. Subscribing via Polar starts a paid monthly subscription that charges immediately at checkout; a 30-day refund window applies. What a paying user receives immediately: the two license-gated allowlist-tagging tools, hosted translation, and the metered query cap (2K / 15K / 100K). Watchlist polling, alert dispatch, seat enforcement, and per-tier retention windows are **planned and not yet available** — until they ship, seat counts, watchlist counts, alert-channel limits, and archive-retention windows are paper limits, and most tier differentiation is roadmap. Early subscribers keep their signup rate when those features land.
+> 🚧 **Beta.** Solo $29 / Analyst $79 / Desk $249. Subscribing via Polar starts a paid monthly subscription that charges immediately at checkout; a 30-day refund window applies. Once the hosted service resumes, a paying user receives immediately: the two license-gated allowlist-tagging tools, hosted translation, and the metered query cap (2K / 15K / 100K). Watchlist polling, alert dispatch, seat enforcement, and per-tier retention windows are **planned and not yet available** — until they ship, seat counts, watchlist counts, alert-channel limits, and archive-retention windows are paper limits, and most tier differentiation is roadmap. Early subscribers keep their signup rate when those features land. The hosted service has been paused since 2026-09-21, so the two license-gated tools are currently unavailable to everyone, license holders included.
 
 | Tier | $/mo | Watchlists | Queries/mo | Archive | Alert channels |
 |---|---|---|---|---|---|
@@ -101,11 +101,11 @@ Source is AGPL-3.0. Self-hosters can run the MCP server locally with their own D
 | Support | community only (issues/PRs) | priority support on Analyst / Desk |
 | Best for | hackers, privacy-strict envs, OSS contributors | anyone who'll want the watchlist-to-alert workflow once it ships |
 
-OSS self-host is **not** in the pricing table above — it's a separate lane. See [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) for the install + key wiring. Note: the OSS-vs-Cloud table above covers the **pip-install** paths. A zero-install path existed — the hosted remote MCP at `https://mcp.koreanpulse.dev/mcp` — but it has been paused since 2026-09-21; use the self-hosted `pip install koreanpulse` path for now.
+OSS self-host is **not** in the pricing table above — it's a separate lane. See [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) for the install + key wiring. Note: the OSS-vs-Cloud table above covers the **pip-install** paths. A zero-install path existed — the hosted remote MCP at `https://mcp.koreanpulse.dev/mcp` — but it has been paused since 2026-09-21; use the self-hosted `pip install koreanpulse` path for now. While the hosted service is paused, the Cloud column above is on hold: Cloud licenses cannot currently be used, and a self-install does not include the two license-gated tools.
 
 ## Tools
 
-7 MCP tools shipped — **5 free + 2 license-gated**. Callable from Claude Desktop / Cursor / any MCP client. The paid tier unlocks the allowlist-tagging work that takes a Korean speaker to do by hand; the free tier ships the raw DART + RSS surface.
+7 MCP tools shipped — **5 free + 2 license-gated**. Callable from Claude Desktop / Cursor / any MCP client; the 5 free tools run in a self-install, while the 2 license-gated tools run only on the hosted service, which is paused since 2026-09-21. The paid tier unlocks the allowlist-tagging work that takes a Korean speaker to do by hand; the free tier ships the raw DART + RSS surface.
 
 **Free tier** (no `license_key`, no signup):
 
@@ -151,8 +151,8 @@ do that better.
 | Hosted endpoint | `mcp.koreanpulse.dev/mcp` — **paused since 2026-09-21** | — (self-install) | — (self-install) | `openregistry.sophymarine.com/mcp` |
 | 1-click connect (ChatGPT / Claude.ai) | Paused (hosted endpoint down since 2026-09-21) | No (stdio) | No (stdio) | Yes |
 | Your own DART API key to start | Yes while the hosted endpoint is paused (register + configure) | Yes (register + configure) | Yes (register + configure) | n/a |
-| Activist filer tagging (KCGI / Align / Truston / Anda / Cha / VIP / Life / Platform / Must / Dalton / FCP / Oasis / Palliser / Whitebox / City of London / ValueAct / Elliott) | **17 labels** | — raw filings only | — raw filings only | — registry data only |
-| Foreign-holder 5%-rule allowlist (BlackRock / Vanguard / Norges / GIC / Temasek + 15 more) | **20 labels** | — raw filings only | — raw filings only | — registry data only |
+| Activist filer tagging (KCGI / Align / Truston / Anda / Cha / VIP / Life / Platform / Must / Dalton / FCP / Oasis / Palliser / Whitebox / City of London / ValueAct / Elliott) | **17 labels** (hosted only; paused) | — raw filings only | — raw filings only | — registry data only |
+| Foreign-holder 5%-rule allowlist (BlackRock / Vanguard / Norges / GIC / Temasek + 15 more) | **20 labels** (hosted only; paused) | — raw filings only | — raw filings only | — registry data only |
 | English-first docstrings (LLM-friendly) | **All tools** | Korean primary, English secondary | Korean primary | Yes |
 | Korean industry news (etnews / 한국경제 / Korea Herald / zdnet RSS, EN translated) | **16 industries** | — | — | — |
 | KRX OHLCV (daily prices) | — out of scope | **Yes** (KOSPI / KOSDAQ / KONEX) | — | — |
@@ -190,7 +190,7 @@ See `src/koreanpulse/cache.py`, `src/koreanpulse/dart.py:list_filings_cached`.
 
 ## Roadmap
 
-**Available now**: queries (DART filings, foreign-holder + activist tracking, industry news), hosted translation cache (Cloud `KOREANPULSE_CACHE_MODE=hosted`), `/today` daily snapshot, **Polar → D1 license issuance** (Polar is our sole billing provider and Merchant of Record). The first-party hosted MCP endpoint (`https://mcp.koreanpulse.dev/mcp`) is paused since 2026-09-21; use the self-hosted `pip install koreanpulse` path.
+**Available now**: queries (DART filings and industry news via self-install; foreign-holder + activist tracking runs only on the hosted service, paused since 2026-09-21), hosted translation cache (Cloud `KOREANPULSE_CACHE_MODE=hosted`), `/today` daily snapshot, **Polar → D1 license issuance** (Polar is our sole billing provider and Merchant of Record). The first-party hosted MCP endpoint (`https://mcp.koreanpulse.dev/mcp`) is paused since 2026-09-21; use the self-hosted `pip install koreanpulse` path.
 
 **Planned — not yet available**:
 - Watchlist polling loop (Cloudflare cron + `koreanpulse.alerts`)
@@ -329,7 +329,7 @@ Ask Claude: "Which activist investors filed 5%-rule disclosures on KOSPI stocks 
 Ask Claude: "Show me recent foreign-holder 5%-rule filings — has BlackRock or Norges Bank crossed any thresholds? [license_key: YOUR_KEY]"
 ```
 
-The first three prompts use free tools (no signup). The last two use the activist and foreign-holder allowlist tagging and require a Solo $29/mo license key — the server returns a short notice explaining that a license key is required if `license_key` is missing (no checkout link in the response).
+The first three prompts use free tools (no signup). The last two use the activist and foreign-holder allowlist tagging, which runs only on the hosted service (paused since 2026-09-21) and requires a Solo $29/mo license key; a self-install cannot use them — the server returns a short notice explaining that a license key is required if `license_key` is missing (no checkout link in the response).
 
 ## License
 

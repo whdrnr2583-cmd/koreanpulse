@@ -352,7 +352,9 @@ export default function TrackDartWithAiGuide() {
             <li>
               <code className="text-accent">monitor_foreign_holders</code> and{" "}
               <code className="text-accent">monitor_activist_investors</code> —
-              5%-rule filings classified by who filed them.
+              5%-rule filings classified by who filed them (license-gated;
+              these two run only on the hosted service, which is paused since
+              2026-09-21).
             </li>
           </ul>
           <p className="mt-6 text-zinc-300">Prompts that work well:</p>
@@ -381,7 +383,8 @@ export default function TrackDartWithAiGuide() {
             A note on quotas: DART caps each API key at 40,000 calls/day. If
             you build your own server, cache filing-list responses with a
             short TTL so repeated questions about the same window do not burn
-            quota. A hosted server handles this for you.
+            quota. koreanpulse&apos;s local filing-list cache does this for
+            repeated calls.
           </p>
 
           <h2 className="mt-12 text-2xl font-semibold">A free way to start</h2>

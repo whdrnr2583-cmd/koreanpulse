@@ -52,10 +52,11 @@ const faqLd = {
           "data on your own machine, a self-hosted OpenDART wrapper such as " +
           "jjlabsio/korea-stock-mcp is a good free choice (bring your own DART " +
           "key). If you want English-translated filings and cross-investor " +
-          "classification, koreanpulse provides them; install it yourself " +
-          "(pip install koreanpulse, with your own DART key). Its hosted " +
-          "endpoint (https://mcp.koreanpulse.dev/mcp) has been paused since " +
-          "2026-09-21, so a one-URL connector setup is not available right now.",
+          "classification, koreanpulse provides them on its hosted service, " +
+          "which has been paused since 2026-09-21 (endpoint " +
+          "https://mcp.koreanpulse.dev/mcp), so a one-URL connector setup is " +
+          "not available right now. A self-install (pip install koreanpulse, " +
+          "with your own DART key) covers the free tools, not the classification.",
       },
     },
     {
@@ -233,8 +234,9 @@ export default function BestKoreanStockMcpServer() {
           <p className="mt-3 text-zinc-300">
             The trade-off is honest: the hosted convenience tiers are paid
             (Cloud Solo $29/mo and up), and the cross-investor classification
-            tools are part of those tiers. The whole server is AGPL open source,
-            so you can self-host it with your own keys.{" "}
+            tools are part of those tiers and run only on the hosted service,
+            which is paused since 2026-09-21. The whole server is AGPL open
+            source, so you can self-host the free tools with your own keys.{" "}
             <strong className="text-zinc-100">Best if</strong> you want
             English-first answers, or you specifically
             need to know <em>who</em> is crossing 5% in a name.
@@ -259,8 +261,8 @@ export default function BestKoreanStockMcpServer() {
               <strong className="text-zinc-100">
                 I want English answers and I care who is buying:
               </strong>{" "}
-              self-hosted koreanpulse (option 3; the hosted endpoint is paused
-              since 2026-09-21).
+              koreanpulse (option 3; the who-is-buying classification runs only
+              on the hosted service, which is paused since 2026-09-21).
             </li>
           </ul>
 

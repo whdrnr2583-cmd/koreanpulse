@@ -20,7 +20,8 @@ account. The paid Cloud Solo / Analyst / Desk tiers are a different path
 
 | Feature | Self-host | Cloud (Solo / Analyst / Desk) |
 |---|---|---|
-| MCP tools (track filings, lookup corp, search news, monitor activist/foreign) | ✅ | ✅ |
+| Free MCP tools (track filings, lookup corp, resolve ticker, search news, about) | ✅ | ✅ |
+| License-gated tools (`monitor_activist_investors`, `monitor_foreign_holders`) | ❌ (hosted service only) | ✅ on the hosted service (paused since 2026-09-21) |
 | `/today` daily web snapshot | ✅ (free public, no install) | ✅ |
 | Translation cache | local JSONL file | global Cloudflare KV (cross-tenant reuse) |
 | OpenAI / Anthropic key | yours | ours |
@@ -33,13 +34,21 @@ account. The paid Cloud Solo / Analyst / Desk tiers are a different path
 ## Install
 
 ```bash
-# Clone the repo (PyPI release in flight — see CHANGELOG)
+pip install koreanpulse
+```
+
+This installs the `koreanpulse` console script (PyPI release 0.1.13). It runs
+the 5 free tools. The two license-gated tools (`monitor_activist_investors`,
+`monitor_foreign_holders`) are not included in a self-install: they run only
+on the hosted service, which is paused since 2026-09-21.
+
+For development, clone the repo and install it in editable mode instead:
+
+```bash
 git clone https://github.com/whdrnr2583-cmd/koreanpulse.git
 cd koreanpulse
 pip install -e .
 ```
-
-This installs the `koreanpulse` console script.
 
 ## Required env
 
@@ -105,6 +114,10 @@ Claude calls `lookup_corp_code('삼성전자')` → `track_korean_filings(corp_c
 | Translation looks wrong / hallucinated | Try `KOREANPULSE_TRANSLATE_PROVIDER=anthropic` (Claude Haiku). Different system prompt, different failure modes. |
 
 ## Upgrading to Cloud later
+
+The hosted service has been paused since 2026-09-21, so Cloud is on hold:
+licenses cannot currently be used from a self-install, and the two
+license-gated tools are unavailable. The steps below apply once it resumes.
 
 If you decide your time is more valuable than your OpenAI bill:
 

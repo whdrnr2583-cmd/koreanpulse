@@ -84,7 +84,8 @@ const faqLd = {
           "Truston, ValueAct, Elliott and more), delivered inside Claude " +
           "Desktop or Cursor via a self-installed MCP server (pip install " +
           "koreanpulse). The hosted endpoint https://mcp.koreanpulse.dev/mcp " +
-          "has been paused since 2026-09-21.",
+          "has been paused since 2026-09-21. The tagging tools run only on the " +
+          "hosted service; the self-installed server provides the free tools.",
       },
     },
   ],
@@ -255,9 +256,10 @@ export default function TrackForeignInvestorsActivistsKorea() {
             pip install koreanpulse
           </div>
           <p className="mt-3 text-sm text-zinc-400">
-            Self-hosting needs your own DART API key. The two classification
-            tools above are part of the Cloud tier (Solo $29/mo and up); the
-            server is AGPL open source.
+            Self-hosting needs your own DART API key and covers the free
+            tools. The two classification tools above are part of the Cloud
+            tier (Solo $29/mo and up) and run only on the hosted service,
+            which is paused since 2026-09-21; the server is AGPL open source.
           </p>
 
           <h2 className="mt-12 text-2xl font-semibold">See it for free first</h2>

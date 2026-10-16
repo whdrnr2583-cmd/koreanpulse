@@ -167,7 +167,8 @@ export default function KoreanFilingsGuide() {
               <code className="text-accent">monitor_activist_investors</code> — 5%-rule
               disclosures auto-classified against a named-entity allowlist (BlackRock,
               Vanguard, Norges, GIC, Temasek and more; KCGI, Align, ValueAct, Elliott and
-              more).
+              more). These two tools are license-gated and run only on the
+              hosted service, which is paused since 2026-09-21.
             </li>
             <li>
               <code className="text-accent">search_korean_industry_news</code> — etnews and

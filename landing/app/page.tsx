@@ -10,11 +10,11 @@ const PRICING = [
     checkoutUrl:
       "https://buy.polar.sh/polar_cl_ETpLepEvpGkGBXAOJjQhi7gwizO8GkOW3YaHw4IgHAr",
     features: [
-      "Unlocks 2 paid MCP tools: monitor_activist_investors + monitor_foreign_holders",
+      "Unlocks 2 paid MCP tools (hosted service only; paused since 2026-09-21): monitor_activist_investors + monitor_foreign_holders",
       "Korean activist filer match — KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform / ValueAct / Elliott",
       "Foreign-holder allowlist — BlackRock / Vanguard / Norges / GIC / Temasek / Goldman / JPM + 13 more",
       "Hosted translation cache (no OpenAI key needed)",
-      "~2,000 queries/mo (available now)",
+      "~2,000 queries/mo (metered; paused with the hosted service)",
       "5 watchlists (planned — not yet available)",
       "30-day archive search (planned — not yet available)",
       "1 Discord or Telegram alert channel (planned — not yet available)",
@@ -30,7 +30,7 @@ const PRICING = [
       "https://buy.polar.sh/polar_cl_PmbLKURPhVZ1wuh6vqEKOXx4UNcii3bDqtFg62komUR",
     features: [
       "Everything in Solo (2 paid MCP tools + classification)",
-      "~15,000 queries/mo (available now)",
+      "~15,000 queries/mo (metered; paused with the hosted service)",
       "25 watchlists (planned — not yet available)",
       "1-year archive search (planned — not yet available)",
       "Multi-channel alerts (Discord / Telegram / Email) (planned — not yet available)",
@@ -47,7 +47,7 @@ const PRICING = [
       "https://buy.polar.sh/polar_cl_l6B5yiFOQqWIkyFpHtkTl93YzaEGWnzHtxDQ4393h7j",
     features: [
       "Everything in Analyst (2 paid MCP tools + classification)",
-      "~100,000 queries/mo (available now)",
+      "~100,000 queries/mo (metered; paused with the hosted service)",
       "3 seats, shared watchlists (planned — not yet available)",
       "Slack / webhook alerts (planned — not yet available)",
       "Team archive (planned — not yet available)",
@@ -176,8 +176,9 @@ export default function Home() {
             filings by known activist investors (KCGI, Align Partners, Elliott,
             ValueAct, Truston, Anda, Cha, VIP…) and global foreign holders
             (BlackRock, Vanguard, Norges Bank, GIC, Temasek…) — translated
-            to English, callable from Claude Desktop or Cursor after a
-            self-hosted install.
+            to English, callable from Claude Desktop or Cursor. The tagging
+            runs on the hosted service, which is paused since 2026-09-21; a
+            self-hosted install covers the 5 free tools.
           </p>
           <p className="mt-4 max-w-2xl text-zinc-300">
             DART publishes activist 5% disclosures in hours, but the raw feed
@@ -201,7 +202,9 @@ export default function Home() {
             </code>{" "}
             has been paused since 2026-09-21. Use the self-hosted install:{" "}
             <code className="text-xs">pip install koreanpulse</code> with your
-            own DART API key (see the{" "}
+            own DART API key for the 5 free tools. The 2 license-gated tools
+            run only on the hosted service and are unavailable while it is
+            paused (see the{" "}
             <a
               href="https://github.com/whdrnr2583-cmd/koreanpulse/blob/main/docs/SELF_HOSTING.md"
               className="underline"
@@ -227,8 +230,9 @@ export default function Home() {
             </a>
           </div>
           <p className="mt-4 text-xs text-zinc-500">
-            Beta — activist + foreign-holder tagging and DART queries work
-            now. Watchlist polling and alert dispatch are planned and not yet
+            Beta — DART queries (the 5 free tools) work now in a self-hosted
+            install. Activist + foreign-holder tagging is paused with the
+            hosted service. Watchlist polling and alert dispatch are planned and not yet
             available.
           </p>
         </section>
@@ -361,9 +365,9 @@ never guessed.`}
             There are a handful of Korean-data MCP servers in the wild. Pick the
             one that matches your job. We focus on{" "}
             <strong className="text-zinc-200">
-              English-first equity data with allowlist-based filer tagging,
-              with a self-hosted install (the hosted endpoint is paused since
-              2026-09-21).
+              English-first equity data with allowlist-based filer tagging
+              (hosted service only, paused since 2026-09-21; a self-hosted
+              install covers the 5 free tools).
             </strong>{" "}
             If you need raw KRX OHLCV or Korean-language financial statement
             tables, others do that better.
@@ -435,7 +439,7 @@ never guessed.`}
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-emerald-400">✓</span> 17 labels
+                    <span className="text-emerald-400">✓</span> 17 labels (hosted only; paused)
                   </td>
                   <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
                   <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
@@ -449,7 +453,7 @@ never guessed.`}
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-emerald-400">✓</span> 20 labels
+                    <span className="text-emerald-400">✓</span> 20 labels (hosted only; paused)
                   </td>
                   <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
                   <td className="px-4 py-3 text-zinc-500">— raw filings only</td>
@@ -680,7 +684,6 @@ never guessed.`}
                 <p className="font-semibold text-emerald-300">Available now</p>
                 <ul className="mt-1.5 list-disc space-y-1 pl-4">
                   <li>5 free tools: DART filings, company/ticker resolution, industry news, server info</li>
-                  <li>2 license-gated tools: <code>monitor_activist_investors</code>, <code>monitor_foreign_holders</code></li>
                   <li>Hosted English translation for filing titles</li>
                   <li>Public daily snapshot at <a href="/today" className="underline">/today</a></li>
                 </ul>
@@ -696,6 +699,13 @@ never guessed.`}
                 </ul>
               </div>
             </div>
+            <p className="mt-3 text-xs text-amber-300">
+              Paused since 2026-09-21: the 2 license-gated tools (
+              <code>monitor_activist_investors</code>,{" "}
+              <code>monitor_foreign_holders</code>) run only on the hosted
+              service and are unavailable to everyone, license holders
+              included, until it resumes.
+            </p>
             <p className="mt-3 text-xs text-zinc-400">
               Until the planned features ship, the runtime differences between
               paid tiers are the monthly query cap (2K / 15K / 100K) and
@@ -706,8 +716,9 @@ never guessed.`}
           </div>
           <h2 className="text-2xl font-semibold">Pricing</h2>
           <p className="mt-2 text-sm text-zinc-400 max-w-2xl">
-            Solo $29/mo unlocks the two allowlist-tagging tools (activist +
-            foreign-holder) now. Subscribing via Polar starts a paid monthly
+            Solo $29/mo is the plan for the two allowlist-tagging tools
+            (activist + foreign-holder), which run only on the hosted service
+            and are unavailable while it is paused since 2026-09-21. Subscribing via Polar starts a paid monthly
             subscription that charges immediately at checkout. Watchlist
             polling and alert dispatch are planned and not yet available —
             early subscribers keep their signup rate when those features land.
@@ -763,6 +774,11 @@ never guessed.`}
                 feed — they require a maintained allowlist + Korean-name
                 normalisation + filer-of-record disambiguation. That work is
                 what your $29/mo pays for.
+              </p>
+              <p className="mt-3 text-xs text-zinc-400">
+                These tools run only on the hosted service. They are
+                unavailable while it is paused (since 2026-09-21), and a
+                self-install does not include them.
               </p>
             </div>
           </div>
@@ -853,8 +869,10 @@ this allowlist tagging, so self-hosting will not unlock this tool.`}
             </a>
           </div>
           <p className="mt-6 text-xs text-zinc-500">
-            Cloud licenses work on the hosted endpoint (no install) or with
-            the local stdio install; hosted translation uses our OpenAI key
+            Paid Cloud plans are paused while the hosted endpoint is paused
+            (since 2026-09-21): a Cloud license cannot currently be used on
+            the hosted endpoint, and the local stdio install does not include
+            the two license-gated tools; hosted translation uses our OpenAI key
             and validates your license, so no OpenAI key is needed on your
             side. Enterprise / SLA: contact us.
           </p>
@@ -885,10 +903,12 @@ this allowlist tagging, so self-hosting will not unlock this tool.`}
             <code>https://mcp.koreanpulse.dev/mcp</code> has been paused since
             2026-09-21 and is not accepting connections, so it cannot be added
             as a custom connector in ChatGPT, Claude.ai or the OpenAI Responses
-            API right now. To use the 7 tools (DART filings, foreign-holder +
-            activist tracking, Korean industry news), run the server yourself:{" "}
-            <code>pip install koreanpulse</code> and the local stdio path
-            below. Read-only data layer; not investment advice.
+            API right now. To use the 5 free tools (DART filings, company and
+            ticker lookup, Korean industry news, server info), run the server
+            yourself: <code>pip install koreanpulse</code> and the local stdio
+            path below. The 2 license-gated tools (foreign-holder + activist
+            tracking) run only on the hosted service and are unavailable while
+            it is paused. Read-only data layer; not investment advice.
           </p>
         </section>
 
@@ -927,7 +947,8 @@ this allowlist tagging, so self-hosting will not unlock this tool.`}
             DART + RSS surface, no signup) and{" "}
             <strong className="text-zinc-200">2 license-gated</strong> —
             5%-rule foreign-holder and Korean activist filer matching against
-            a maintained allowlist. Calling a gated tool without a license
+            a maintained allowlist; they run only on the hosted service, which
+            is paused since 2026-09-21. Calling a gated tool without a license
             returns a clear license-required notice (shown above), never a
             silent failure.
           </p>
@@ -948,7 +969,7 @@ this allowlist tagging, so self-hosting will not unlock this tool.`}
           </div>
 
           <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-400">
-            Paid (Solo $29/mo or higher)
+            Paid (Solo $29/mo or higher; hosted service only, paused)
           </h3>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             {TOOLS_PAID.map((t) => (

@@ -1,5 +1,7 @@
 # Show HN launch package — koreanpulse
 
+> Historical draft — hosted endpoint paused since 2026-09-21.
+
 Single-shot submission kit. Copy the title, copy the body, post the self-comment within 60 seconds of submission. Do not edit-loop the post after it goes live.
 
 ---
