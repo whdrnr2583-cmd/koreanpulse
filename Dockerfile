@@ -16,8 +16,9 @@ WORKDIR /app
 # Keep this pin at the latest version actually published to PyPI. It lagged at
 # 0.1.3 — a version that was never published — so this build was failing
 # outright. Bump it as part of the PyPI release step, not the source bump:
-# 0.1.12/0.1.13 exist in git but are not on PyPI yet.
-RUN pip install --no-cache-dir koreanpulse==0.1.11
+# 0.1.13 is the latest on PyPI (checked 2026-10-16); 0.1.12 was never
+# published.
+RUN pip install --no-cache-dir koreanpulse==0.1.13
 
 # stdio MCP — Glama / Claude Desktop / Cursor speak JSON-RPC on stdin/stdout.
 ENTRYPOINT ["koreanpulse"]

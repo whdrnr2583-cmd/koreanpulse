@@ -178,7 +178,7 @@ Pick one variant per channel; never paste both.
 > kept for historical reference only — do **not** post this version.
 
 ```
-Show HN: koreanpulse — Korean industry intelligence inside Claude Desktop ($19/mo)
+Show HN: koreanpulse — Korean industry intelligence inside Claude Desktop ($19/mo — superseded draft price; current Solo is $29/mo)
 
 I run a Korean automated trading system, and the hardest part isn't the
 trading — it's the constant Korean primary-source reading. Bloomberg costs
@@ -250,7 +250,7 @@ Server-side capture (already in `agentprod.CostTracker`):
 - `last_active_at`
 - `referrer` (which channel — Smithery / HN / cold email / etc.)
 
-Manual capture (Supabase row):
+Manual capture (D1 row via webhook-worker; this draft predates the switch from Supabase):
 
 - email
 - self-described role (analyst / journalist / dev / other) — single optional field at signup
@@ -310,7 +310,7 @@ In order:
 |---|---|
 | Domain ($koreanpulse.dev) | 12 |
 | Vercel landing (free → Pro if needed) | 0–20 |
-| Supabase free tier | 0 |
+| Cloudflare D1 / webhook-worker (free tier; replaced the Supabase plan) | 0 |
 | Lightsail Seoul (already provisioned) | 0 |
 | Anthropic API for translations during beta (estimate 50 users × 100 calls × $0.001) | 5 |
 | Polar fees: only on first paid sale (5% + $0.40 / Stripe pass-through; Lemon Squeezy not in use — store application declined 2026-05-06) | 0 |
