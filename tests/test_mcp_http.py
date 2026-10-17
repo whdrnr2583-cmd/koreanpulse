@@ -229,3 +229,45 @@ class TestRootBannerAdvertisesActualAddress:
     def test_banner_follows_the_requested_host(self):
         body = self._get_root("http://localhost:9999")
         assert "http://localhost:9999/mcp" in body
+
+
+class TestStartupGuardRejectsDatabaseUrl:
+    """With enforced licensing the HTTP entry applies the same rule as
+    `server.main`: a set DATABASE_URL is rejected (Postgres store removed)."""
+
+    def _import_mcp_http(self, env: dict) -> subprocess.CompletedProcess:
+        import os
+
+        base = {k: v for k, v in os.environ.items()
+                if k not in ("DATABASE_URL", "KOREANPULSE_VALIDATE_URL",
+                             "KOREANPULSE_CACHE_SHARED_SECRET", "KOREANPULSE_REQUIRE_LICENSE")}
+        base["DART_API_KEY"] = "dummy"
+        base.update(env)
+        return subprocess.run(
+            [sys.executable, "-c", "import koreanpulse.mcp_http"],
+            capture_output=True, text=True, env=base, timeout=30,
+        )
+
+    def test_database_url_is_rejected_when_license_required(self):
+        result = self._import_mcp_http({
+            "KOREANPULSE_REQUIRE_LICENSE": "1",
+            "DATABASE_URL": "postgres://u:p@localhost/db",
+            "KOREANPULSE_VALIDATE_URL": "https://example.invalid/v1/validate",
+            "KOREANPULSE_CACHE_SHARED_SECRET": "x",
+        })
+        assert result.returncode != 0
+        assert "RuntimeError" in result.stderr
+        assert "removed 2026-10-18" in result.stderr
+        assert "KOREANPULSE_VALIDATE_URL" in result.stderr
+
+    def test_validate_path_without_database_url_starts(self):
+        result = self._import_mcp_http({
+            "KOREANPULSE_REQUIRE_LICENSE": "1",
+            "KOREANPULSE_VALIDATE_URL": "https://example.invalid/v1/validate",
+            "KOREANPULSE_CACHE_SHARED_SECRET": "x",
+        })
+        assert result.returncode == 0, result.stderr
+
+    def test_database_url_ignored_by_startup_guard_in_dev_mode(self):
+        result = self._import_mcp_http({"DATABASE_URL": "postgres://u:p@localhost/db"})
+        assert result.returncode == 0, result.stderr

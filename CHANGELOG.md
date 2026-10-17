@@ -14,9 +14,11 @@
 - **Postgres license store.** Deleted `koreanpulse.license_postgres`, its
   tests (one skipped module), `migrations/001_licenses.sql` and the
   `[postgres]` extra. Setting `DATABASE_URL` now fails with a "no longer
-  supported" error (`LicenseError("config")` from the license check,
-  `RuntimeError` at startup of `koreanpulse` and `koreanpulse.mcp_http`)
-  instead of connecting to Postgres. With `KOREANPULSE_REQUIRE_LICENSE=1` the
+  supported" error instead of connecting to Postgres. The startup
+  `RuntimeError` (in `koreanpulse` and `koreanpulse.mcp_http`) happens only
+  when `KOREANPULSE_REQUIRE_LICENSE=1`; in dev mode the server starts and the
+  first call to a license-gated tool raises `LicenseError("config")`
+  (previously: in-memory fallback). With `KOREANPULSE_REQUIRE_LICENSE=1` the
   stdio server now checks for `KOREANPULSE_VALIDATE_URL` +
   `KOREANPULSE_CACHE_SHARED_SECRET` at startup rather than `DATABASE_URL`.
   `docs/POSTGRES.md` stays as a record.

@@ -23,7 +23,7 @@ Korean stock disclosures, activist filings & foreign-holder flows in English —
 
 ## Status
 
-**Pre-alpha (v0.1.13).** 7 MCP tools shipped — 5 free + 2 license-gated (activist + foreign-holder allowlist tagging, Solo $29/mo+; these two run only on the hosted service, which is paused since 2026-09-21). 415 tests pass. Beta — watchlist polling + alert dispatch are planned and not yet available. Beta acquisition plan in `docs/BETA.md`.
+**Pre-alpha (v0.1.13).** 7 MCP tools shipped — 5 free + 2 license-gated (activist + foreign-holder allowlist tagging, Solo $29/mo+; these two run only on the hosted service, which is paused since 2026-09-21). 418 tests pass. Beta — watchlist polling + alert dispatch are planned and not yet available. Beta acquisition plan in `docs/BETA.md`.
 
 ---
 

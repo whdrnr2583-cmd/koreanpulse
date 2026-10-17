@@ -43,9 +43,12 @@ from starlette.applications import Starlette  # noqa: E402 — must follow basic
 from starlette.responses import PlainTextResponse  # noqa: E402
 from starlette.routing import Mount, Route  # noqa: E402
 
+from koreanpulse.license import POSTGRES_REMOVED_MESSAGE  # noqa: E402
 from koreanpulse.server import mcp  # noqa: E402 — importing before basicConfig swallows tool_call logs
 
 if os.environ.get("KOREANPULSE_REQUIRE_LICENSE", "0").strip() == "1":
+    if os.environ.get("DATABASE_URL", "").strip():
+        raise RuntimeError(POSTGRES_REMOVED_MESSAGE)
     _has_webhook = bool(
         os.environ.get("KOREANPULSE_VALIDATE_URL", "").strip()
         and os.environ.get("KOREANPULSE_CACHE_SHARED_SECRET", "").strip()
