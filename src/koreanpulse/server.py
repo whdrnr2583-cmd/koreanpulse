@@ -965,6 +965,10 @@ async def koreanpulse_about() -> dict:
         "homepage": "https://koreanpulse.dev",
         "endpoint": "https://mcp.koreanpulse.dev/mcp",
         "transport": "streamable-http",
+        "endpoint_status": (
+            "paused since 2026-09-21; the hosted endpoint does not respond. "
+            "Run the self-hosted install instead (pip install koreanpulse, stdio)."
+        ),
     }
 
 
