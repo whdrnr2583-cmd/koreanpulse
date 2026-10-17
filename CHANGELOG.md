@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Changed (hosted service paused, 2026-10-16 to 2026-10-17)
+
+- **`server.json` now lists the PyPI package (stdio) instead of the hosted
+  remote.** The hosted endpoint has been paused since 2026-09-21. The MCP
+  Registry listing keeps the former remote address until the operator
+  re-publishes with `mcp-publisher`.
+- **mcp_http: the root banner shows the address actually reached**, not the
+  paused hosted URL.
+- **`koreanpulse_about` adds `endpoint_status`** stating the hosted endpoint
+  is paused; existing fields are unchanged.
+- **docs/BETA.md: 2026-11-15 gate rule confirmed.** No external paid checkout
+  by then means maintenance mode (hosting stays stopped, daily snapshot stays
+  on); one or more means the gate passes and hosting is re-enabled.
+- **Docs:** test counts updated to 443; "ships Q3 2026" wording replaced with
+  undated plans; checkout wording in `smithery.yaml` reflects the pause.
+
 ### Fixed (correctness batch, 2026-10-06)
 
 - **daily-worker: a late backstop build no longer overwrites latest with a

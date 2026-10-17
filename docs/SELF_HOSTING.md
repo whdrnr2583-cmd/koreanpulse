@@ -14,7 +14,7 @@ account. The paid Cloud Solo / Analyst / Desk tiers are a different path
 > **Why pay for Cloud?** You don't have to manage the OpenAI bill. Cross-
 > tenant translation cache makes repeat queries near-free. Workflow
 > features (watchlists, alerts, archive search) ship under Cloud — they're
-> Q3 2026 ship targets, not in the OSS path.
+> planned (no date) and not in the OSS path.
 
 ## What you give up by self-hosting
 

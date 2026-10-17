@@ -12,7 +12,7 @@ One repo, multiple listing surfaces. Each listing's exact copy lives in `docs/li
 | 2 | **Glama** | [GLAMA.md](listings/GLAMA.md) | https://glama.ai/mcp/servers/whdrnr2583-cmd/koreanpulse | ☑ (auto-discovered) | ☑ score badge live |
 | 3 | **MCP Market** | [MCPMARKET.md](listings/MCPMARKET.md) | https://mcpmarket.com/ko/server/koreanpulse | ☑ (auto-discovered) | ☑ AI-generated description |
 | 4 | **mcp.so** | — | https://mcp.so/server/koreanpulse | ☑ (manual submit) | ☑ all 4 axes in metadata |
-| 5 | **MCP Registry** (Anthropic official) | — | https://registry.modelcontextprotocol.io/v0.1/servers?search=koreanpulse | ☑ (`mcp-publisher publish`) | ☑ active, isLatest |
+| 5 | **MCP Registry** (Anthropic official) | — | https://registry.modelcontextprotocol.io/v0.1/servers?search=koreanpulse | ☑ (`mcp-publisher publish`) | ☑ listed; entry still shows the former hosted remote until re-published (see step 5 below) |
 | 6 | **PulseMCP** | [PULSEMCP.md](listings/PULSEMCP.md) | https://www.pulsemcp.com | ☐ | ☐ |
 | 7 | **punkpeye/awesome-mcp-servers** PR | [AWESOME_MCP.md](listings/AWESOME_MCP.md) | [PR #5893](https://github.com/punkpeye/awesome-mcp-servers/pull/5893) | ☑ (Glama badge added 2026-05-07) | ☐ awaiting maintainer merge |
 | 8 | **jmanhype/awesome-claude-code** PR | — | [PR #42](https://github.com/jmanhype/awesome-claude-code/pull/42) | ☑ (qodo bot resolved) | ☐ awaiting maintainer merge |
@@ -25,7 +25,7 @@ Continue.dev hub — explicitly skipped 2026-05-07 after audit (GitHub App permi
 2. ✅ **Glama** — auto-discovered from public repo, score badge auto-issued.
 3. ✅ **MCP Market** (mcpmarket.com) — auto-discovered (we never submitted, the site fetched our GitHub repo and produced a description).
 4. ✅ **mcp.so** — manual submit form filled (Smithery + Glama don't auto-feed mcp.so).
-5. ✅ **MCP Registry** (registry.modelcontextprotocol.io) — `mcp-publisher publish` with `server.json` (PyPI package entry, `koreanpulse` over stdio; the first-party hosted endpoint is paused since 2026-09-21, so the former remote entry was replaced).
+5. ✅ **MCP Registry** (registry.modelcontextprotocol.io) — `mcp-publisher publish` with `server.json` (PyPI package entry, `koreanpulse` over stdio; the first-party hosted endpoint is paused since 2026-09-21, so the former remote entry was replaced in `server.json`). The registry listing itself is unchanged until the operator re-publishes with `mcp-publisher`; until then it still carries the former hosted remote address.
 6. ⏳ **PulseMCP** — manual review surface, deferred. Highest signal-to-noise listing surface in the ecosystem (~12k servers, all hand-reviewed).
 7. ✅ **punkpeye/awesome-mcp-servers** — PR #5893 with Glama score badge embed.
 8. ✅ **jmanhype/awesome-claude-code** — PR #42, qodo bot review resolved.

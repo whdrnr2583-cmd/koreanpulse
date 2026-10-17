@@ -15,7 +15,7 @@ description: |
   pip install for Claude Desktop / Cursor (the hosted remote MCP at
   mcp.koreanpulse.dev/mcp is paused since 2026-09-21). Data and intelligence
   only — not buy/sell recommendations. OSS self-host (AGPL); paid
-  Cloud tiers for the watchlist-to-alert workflow (ships Q3 2026).
+  Cloud tiers for the watchlist-to-alert workflow (planned, no date).
 homepage: https://koreanpulse.dev
 repository: https://github.com/whdrnr2583-cmd/koreanpulse
 license: AGPL-3.0-or-later
@@ -77,8 +77,8 @@ env:
   - name: KOREANPULSE_LICENSE_KEY
     description: |
       Required when KOREANPULSE_CACHE_MODE=hosted. Issued by Polar
-      on subscription (kp_…). Subscribe / join the waitlist at
-      https://koreanpulse.dev/pricing.
+      on subscription (kp_…). Checkout is temporarily paused;
+      see https://koreanpulse.dev/pricing for status.
     required: false
 
   - name: KOREANPULSE_REQUIRE_LICENSE

@@ -77,7 +77,7 @@ Drop `OPENAI_API_KEY` (the Cloudflare Worker holds it for you) and add:
 DART traffic always stays in your process — only translation/summary
 calls leave your machine, and only to our Worker, never directly to
 OpenAI. The watchlist polling that will power your Discord/Telegram
-alerts (Q3 2026) is designed to run on Cloudflare Workers, not in your
+alerts (planned, no date) is designed to run on Cloudflare Workers, not in your
 local MCP process — so even when polling ships, your local MCP doesn't
 become a long-running process.
 
