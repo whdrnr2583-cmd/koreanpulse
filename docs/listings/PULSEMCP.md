@@ -92,7 +92,7 @@ Korean (primary sources) → English (translation/summary)
 Cloud Solo $29/mo / Cloud Analyst $79/mo / Cloud Desk $249/mo. OSS self-host available separately for hackers (AGPL, BYO keys, community support only — not a pricing tier). Enterprise / SLA: contact us.
 
 ## Author / contact
-- Author: whdrn
+- Author: whdrnr2583-cmd
 - Repo: https://github.com/whdrnr2583-cmd/koreanpulse
 - Issues: same repo
 - Email: support@koreanpulse.dev (set up before submission)

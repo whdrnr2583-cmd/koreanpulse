@@ -5,7 +5,7 @@ Step-by-step to verify the build against the real DART API.
 ## 0. Prereq
 
 ```bash
-cd C:/Users/whdrn/claudeCode/koreanpulse
+cd <repo>   # your local clone of koreanpulse
 pip install -e ".[test]"
 ```
 
