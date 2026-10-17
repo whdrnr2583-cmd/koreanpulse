@@ -8,10 +8,15 @@
     "url": "https://github.com/whdrnr2583-cmd/koreanpulse",
     "source": "github"
   },
-  "remotes": [
+  "packages": [
     {
-      "type": "streamable-http",
-      "url": "https://mcp.koreanpulse.dev/mcp"
+      "registryType": "pypi",
+      "identifier": "koreanpulse",
+      "version": "0.1.13",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }
