@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+### Removed (dead payment code, 2026-10-18)
+
+- **Lemon Squeezy Python module.** Deleted `koreanpulse.billing`
+  (`lemonsqueezy.py`, `webhook_app.py`), its 35 tests, the `[billing]`
+  extra, the `koreanpulse-webhook` console script, the `fastapi` test
+  dependency that only those tests used, and the `LEMONSQUEEZY_*` entries in
+  `.env.example`. Lemon Squeezy was declined on 2026-05-06; Polar is the only
+  billing provider and runs in `webhook-worker/`. `docs/LEMONSQUEEZY.md` stays
+  as a record.
+- **Postgres license store.** Deleted `koreanpulse.license_postgres`, its
+  tests (one skipped module), `migrations/001_licenses.sql` and the
+  `[postgres]` extra. Setting `DATABASE_URL` now fails with a "no longer
+  supported" error (`LicenseError("config")` from the license check,
+  `RuntimeError` at startup of `koreanpulse` and `koreanpulse.mcp_http`)
+  instead of connecting to Postgres. With `KOREANPULSE_REQUIRE_LICENSE=1` the
+  stdio server now checks for `KOREANPULSE_VALIDATE_URL` +
+  `KOREANPULSE_CACHE_SHARED_SECRET` at startup rather than `DATABASE_URL`.
+  `docs/POSTGRES.md` stays as a record.
+- **Tests:** 443 passed + 1 skipped became 415 passed (35 Lemon Squeezy and
+  webhook tests removed, the skipped Postgres module removed, 7 tests added
+  for the new startup and license errors).
+- **Not changed:** the `/webhook/lemonsqueezy` route and
+  `webhook-worker/src/lemonsqueezy.ts` need a deploy; the worker is left for
+  the next worker deploy.
+
 ### Changed (hosted service paused, 2026-10-16 to 2026-10-17)
 
 - **`server.json` now lists the PyPI package (stdio) instead of the hosted
