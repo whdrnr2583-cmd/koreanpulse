@@ -284,6 +284,19 @@ Keep it one-click for Q1 (mailto: links per option).
 | **2–5%** | Weak | One-shot pivot: drop Cloud Solo $29 → $19 or Cloud Analyst $79 → $49, re-test 30d |
 | **< 2%** | Audience or form mismatch | See *Pivot ladder* below |
 
+### 11/15 kill-gate rule (confirmed 2026-10-17)
+
+The Day-31 matrix above assumes a running beta. The hosted server has been stopped since 2026-09-21, so the 2026-11-15 gate is decided by the rule below instead.
+
+| Condition on 2026-11-15 | Verdict | Action |
+|---|---|---|
+| External paid checkout count is 0 (the operator's own purchases are excluded) | **Maintenance mode, confirmed** | Hosting stays stopped. The daily snapshot stays on. Removal of the legacy payment code (LemonSqueezy, Postgres) may begin. The service is not shut down. |
+| External paid checkout count is 1 or more | Gate passed | Re-enable hosting and return to the matrix above. |
+
+Restart condition while in maintenance mode: either one external paid checkout, or 10 or more repeat external IPs over 30 days.
+
+The 2026-09-21 stop was a manual stop by the operator. It was confirmed from the server logs.
+
 ### Pivot ladder (only if < 2% conversion AND > 50 signups)
 
 In order:
