@@ -65,35 +65,40 @@ if os.environ.get("KOREANPULSE_REQUIRE_LICENSE", "0").strip() == "1":
 
 _mcp_app = mcp.http_app(transport="streamable-http", path="/mcp")
 
-_ROOT_BODY = (
-    "koreanpulse — hosted MCP endpoint\n"
-    "==================================\n"
-    "\n"
-    "This URL is the MCP server itself, not a web page. Connect it from\n"
-    "an MCP-aware client:\n"
-    "\n"
-    "  Claude.ai → Settings → Connectors → Add custom connector\n"
-    "    URL: https://mcp.koreanpulse.dev/mcp\n"
-    "\n"
-    "  ChatGPT → Settings → Connectors → Add custom connector\n"
-    "    URL: https://mcp.koreanpulse.dev/mcp\n"
-    "\n"
-    "  OpenAI Responses API:\n"
-    "    tools=[{type: \"mcp\", server_url: \"https://mcp.koreanpulse.dev/mcp\"}]\n"
-    "\n"
-    "7 MCP tools — 5 free (no key), 2 license-gated:\n"
-    "  Free: track_korean_filings, search_korean_industry_news,\n"
-    "    resolve_stock_code, lookup_corp_code, koreanpulse_about\n"
-    "  License-gated: monitor_activist_investors, monitor_foreign_holders\n"
-    "\n"
-    "Source (AGPL):     https://github.com/whdrnr2583-cmd/koreanpulse\n"
-    "Free daily digest: https://koreanpulse.dev\n"
-    "PyPI:              https://pypi.org/project/koreanpulse/\n"
-)
+def _root_body(base_url: str) -> str:
+    """Banner text pointing at the address this server was actually reached on.
+
+    The first-party hosted endpoint is paused, so the banner must not send a
+    self-hoster to it; it advertises ``base_url`` (derived from the request).
+    """
+    mcp_url = f"{base_url.rstrip('/')}/mcp"
+    return (
+        "koreanpulse — MCP endpoint\n"
+        "==========================\n"
+        "\n"
+        "This URL is the MCP server itself, not a web page. Connect it from\n"
+        "an MCP-aware client that can reach this address:\n"
+        "\n"
+        f"  MCP URL: {mcp_url}\n"
+        "\n"
+        "  OpenAI Responses API:\n"
+        f"    tools=[{{type: \"mcp\", server_url: \"{mcp_url}\"}}]\n"
+        "\n"
+        "7 MCP tools — 5 free (no key), 2 license-gated:\n"
+        "  Free: track_korean_filings, search_korean_industry_news,\n"
+        "    resolve_stock_code, lookup_corp_code, koreanpulse_about\n"
+        "  License-gated: monitor_activist_investors, monitor_foreign_holders\n"
+        "\n"
+        "Source (AGPL):     https://github.com/whdrnr2583-cmd/koreanpulse\n"
+        "Free daily digest: https://koreanpulse.dev\n"
+        "PyPI:              https://pypi.org/project/koreanpulse/\n"
+    )
 
 
-async def _root(_request):
-    return PlainTextResponse(_ROOT_BODY, media_type="text/plain; charset=utf-8")
+async def _root(request):
+    return PlainTextResponse(
+        _root_body(str(request.base_url)), media_type="text/plain; charset=utf-8"
+    )
 
 
 app = Starlette(

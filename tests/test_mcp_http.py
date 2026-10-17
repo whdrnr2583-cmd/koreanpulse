@@ -197,3 +197,35 @@ class TestHttpLibraryLogLevels:
             f"subprocess failed\nstdout={result.stdout}\nstderr={result.stderr}"
         )
         assert "PASS" in result.stdout
+
+
+class TestRootBannerAdvertisesActualAddress:
+    """The `/` banner must point at the address the caller actually reached,
+    not at the first-party hosted endpoint (paused since 2026-09-21)."""
+
+    def _get_root(self, base_url: str) -> str:
+        script = textwrap.dedent(
+            f"""
+            import os
+            os.environ.setdefault("DART_API_KEY", "dummy")
+            from starlette.testclient import TestClient
+            from koreanpulse.mcp_http import app
+            resp = TestClient(app, base_url={base_url!r}).get("/")
+            assert resp.status_code == 200, resp.status_code
+            print(resp.text)
+            """
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", script], capture_output=True, text=True
+        )
+        assert result.returncode == 0, f"stdout={result.stdout!r} stderr={result.stderr!r}"
+        return result.stdout
+
+    def test_banner_uses_local_address_not_hosted_url(self):
+        body = self._get_root("http://127.0.0.1:8400")
+        assert "http://127.0.0.1:8400/mcp" in body
+        assert "mcp.koreanpulse.dev" not in body
+
+    def test_banner_follows_the_requested_host(self):
+        body = self._get_root("http://localhost:9999")
+        assert "http://localhost:9999/mcp" in body
