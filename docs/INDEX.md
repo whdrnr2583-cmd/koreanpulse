@@ -18,7 +18,7 @@ Single jumping-off point for everything written about koreanpulse.
 |---|---|
 | [RUN_LIVE.md](RUN_LIVE.md) | How to run the MCP server against real DART |
 | [CLAUDE_DESKTOP.md](CLAUDE_DESKTOP.md) | How to wire koreanpulse into Claude Desktop / Cursor |
-| [POSTGRES.md](POSTGRES.md) | Legacy / self-host only — production license store is Cloudflare D1 (webhook-worker) |
+| [POSTGRES.md](POSTGRES.md) | Record only (code removed 2026-10-18) — production license store is Cloudflare D1 (webhook-worker) |
 | [LEMONSQUEEZY.md](LEMONSQUEEZY.md) | 🚫 **REMOVED (code deleted 2026-10-18; record only)** — historical Lemon Squeezy setup snapshot. LS store application was declined 2026-05-06; Polar (see root `README.md` Billing + `webhook-worker/README.md`) is our sole billing provider. |
 | [CI.md](CI.md) | GitHub Actions workflows, PyPI trusted publishing, cutting a release |
 
@@ -52,7 +52,6 @@ what they do and why they exist. Read those alongside `ARCHITECTURE.md`:
 - `news.py` — Korean industry RSS aggregator + 16-tag classifier
 - `translate.py` — OpenAI / Anthropic translation with cost tracking
 - `license.py` — Plan / License / InMemoryLicenseStore + validation
-- `license_postgres.py` — Postgres-backed store
 - `activists.py` — Korean activist allowlist + matcher
 - `alerts.py` — Discord / Slack / Telegram webhook delivery
 - `models.py` — Pydantic public types (Filing, Article, ActivistFiling)

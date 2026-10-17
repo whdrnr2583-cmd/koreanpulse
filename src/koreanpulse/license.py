@@ -221,6 +221,14 @@ def issue_lifetime_license(
     )
 
 
+POSTGRES_REMOVED_MESSAGE = (
+    "DATABASE_URL is set, but the Postgres license store is no longer "
+    "supported (removed 2026-10-18). Unset DATABASE_URL. For enforced "
+    "licensing set KOREANPULSE_VALIDATE_URL and "
+    "KOREANPULSE_CACHE_SHARED_SECRET (webhook-worker / D1); otherwise the "
+    "in-memory store is used."
+)
+
 _default_store: Optional[LicenseStore] = None
 _setup_lock = asyncio.Lock()
 
@@ -234,8 +242,8 @@ def set_default_store(store: LicenseStore) -> None:
 def get_default_store() -> LicenseStore:
     """Sync default-store getter. Returns InMemory fallback if nothing wired.
 
-    Prefer `aget_default_store()` in production paths so Postgres autoconnect
-    can run when `DATABASE_URL` is set.
+    Prefer `aget_default_store()`, which also enforces the license-config
+    checks (`DATABASE_URL`, `KOREANPULSE_REQUIRE_LICENSE`).
     """
     global _default_store
     if _default_store is None:
@@ -248,10 +256,12 @@ async def aget_default_store() -> LicenseStore:
 
     Setup rules (first call only, guarded by lock):
       1. If `set_default_store()` already wired one → return it.
-      2. If `DATABASE_URL` is set → autoconnect `PostgresLicenseStore`.
-      3. If `KOREANPULSE_REQUIRE_LICENSE=1` and Postgres unavailable →
-         raise `LicenseError("config")`. Production requires Postgres so
-         the webhook process and the MCP server share one license table.
+      2. If `DATABASE_URL` is set → raise `LicenseError("config")`. The
+         Postgres license store was removed on 2026-10-18 (support ended).
+      3. If `KOREANPULSE_REQUIRE_LICENSE=1` → raise `LicenseError("config")`.
+         Production validates against the webhook-worker (D1) through
+         `KOREANPULSE_VALIDATE_URL`, which `validate_license_or_raise`
+         handles before it asks for a store.
       4. Otherwise (dev) → fall back to `InMemoryLicenseStore`.
     """
     global _default_store
@@ -261,30 +271,14 @@ async def aget_default_store() -> LicenseStore:
         if _default_store is not None:
             return _default_store
         require = os.environ.get("KOREANPULSE_REQUIRE_LICENSE", "0").strip() == "1"
-        dsn = os.environ.get("DATABASE_URL", "").strip()
-        if dsn:
-            try:
-                from koreanpulse.license_postgres import PostgresLicenseStore
-                _default_store = await PostgresLicenseStore.connect(dsn)
-                logger.info("license: PostgresLicenseStore connected")
-                return _default_store
-            except Exception as exc:  # noqa: BLE001
-                if require:
-                    raise LicenseError(
-                        "config",
-                        f"DATABASE_URL set but Postgres connect failed: {exc}",
-                    ) from exc
-                logger.warning(
-                    "license: postgres connect failed, falling back to in-memory: %s",
-                    exc,
-                )
+        if os.environ.get("DATABASE_URL", "").strip():
+            raise LicenseError("config", POSTGRES_REMOVED_MESSAGE)
         if require:
             raise LicenseError(
                 "config",
-                "KOREANPULSE_REQUIRE_LICENSE=1 but DATABASE_URL not set. "
-                "Production needs Postgres so the webhook process and MCP "
-                "server share the same license store. "
-                "See docs/POSTGRES.md.",
+                "KOREANPULSE_REQUIRE_LICENSE=1 but no license backend is wired. "
+                "Set KOREANPULSE_VALIDATE_URL and KOREANPULSE_CACHE_SHARED_SECRET "
+                "to validate against the webhook-worker.",
             )
         _default_store = InMemoryLicenseStore()
         logger.info("license: InMemoryLicenseStore (dev mode)")
@@ -393,7 +387,7 @@ async def validate_license_or_raise(
          This is the production path on the hosted MCP — D1 is the only
          license store that the Polar webhook writes to.
       2. Else if `store` arg passed (or default store wired) → in-process
-         (Postgres if DATABASE_URL, InMemory otherwise). Used by BYOK
+         (InMemory unless wired; DATABASE_URL raises "config"). Used by BYOK
          self-host and unit tests.
 
     Raises:
@@ -413,8 +407,7 @@ async def validate_license_or_raise(
             license_key, validate_url, shared_secret, cost_units
         )
 
-    # (2) In-process store path — Postgres for self-host with DATABASE_URL,
-    # InMemory for dev/tests. Same semantics as before this commit.
+    # (2) In-process store path — InMemory for dev/tests.
     store = store or await aget_default_store()
     lic = await store.get(license_key)
     if lic is None:

@@ -274,8 +274,8 @@ Modules:
 
 D1 schema in `webhook-worker/migrations/0001_licenses.sql` — two tables:
 
-- `licenses` — one row per issued license. Mirrors the Postgres schema
-  in `migrations/001_licenses.sql` but with SQLite-compatible types
+- `licenses` — one row per issued license. Mirrors the former Postgres
+  schema (removed 2026-10-18) but with SQLite-compatible types
   (TEXT for timestamps, INTEGER for booleans, JSON-as-TEXT for metadata).
   Denormalised `is_lifetime` + `deal_seq` columns to keep lifetime
   accounting fast without a JSON functional index.

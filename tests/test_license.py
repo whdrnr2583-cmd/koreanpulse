@@ -178,3 +178,52 @@ class TestLifetimeDeal:
         result = await validate_license_or_raise(lic.key, store=store)
         assert result.key == lic.key
         assert is_lifetime(result)
+
+
+class TestPostgresRemoved:
+    """DATABASE_URL used to autoconnect a Postgres store; support ended 2026-10-18."""
+
+    @pytest.fixture(autouse=True)
+    def _fresh_default_store(self, monkeypatch):
+        import koreanpulse.license as lic_mod
+
+        monkeypatch.setattr(lic_mod, "_default_store", None)
+        monkeypatch.delenv("KOREANPULSE_VALIDATE_URL", raising=False)
+        monkeypatch.delenv("KOREANPULSE_CACHE_SHARED_SECRET", raising=False)
+        monkeypatch.delenv("KOREANPULSE_REQUIRE_LICENSE", raising=False)
+
+    @pytest.mark.asyncio
+    async def test_database_url_raises_config_error(self, monkeypatch):
+        from koreanpulse.license import aget_default_store
+
+        monkeypatch.setenv("DATABASE_URL", "postgres://u:p@localhost/db")
+        with pytest.raises(LicenseError) as exc_info:
+            await aget_default_store()
+        assert exc_info.value.code == "config"
+        assert "no longer supported" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_database_url_raises_through_validate(self, monkeypatch):
+        monkeypatch.setenv("DATABASE_URL", "postgres://u:p@localhost/db")
+        with pytest.raises(LicenseError) as exc_info:
+            await validate_license_or_raise("kp_anything")
+        assert exc_info.value.code == "config"
+
+    @pytest.mark.asyncio
+    async def test_require_license_without_backend_raises_config_error(self, monkeypatch):
+        from koreanpulse.license import aget_default_store
+
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+        monkeypatch.setenv("KOREANPULSE_REQUIRE_LICENSE", "1")
+        with pytest.raises(LicenseError) as exc_info:
+            await aget_default_store()
+        assert exc_info.value.code == "config"
+        assert "KOREANPULSE_VALIDATE_URL" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_no_database_url_falls_back_to_in_memory(self, monkeypatch):
+        from koreanpulse.license import aget_default_store
+
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+        store = await aget_default_store()
+        assert isinstance(store, InMemoryLicenseStore)

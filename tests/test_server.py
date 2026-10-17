@@ -931,3 +931,28 @@ class TestFillTitleEn:
         assert tr.calls == {"신규": 1}
         assert pre.title_en == "Already"
         assert blank.title_en is None
+
+
+class TestMainLicenseStartupGuard:
+    """`main()` refuses to start when license enforcement has no backend."""
+
+    @pytest.fixture(autouse=True)
+    def _clean_env(self, monkeypatch):
+        for name in ("DATABASE_URL", "KOREANPULSE_VALIDATE_URL", "KOREANPULSE_CACHE_SHARED_SECRET"):
+            monkeypatch.delenv(name, raising=False)
+        monkeypatch.setenv("KOREANPULSE_REQUIRE_LICENSE", "1")
+        monkeypatch.setattr(server_mod.mcp, "run", lambda *a, **k: None)
+
+    def test_database_url_is_rejected_as_unsupported(self, monkeypatch):
+        monkeypatch.setenv("DATABASE_URL", "postgres://u:p@localhost/db")
+        with pytest.raises(RuntimeError, match="no longer supported"):
+            server_mod.main()
+
+    def test_missing_validate_path_is_rejected(self):
+        with pytest.raises(RuntimeError, match="KOREANPULSE_VALIDATE_URL"):
+            server_mod.main()
+
+    def test_validate_path_starts(self, monkeypatch):
+        monkeypatch.setenv("KOREANPULSE_VALIDATE_URL", "https://example.invalid/v1/validate")
+        monkeypatch.setenv("KOREANPULSE_CACHE_SHARED_SECRET", "x")
+        server_mod.main()

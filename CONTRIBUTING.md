@@ -50,8 +50,6 @@ Hits real DART. First run downloads the corp-code index (~5 MB, cached 7d).
   coroutines.
 - DART HTTP code uses `httpx.MockTransport` in tests — no live API access
   required for CI.
-- Postgres tests in `test_license_postgres.py` are skipped automatically
-  unless `DATABASE_URL_TEST` is set.
 
 ## Lint / style
 
@@ -86,8 +84,9 @@ A change is ship-ready when:
 5. If the change touches MCP tools, `koreanpulse_about()` in `server.py`
    reflects the new tool list, and `smithery.yaml` + `docs/listings/*.md`
    are updated together
-6. If the change touches the LicenseStore Protocol, both the in-memory
-   and Postgres implementations are updated and tested
+6. If the change touches the LicenseStore Protocol, the in-memory
+   implementation is updated and tested (the Postgres store was removed
+   2026-10-18; production validation lives in `webhook-worker/`)
 
 ## Releasing (maintainer only)
 

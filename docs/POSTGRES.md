@@ -1,3 +1,5 @@
+> **2026-10-18: the Postgres license store code (`license_postgres.py`, `migrations/001_licenses.sql`, the `[postgres]` extra) was removed from the repository; this document is kept as a record only. Setting `DATABASE_URL` now fails with a "no longer supported" error.**
+
 # Postgres-backed LicenseStore — production setup
 
 > 🚫 **Legacy path — NOT the production license store.** Production uses

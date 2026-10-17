@@ -49,9 +49,11 @@ pip install koreanpulse
 
 ## Optional env (production)
 - `KOREANPULSE_REQUIRE_LICENSE` — set to `1` to enforce license keys
-- `DATABASE_URL` — required when `KOREANPULSE_REQUIRE_LICENSE=1`; Postgres
-  DSN shared with the Polar webhook (Polar is sole billing provider;
-  Lemon Squeezy not in use, store application declined 2026-05-06)
+- `KOREANPULSE_VALIDATE_URL` + `KOREANPULSE_CACHE_SHARED_SECRET` — required
+  when `KOREANPULSE_REQUIRE_LICENSE=1`; validate keys against the Polar
+  webhook worker (Polar is sole billing provider; Lemon Squeezy not in use,
+  store application declined 2026-05-06). `DATABASE_URL` (Postgres) is no
+  longer supported.
 
 ## Categories
 finance, news, search

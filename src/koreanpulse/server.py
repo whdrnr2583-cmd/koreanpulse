@@ -36,6 +36,7 @@ from koreanpulse.corp_code import (
 )
 from koreanpulse.dart import list_filings_cached, set_default_cache as _set_dart_cache
 from koreanpulse.license import (
+    POSTGRES_REMOVED_MESSAGE,
     LicenseError,
     validate_license_or_raise,
 )
@@ -979,15 +980,21 @@ def main() -> None:
     )
 
     # Production safety: refuse to start if the operator asked for license
-    # enforcement without wiring Postgres. Otherwise the in-memory store
-    # would be local to this MCP process and never see keys issued by the
-    # webhook process. Postgres autoconnect itself is lazy (first tool call).
-    if _require_license() and not os.environ.get("DATABASE_URL", "").strip():
-        raise RuntimeError(
-            "KOREANPULSE_REQUIRE_LICENSE=1 but DATABASE_URL is not set. "
-            "The MCP server and the webhook process must share a Postgres "
-            "license store. See docs/POSTGRES.md."
-        )
+    # enforcement without the webhook-worker validate path. Otherwise the
+    # in-memory store would be local to this MCP process and never see keys
+    # issued by the webhook process.
+    if _require_license():
+        if os.environ.get("DATABASE_URL", "").strip():
+            raise RuntimeError(POSTGRES_REMOVED_MESSAGE)
+        if not (
+            os.environ.get("KOREANPULSE_VALIDATE_URL", "").strip()
+            and os.environ.get("KOREANPULSE_CACHE_SHARED_SECRET", "").strip()
+        ):
+            raise RuntimeError(
+                "KOREANPULSE_REQUIRE_LICENSE=1 but the webhook validate path "
+                "is not wired. Set KOREANPULSE_VALIDATE_URL and "
+                "KOREANPULSE_CACHE_SHARED_SECRET."
+            )
 
     mcp.run()
 
