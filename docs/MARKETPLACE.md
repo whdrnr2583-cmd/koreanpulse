@@ -25,7 +25,7 @@ Continue.dev hub — explicitly skipped 2026-05-07 after audit (GitHub App permi
 2. ✅ **Glama** — auto-discovered from public repo, score badge auto-issued.
 3. ✅ **MCP Market** (mcpmarket.com) — auto-discovered (we never submitted, the site fetched our GitHub repo and produced a description).
 4. ✅ **mcp.so** — manual submit form filled (Smithery + Glama don't auto-feed mcp.so).
-5. ✅ **MCP Registry** (registry.modelcontextprotocol.io) — `mcp-publisher publish` with `server.json` (remote-only entry pointing at `mcp.koreanpulse.dev/mcp`).
+5. ✅ **MCP Registry** (registry.modelcontextprotocol.io) — `mcp-publisher publish` with `server.json` (PyPI package entry, `koreanpulse` over stdio; the first-party hosted endpoint is paused since 2026-09-21, so the former remote entry was replaced).
 6. ⏳ **PulseMCP** — manual review surface, deferred. Highest signal-to-noise listing surface in the ecosystem (~12k servers, all hand-reviewed).
 7. ✅ **punkpeye/awesome-mcp-servers** — PR #5893 with Glama score badge embed.
 8. ✅ **jmanhype/awesome-claude-code** — PR #42, qodo bot review resolved.
