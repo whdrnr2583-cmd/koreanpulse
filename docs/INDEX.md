@@ -19,7 +19,7 @@ Single jumping-off point for everything written about koreanpulse.
 | [RUN_LIVE.md](RUN_LIVE.md) | How to run the MCP server against real DART |
 | [CLAUDE_DESKTOP.md](CLAUDE_DESKTOP.md) | How to wire koreanpulse into Claude Desktop / Cursor |
 | [POSTGRES.md](POSTGRES.md) | Legacy / self-host only — production license store is Cloudflare D1 (webhook-worker) |
-| [LEMONSQUEEZY.md](LEMONSQUEEZY.md) | 🚫 **NOT IN USE** — historical Lemon Squeezy setup snapshot. LS store application was declined 2026-05-06; Polar (see root `README.md` Billing + `webhook-worker/README.md`) is our sole billing provider. |
+| [LEMONSQUEEZY.md](LEMONSQUEEZY.md) | 🚫 **REMOVED (code deleted 2026-10-18; record only)** — historical Lemon Squeezy setup snapshot. LS store application was declined 2026-05-06; Polar (see root `README.md` Billing + `webhook-worker/README.md`) is our sole billing provider. |
 | [CI.md](CI.md) | GitHub Actions workflows, PyPI trusted publishing, cutting a release |
 
 ## Marketing & launch
@@ -59,5 +59,3 @@ what they do and why they exist. Read those alongside `ARCHITECTURE.md`:
 - `sources.py` — RSS / DART source registry
 - `server.py` — FastMCP wire-up (the 6 tools)
 - `_env.py` — `.env` autoloader
-- `billing/lemonsqueezy.py` — historical LS webhook handler (LS not in use since 2026-05-06; retained as reference only)
-- `billing/webhook_app.py` — historical FastAPI app for the legacy Lightsail webhook receiver (superseded by `webhook-worker/` Cloudflare Worker)

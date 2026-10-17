@@ -67,9 +67,9 @@ customer's machine.
                            │  Lemon Squeezy:        │
                            │   NOT IN USE           │
                            │   (store app declined  │
-                           │    2026-05-06; LS      │
-                           │    handler retained as │
-                           │    historical ref only)│
+                           │    2026-05-06; Python  │
+                           │    handler removed     │
+                           │    2026-10-18)         │
                            └────────────────────────┘
 
       Independent: Daily Worker (cron, builds /today)
@@ -345,8 +345,7 @@ For the 12-month customer-mix forecast (~756 MAU mostly free + ~86 paying):
 ## Test surface
 
 - 443 tests passing, 1 skipped (Postgres test needs a live DB)
-- Unit tests cover every module; integration tests cover the legacy
-  Python webhook via `fastapi.testclient.TestClient`
+- Unit tests cover every module
 - DART tests use `httpx.MockTransport` — no live API required for CI
 - Live verification path: `python examples/quickstart.py` (see RUN_LIVE.md)
 - Webhook-worker tests live under `webhook-worker/` (TS / vitest)

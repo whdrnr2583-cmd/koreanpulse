@@ -5,8 +5,8 @@ Cloudflare Worker (`webhook-worker/`) via Polar (sole billing provider,
 active since 2026-05-06). The D1 store is the production source of truth;
 this in-memory store is used by tests and as the legacy LicenseStore
 Protocol reference. The Lemon Squeezy store application was declined
-2026-05-06; LS code paths remain in `koreanpulse.billing/` only as
-historical reference.
+2026-05-06; the Python LS handlers (`koreanpulse.billing`) were removed
+2026-10-18.
 
 Each MCP tool that costs money calls `validate_license_or_raise(license_key)`
 at the top. The MCP client passes the key as a tool arg or via a connection

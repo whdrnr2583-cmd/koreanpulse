@@ -250,7 +250,7 @@ Billing runs on the [`webhook-worker/`](webhook-worker/README.md) Cloudflare Wor
 
 **Active provider: Polar** ([polar.sh](https://polar.sh)) — Merchant of Record since 2026-05-06. Handles VAT / sales tax / refunds / chargebacks for all subscriptions. License keys are emailed automatically on `subscription.created` via the webhook worker.
 
-**Lemon Squeezy: not in use.** Their store application was declined on 2026-05-06; we did not appeal. No LS variant secrets are configured in production and no LS webhook deliveries are accepted. The `/webhook/lemonsqueezy` handler code remains in the repo only as a historical implementation reference — Polar is the sole billing provider.
+**Lemon Squeezy: removed.** Their store application was declined on 2026-05-06; we did not appeal. No LS variant secrets are configured in production and no LS webhook deliveries are accepted. The Python LS handler (`koreanpulse.billing`) and the `koreanpulse-webhook` entry point were removed from the repository on 2026-10-18. The `webhook-worker` route `/webhook/lemonsqueezy` is a no-op and goes away at the next worker deploy — Polar is the sole billing provider.
 
 See [`webhook-worker/README.md`](webhook-worker/README.md) for the full deploy + secrets walkthrough; the short version:
 
@@ -277,12 +277,12 @@ Endpoints (deployed to `https://api.koreanpulse.dev` or `https://koreanpulse-web
 
 - `GET /health` → `{"status":"ok"}`
 - `POST /webhook/polar` → Standard Webhooks signature verified (`webhook-id` / `webhook-timestamp` / `webhook-signature`), idempotent on `webhook-id`
-- `POST /webhook/lemonsqueezy` → not in use (handler retained as historical reference — see Billing note above)
+- `POST /webhook/lemonsqueezy` → removed from use (no-op route, deleted at the next worker deploy — see Billing note above)
 - `POST /v1/validate` → HMAC-signed by the cache-worker, validates license + atomically increments period counter
 
 Polar events handled: `subscription.created` / `.active` / `.updated` / `.canceled` / `.revoked`. Auto-issues license keys, upgrades plans in place, deactivates on cancellation. License rows are tagged with `metadata.provider = "polar"` so the source is traceable per row.
 
-The earlier path (Python `koreanpulse-webhook` FastAPI on Lightsail + Postgres) is **superseded** as of 2026-05-05; for operator memory it lives at [`docs/legacy/POSTGRES_LIGHTSAIL.md`](docs/legacy/POSTGRES_LIGHTSAIL.md). New deploys should use the Cloudflare Worker path.
+The earlier path (Python `koreanpulse-webhook` FastAPI on Lightsail + Postgres) is **superseded** as of 2026-05-05 and its code was removed on 2026-10-18; for operator memory it lives at [`docs/legacy/POSTGRES_LIGHTSAIL.md`](docs/legacy/POSTGRES_LIGHTSAIL.md). New deploys should use the Cloudflare Worker path.
 
 ## Distribution / marketplaces
 

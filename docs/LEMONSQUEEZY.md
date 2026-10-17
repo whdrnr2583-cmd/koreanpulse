@@ -1,3 +1,5 @@
+> **2026-10-18: the Lemon Squeezy code was removed from the repository; this document is kept as a record only.**
+
 # Lemon Squeezy setup — step by step
 
 > 🚫 **STATUS: NOT IN USE — Lemon Squeezy store application was declined

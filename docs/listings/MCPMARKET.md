@@ -44,8 +44,8 @@ pip install koreanpulse
 ## Optional env (Cloud mode for Solo / Analyst / Desk subscribers — no own provider key needed)
 - `KOREANPULSE_CACHE_MODE` — set to `hosted` to call our Cloudflare Worker
   cache instead of OpenAI directly
-- `KOREANPULSE_LICENSE_KEY` — required for Cloud mode (issued by Lemon
-  Squeezy on subscription)
+- `KOREANPULSE_LICENSE_KEY` — required for Cloud mode (issued by Polar
+  on subscription)
 
 ## Optional env (production)
 - `KOREANPULSE_REQUIRE_LICENSE` — set to `1` to enforce license keys
