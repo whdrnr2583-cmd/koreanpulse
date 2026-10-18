@@ -18,12 +18,13 @@
   `RuntimeError` (in `koreanpulse` and `koreanpulse.mcp_http`) happens only
   when `KOREANPULSE_REQUIRE_LICENSE=1`; in dev mode the server starts and the
   first call to a license-gated tool raises `LicenseError("config")`
-  (previously: in-memory fallback). With `KOREANPULSE_REQUIRE_LICENSE=1` the
+  (previously: in-memory fallback), unless `KOREANPULSE_VALIDATE_URL` +
+  `KOREANPULSE_CACHE_SHARED_SECRET` are also set, which take precedence. With `KOREANPULSE_REQUIRE_LICENSE=1` the
   stdio server now checks for `KOREANPULSE_VALIDATE_URL` +
   `KOREANPULSE_CACHE_SHARED_SECRET` at startup rather than `DATABASE_URL`.
   `docs/POSTGRES.md` stays as a record.
-- **Tests:** 443 passed + 1 skipped became 415 passed (35 Lemon Squeezy and
-  webhook tests removed, the skipped Postgres module removed, 7 tests added
+- **Tests:** 443 passed + 1 skipped became 418 passed (35 Lemon Squeezy and
+  webhook tests removed, the skipped Postgres module removed, 10 tests added
   for the new startup and license errors).
 - **Not changed:** the `/webhook/lemonsqueezy` route and
   `webhook-worker/src/lemonsqueezy.ts` need a deploy; the worker is left for

@@ -106,8 +106,8 @@ The `release.yml` workflow does PyPI publish via trusted publishing
 ## Security disclosure
 
 For anything sensitive (auth bypass, license-key leak, webhook signature
-flaw), please **don't open a public issue**. Email the maintainer's personal mailbox (ask for the address via the GitHub
-profile) or DM me — I'll patch and credit you.
+flaw), please **don't open a public issue**. Email legal@koreanpulse.dev
+with "security" in the subject — I'll patch and credit you.
 
 ## License
 
