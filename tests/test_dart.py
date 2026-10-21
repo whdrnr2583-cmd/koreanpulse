@@ -802,10 +802,10 @@ class TestListMajorHoldings:
 
         assert len(holdings) == 2
         assert holdings[0] == MajorHolding(
-            repror="국민연금공단", stkrt=8.51, stkrt_irds=0.10
+            repror="국민연금공단", stkrt=8.51, stkrt_irds=0.10, rcept_no="20260601000111"
         )
         assert holdings[1] == MajorHolding(
-            repror="얼라인파트너스자산운용", stkrt=5.20, stkrt_irds=0.30
+            repror="얼라인파트너스자산운용", stkrt=5.20, stkrt_irds=0.30, rcept_no="20260601000112"
         )
 
     @pytest.mark.asyncio

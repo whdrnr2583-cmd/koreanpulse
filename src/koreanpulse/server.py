@@ -125,6 +125,7 @@ async def _fill_title_en(
     *,
     tool: str,
     text_attr: str = "title",
+    errors: Optional[list[str]] = None,
 ) -> int:
     """Fill `title_en` on rows concurrently, deduping identical titles.
 
@@ -138,7 +139,9 @@ async def _fill_title_en(
     `title_ko` for news articles).
 
     Returns the number of rows left untranslated because of a failure, so the
-    caller can tell the agent instead of leaving a silent gap.
+    caller can tell the agent instead of leaving a silent gap. If `errors` is
+    given, the first failure's message is appended to it (TranslationError
+    messages never contain keys).
     """
     pending: dict[str, list] = {}
     for f in filings:
@@ -159,6 +162,8 @@ async def _fill_title_en(
             except Exception as exc:  # noqa: BLE001
                 group = pending[title]
                 failed_rows += len(group)
+                if errors is not None and not errors:
+                    errors.append(f"{type(exc).__name__}: {exc}"[:200])
                 logger.warning(
                     "translate failed for %s (%d row(s)): %s",
                     getattr(group[0], "receipt_no", None) or getattr(group[0], "url", "?"),
@@ -200,11 +205,15 @@ async def _translate_rows(
             "the Korean text is unchanged."
         )
         return
-    failed = await _fill_title_en(rows, translator, tool=tool, text_attr=text_attr)
+    first_error: list[str] = []
+    failed = await _fill_title_en(
+        rows, translator, tool=tool, text_attr=text_attr, errors=first_error
+    )
     if failed:
         notes.append(
-            f"{failed} of {len(rows)} titles could not be translated (provider error); "
-            "their `title_en` is empty and the Korean text is unchanged."
+            f"{failed} of {len(rows)} titles could not be translated"
+            + (f" ({first_error[0]})" if first_error else "")
+            + "; their `title_en` is empty and the Korean text is unchanged."
         )
     if corp_names:
         await fill_corp_name_en(rows, translator, op=tool)

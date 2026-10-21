@@ -958,3 +958,66 @@ class TestMainLicenseStartupGuard:
         monkeypatch.setenv("KOREANPULSE_VALIDATE_URL", "https://example.invalid/v1/validate")
         monkeypatch.setenv("KOREANPULSE_CACHE_SHARED_SECRET", "x")
         server_mod.main()
+
+
+class TestHoldingMatchPrecision:
+    """The majorstock feed lists every report a holder ever filed on the
+    corp. Matching by reporter name alone used to pick whichever row came
+    first — attaching an old holding % to a newer filing."""
+
+    def _h(self, repror, pct, rcept):
+        return MajorHolding(repror=repror, stkrt=pct, stkrt_irds=0.0, rcept_no=rcept)
+
+    @pytest.mark.asyncio
+    async def test_exact_receipt_number_wins_over_name(self, monkeypatch):
+        async def fake(corp_code, *, client=None):
+            return [
+                self._h("블랙록", 5.1, "20260101000001"),
+                self._h("블랙록", 6.3, "20261015000009"),
+                self._h("블랙록", 7.7, "20261020000002"),
+            ]
+
+        monkeypatch.setattr(enrich_mod, "list_major_holdings", fake)
+        f = _filing(code="00126380", name_ko="삼성전자")
+        f.filer_name_ko = "블랙록"
+        f.receipt_no = "20261015000009"
+        await fill_holding_pct([f], op="test")
+        assert f.holding_pct == 6.3
+
+    @pytest.mark.asyncio
+    async def test_name_match_uses_the_latest_report_not_the_first(self, monkeypatch):
+        async def fake(corp_code, *, client=None):
+            return [
+                self._h("블랙록", 5.1, "20260101000001"),
+                self._h("블랙록", 7.7, "20261020000002"),
+                self._h("블랙록", 6.3, "20261015000009"),
+            ]
+
+        monkeypatch.setattr(enrich_mod, "list_major_holdings", fake)
+        f = _filing(code="00126380", name_ko="삼성전자")
+        f.filer_name_ko = "블랙록"
+        f.receipt_no = "20261021000099"   # newer than anything listed yet
+        await fill_holding_pct([f], op="test")
+        assert f.holding_pct == 7.7
+
+    @pytest.mark.asyncio
+    async def test_spacing_and_company_marker_variants_match(self, monkeypatch):
+        async def fake(corp_code, *, client=None):
+            return [self._h("(주)얼라인 파트너스자산운용", 5.2, "20261020000002")]
+
+        monkeypatch.setattr(enrich_mod, "list_major_holdings", fake)
+        f = _filing(code="00126380", name_ko="삼성전자")
+        f.filer_name_ko = "얼라인파트너스 자산운용(주)"
+        await fill_holding_pct([f], op="test")
+        assert f.holding_pct == 5.2
+
+    @pytest.mark.asyncio
+    async def test_tiny_reporter_name_does_not_match_everything(self, monkeypatch):
+        async def fake(corp_code, *, client=None):
+            return [self._h("김", 1.0, "20261020000002")]
+
+        monkeypatch.setattr(enrich_mod, "list_major_holdings", fake)
+        f = _filing(code="00126380", name_ko="삼성전자")
+        f.filer_name_ko = "김앤장자산운용"
+        await fill_holding_pct([f], op="test")
+        assert f.holding_pct is None

@@ -9,6 +9,8 @@ these from inside their main flow when `translate=True`.
 from __future__ import annotations
 
 import logging
+import re
+import unicodedata
 from typing import Optional
 
 from koreanpulse.dart import MajorHolding, list_major_holdings
@@ -59,25 +61,59 @@ async def fill_corp_name_en(
             )
 
 
-def _best_holding_match(
-    filer_name_ko: Optional[str], holdings: list[MajorHolding]
-) -> Optional[MajorHolding]:
-    """Match a filing's filer name against DART majorstock reporter names.
+def _norm_reporter(name: str) -> str:
+    """Compare reporter names ignoring case, spacing, punctuation and the
+    "(주)" marker."""
+    t = unicodedata.normalize("NFKC", name).lower().replace("(주)", "").replace("주식회사", "")
+    return re.sub(r"[\W_]+", "", t)
 
-    Exact string match first; falls back to substring containment in
-    either direction (e.g. a filer name carrying a suffix like "외 1인"
-    that the majorstock `repror` doesn't, or vice versa). Returns None on
-    no match — callers must not fabricate a match.
+
+_MIN_CONTAINMENT_CHARS = 3
+
+
+def _best_holding_match(
+    filer_name_ko: Optional[str],
+    holdings: list[MajorHolding],
+    receipt_no: Optional[str] = None,
+) -> Optional[MajorHolding]:
+    """Pick the majorstock row that belongs to a filing.
+
+    Preference order:
+      1. the row whose `rcept_no` equals this filing's receipt number — the
+         exact report, immune to name variants;
+      2. among rows whose reporter name matches (exact after normalization,
+         else containment either way, requiring >= 3 characters so a
+         one-letter reporter cannot match everything), the *latest* report
+         (highest `rcept_no`); rows without `rcept_no` keep DART's order.
+    Returns None on no match — callers must not fabricate a match.
     """
+    if receipt_no:
+        for h in holdings:
+            if h.rcept_no == receipt_no:
+                return h
     if not filer_name_ko:
         return None
-    for h in holdings:
-        if h.repror == filer_name_ko:
-            return h
-    for h in holdings:
-        if h.repror in filer_name_ko or filer_name_ko in h.repror:
-            return h
-    return None
+    target = _norm_reporter(filer_name_ko)
+    if not target:
+        return None
+
+    def _latest(rows: list[MajorHolding]) -> Optional[MajorHolding]:
+        if not rows:
+            return None
+        dated = [h for h in rows if h.rcept_no and h.rcept_no.isdigit()]
+        if dated:
+            return max(dated, key=lambda h: int(h.rcept_no or 0))
+        return rows[0]
+
+    exact = _latest([h for h in holdings if _norm_reporter(h.repror) == target])
+    if exact is not None:
+        return exact
+    contained = [
+        h for h in holdings
+        if len(_norm_reporter(h.repror)) >= _MIN_CONTAINMENT_CHARS
+        and (_norm_reporter(h.repror) in target or target in _norm_reporter(h.repror))
+    ]
+    return _latest(contained)
 
 
 async def fill_holding_pct(
@@ -127,7 +163,7 @@ async def fill_holding_pct(
         for f in filings:
             if f.corp_code != corp_code:
                 continue
-            match = _best_holding_match(f.filer_name_ko, holdings)
+            match = _best_holding_match(f.filer_name_ko, holdings, f.receipt_no)
             if match is None:
                 continue
             f.holding_pct = match.stkrt

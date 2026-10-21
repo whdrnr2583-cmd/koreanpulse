@@ -396,17 +396,21 @@ _MAJOR_HOLDING_TTL_SECONDS = 3600
 class MajorHolding:
     """One row from DART's majorstock.json (대량보유상황보고).
 
-    Only the 3 fields consumed by the paid-tier enrichment are parsed —
-    `repror` (보고자, the reporting entity), `stkrt` (보유비율, current
-    holding %), and `stkrt_irds` (증감, change vs the prior report). DART
-    returns other fields (report reason, share counts, contract details)
-    that we deliberately do not surface here — don't add them without a
-    verified live payload to parse against (no fabricated fields).
+    Only the fields consumed by the enrichment are parsed — `repror`
+    (보고자, the reporting entity), `stkrt` (보유비율, current holding %),
+    `stkrt_irds` (증감, change vs the prior report) and `rcept_no` (접수번호,
+    the filing the row belongs to; documented in OpenDART's majorstock
+    response, optional here — None when absent so a payload without it
+    still parses and old cache entries stay valid). DART returns other
+    fields (report reason, share counts, contract details) that we
+    deliberately do not surface here — don't add them without a verified
+    live payload to parse against (no fabricated fields).
     """
 
     repror: str
     stkrt: Optional[float]
     stkrt_irds: Optional[float]
+    rcept_no: Optional[str] = None
 
 
 def _coerce_optional_float(value: object) -> Optional[float]:
@@ -489,6 +493,7 @@ async def list_major_holdings(
                     repror=repror,
                     stkrt=_coerce_optional_float(row.get("stkrt")),
                     stkrt_irds=_coerce_optional_float(row.get("stkrt_irds")),
+                    rcept_no=str(row.get("rcept_no") or "").strip() or None,
                 )
             )
 
