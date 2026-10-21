@@ -43,6 +43,7 @@ import enum
 import re
 import unicodedata
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Literal, Optional
 
 
@@ -307,22 +308,50 @@ def _spaced(text: str) -> str:
     return _NON_WORD_RE.sub(" ", _fold(text)).strip()
 
 
-def _alias_in_name(alias: str, compact_name: str, spaced_name: str) -> bool:
-    if not alias:
-        return False
-    if _HANGUL_RE.search(alias):
-        # Korean has no word boundaries and attaches particles/suffixes
-        # directly ("안다자산운용(주)"), so plain containment on the
-        # space/punctuation-insensitive form is the right test.
-        return _compact(alias) in compact_name
-    # Latin alias: must start on a word boundary. A bare substring test
-    # tagged "Miranda Asset Management" as Anda Asset and "Midlife Asset"
-    # as Life Asset. The right edge stays open on purpose
-    # ("Schroder" -> "Schroders", "BlackRock" -> "BlackRock Fund Advisors").
-    needle = _spaced(alias)
-    if not needle:
-        return False
-    return re.search(r"(?<![a-z0-9])" + re.escape(needle), spaced_name) is not None
+def _compile_records() -> tuple:
+    """Normalize every alias / denylist entry once at import. The matcher runs
+    once per filing row (hundreds per scan), and re-folding ~100 aliases per
+    call dominated a cached scan (165 us per name before, see CHANGELOG)."""
+    out = []
+    for rec in ALL_INVESTORS:
+        deny = tuple(_compact(bad) for bad in _ALIAS_DENYLIST.get(rec.canonical, ()))
+        hangul: list[str] = []
+        latin: list[re.Pattern[str]] = []
+        for alias in (*rec.aliases_ko, *rec.aliases_en):
+            if not alias:
+                continue
+            if _HANGUL_RE.search(alias):
+                # Korean has no word boundaries and attaches particles/suffixes
+                # directly ("안다자산운용(주)"), so plain containment on the
+                # space/punctuation-insensitive form is the right test.
+                hangul.append(_compact(alias))
+            else:
+                # Latin alias: must start on a word boundary. A bare substring
+                # test tagged "Miranda Asset Management" as Anda Asset and
+                # "Midlife Asset" as Life Asset. The right edge stays open on
+                # purpose ("Schroder" -> "Schroders").
+                needle = _spaced(alias)
+                if needle:
+                    latin.append(re.compile(r"(?<![a-z0-9])" + re.escape(needle)))
+        out.append((rec, deny, tuple(h for h in hangul if h), tuple(latin)))
+    return tuple(out)
+
+
+_COMPILED = _compile_records()
+
+
+@lru_cache(maxsize=8192)
+def _match_cached(name: str) -> Optional[InvestorMatch]:
+    compact_name = _compact(name)
+    if not compact_name:
+        return None
+    spaced_name = _spaced(name)
+    for rec, deny, hangul, latin in _COMPILED:
+        if deny and any(bad in compact_name for bad in deny):
+            continue
+        if any(h in compact_name for h in hangul) or any(p.search(spaced_name) for p in latin):
+            return InvestorMatch(rec.canonical, rec.klass, rec.origin)
+    return None
 
 
 def match_investor(filer_name: Optional[str]) -> Optional[InvestorMatch]:
@@ -343,25 +372,15 @@ def match_investor(filer_name: Optional[str]) -> Optional[InvestorMatch]:
     offending alias) when the filer name contains one of its denylisted
     substrings — this only suppresses false positives for that record; the
     scan continues so unrelated allowlist entries can still match.
+
+    Results are memoized per name (filer names repeat heavily across rows).
     """
     if not filer_name:
         return None
     name = filer_name.strip()
     if not name:
         return None
-    compact_name = _compact(name)
-    spaced_name = _spaced(name)
-    if not compact_name:
-        return None
-
-    for rec in ALL_INVESTORS:
-        denylist = _ALIAS_DENYLIST.get(rec.canonical, ())
-        if denylist and any(_compact(bad) in compact_name for bad in denylist):
-            continue
-        for alias in (*rec.aliases_ko, *rec.aliases_en):
-            if _alias_in_name(alias, compact_name, spaced_name):
-                return InvestorMatch(rec.canonical, rec.klass, rec.origin)
-    return None
+    return _match_cached(name)
 
 
 def match_activist(filer_name: Optional[str]) -> Optional[str]:

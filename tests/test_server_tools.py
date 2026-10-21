@@ -442,3 +442,87 @@ class TestKeyHygiene:
             await track_korean_filings(translate=False, days=1)
         assert "SUPERSECRET" not in str(ei.value)
         assert "SUPERSECRET" not in repr(ei.value.__cause__)
+
+
+class TestScanConcurrency:
+    """Pages after the first run in bounded waves (KOREANPULSE_SCAN_CONCURRENCY)."""
+
+    class _Probe(FakeDart):
+        def __init__(self, rows):
+            super().__init__(rows)
+            self.active = 0
+            self.peak = 0
+
+        async def __call__(self, **kw):
+            import asyncio
+
+            self.active += 1
+            self.peak = max(self.peak, self.active)
+            try:
+                await asyncio.sleep(0.01)
+                return await FakeDart.__call__(self, **kw)
+            finally:
+                self.active -= 1
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("conc,expected_peak", [("1", 1), ("2", 2), ("9", 5)])
+    async def test_peak_in_flight_requests_follow_the_setting(self, monkeypatch, conc, expected_peak):
+        monkeypatch.setenv("KOREANPULSE_SCAN_CONCURRENCY", conc)
+        rows = [_f(i) for i in range(800)]
+        probe = self._Probe(rows)
+        monkeypatch.setattr(server_mod, "list_filings_cached", probe)
+        await monitor_foreign_holders(translate=False, enrich_holdings=False)
+        assert probe.peak == expected_peak
+        assert sorted(c["page_no"] for c in probe.calls) == list(range(1, 9))
+
+    @pytest.mark.asyncio
+    async def test_results_keep_newest_first_order_across_a_wave(self, monkeypatch):
+        monkeypatch.setenv("KOREANPULSE_SCAN_CONCURRENCY", "3")
+        rows = [_f(i, filer="블랙록") if i in (150, 250, 350) else _f(i) for i in range(400)]
+        monkeypatch.setattr(server_mod, "list_filings_cached", self._Probe(rows))
+        out = await monitor_foreign_holders(translate=False, enrich_holdings=False)
+        assert [r.receipt_no for r in out] == [rows[i].receipt_no for i in (150, 250, 350)]
+
+    @pytest.mark.asyncio
+    async def test_never_requests_pages_beyond_total(self, monkeypatch):
+        monkeypatch.setenv("KOREANPULSE_SCAN_CONCURRENCY", "5")
+        fake = _install(monkeypatch, [_f(i) for i in range(250)])
+        await monitor_foreign_holders(translate=False, enrich_holdings=False)
+        assert sorted(c["page_no"] for c in fake.calls) == [1, 2, 3]
+
+    @pytest.mark.asyncio
+    async def test_wave_waste_is_bounded_when_enough_matches_found(self, monkeypatch):
+        monkeypatch.setenv("KOREANPULSE_SCAN_CONCURRENCY", "2")
+        # every row matches, limit 150 -> needs 151 matches = pages 1..2; wave [2,3] may over-fetch 1
+        fake = _install(monkeypatch, [_f(i, filer="블랙록") for i in range(900)])
+        await monitor_foreign_holders(translate=False, enrich_holdings=False, limit=100)
+        assert len(fake.calls) <= 3
+
+
+class TestCorpNameTranslation:
+    @pytest.mark.asyncio
+    async def test_distinct_names_run_concurrently_and_dedupe_by_name(self):
+        import asyncio
+
+        from koreanpulse._enrich import fill_corp_name_en
+
+        class T:
+            def __init__(self):
+                self.calls = []
+                self.active = self.peak = 0
+
+            async def translate_corp_name(self, n, *, labels=None):
+                self.calls.append(n)
+                self.active += 1
+                self.peak = max(self.peak, self.active)
+                await asyncio.sleep(0.01)
+                self.active -= 1
+                return "EN " + n
+
+        rows = [_f(i % 10, corp=f"{i % 10:08d}").model_copy(update={"corp_name_ko": f"회사{i % 4}"})
+                for i in range(40)]
+        t = T()
+        await fill_corp_name_en(rows, t, op="t")
+        assert sorted(t.calls) == [f"회사{i}" for i in range(4)]   # once per distinct name
+        assert t.peak > 1
+        assert all(r.corp_name_en == "EN " + r.corp_name_ko for r in rows)

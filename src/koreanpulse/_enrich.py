@@ -8,6 +8,7 @@ these from inside their main flow when `translate=True`.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import unicodedata
@@ -17,6 +18,8 @@ from koreanpulse.dart import MajorHolding, list_major_holdings
 from koreanpulse.translate import Translator
 
 logger = logging.getLogger(__name__)
+
+_CORP_NAME_CONCURRENCY = 8
 
 
 async def fill_corp_name_en(
@@ -39,26 +42,34 @@ async def fill_corp_name_en(
                     used for title translation in the same tool invocation.
         op: label string for cost-tracking (e.g. tool name).
     """
-    seen: dict[str, str] = {}  # corp_code → en (intra-batch dedup)
+    # One translation per distinct Korean name (not per row, not per corp_code),
+    # run concurrently with a small bound. The old sequential loop cost
+    # N_unique x provider latency (20 unique companies ~ 1 s at 50 ms each).
+    groups: dict[str, list] = {}
     for f in filings:
         if f.corp_name_en or not f.corp_name_ko:
             continue
-        if f.corp_code and f.corp_code in seen:
-            f.corp_name_en = seen[f.corp_code]
-            continue
-        try:
-            en = await translator.translate_corp_name(
-                f.corp_name_ko, labels={"tool": op}
-            )
-            if en:
+        groups.setdefault(f.corp_name_ko, []).append(f)
+    if not groups:
+        return
+
+    sem = asyncio.Semaphore(_CORP_NAME_CONCURRENCY)
+
+    async def _one(name_ko: str, rows: list) -> None:
+        async with sem:
+            try:
+                en = await translator.translate_corp_name(name_ko, labels={"tool": op})
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "corp_name_en translate failed for %s (%s): %s",
+                    name_ko, rows[0].corp_code, exc,
+                )
+                return
+        if en:
+            for f in rows:
                 f.corp_name_en = en
-                if f.corp_code:
-                    seen[f.corp_code] = en
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "corp_name_en translate failed for %s (%s): %s",
-                f.corp_name_ko, f.corp_code, exc,
-            )
+
+    await asyncio.gather(*(_one(n, r) for n, r in groups.items()))
 
 
 def _norm_reporter(name: str) -> str:

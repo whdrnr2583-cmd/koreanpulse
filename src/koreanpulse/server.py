@@ -283,6 +283,17 @@ def _max_scan_pages() -> int:
     return max(1, min(n, 50))
 
 
+def _scan_concurrency() -> int:
+    """Concurrent DART page requests per scan wave. Default 2 (conservative);
+    1 restores strictly sequential paging, capped at 5 (= the throttle's
+    refill rate, so more would only queue)."""
+    try:
+        n = int(os.environ.get("KOREANPULSE_SCAN_CONCURRENCY", "") or 2)
+    except ValueError:
+        n = 2
+    return max(1, min(n, 5))
+
+
 def _window(bgn: date, end: date) -> dict[str, str]:
     return {"from": bgn.isoformat(), "to": end.isoformat()}
 
@@ -371,24 +382,47 @@ async def _scan_filings(
 
     want = page * limit + 1
     max_pages = _max_scan_pages()
+    wave = _scan_concurrency()
     matches: list = []
     examined = 0
     total: Optional[int] = None
     exhausted = False
-    for pg in range(1, max_pages + 1):
-        batch = await _list_page(
+
+    async def _page(pg: int) -> list:
+        return await _list_page(
             corp_code=corp_code, bgn_de=bgn_de, end_de=end_de, pblntf_ty=pblntf_ty,
             page=pg, page_count=_DART_PAGE_SIZE,
         )
-        if total is None:
-            total = next((r.query_total_count for r in batch if r.query_total_count is not None), None)
-        examined += len(batch)
-        matches.extend(r for r in batch if predicate(r))
-        if len(batch) < _DART_PAGE_SIZE or (total is not None and examined >= total):
-            exhausted = True
+
+    # Page 1 always goes alone: its `total_count` tells us how many pages exist,
+    # and most queries finish right there. Later pages run in waves of
+    # `wave` concurrent requests (KOREANPULSE_SCAN_CONCURRENCY, default 2; each
+    # request still passes the 5 req/s throttle and the daily quota counter).
+    # A wave may fetch up to wave-1 pages past the point where enough matches
+    # were already found - the price of concurrency, bounded and configurable.
+    next_pg = 1
+    while next_pg <= max_pages and not exhausted:
+        pages = [next_pg] if next_pg == 1 else list(range(next_pg, min(next_pg + wave, max_pages + 1)))
+        if total is not None:
+            last = -(-total // _DART_PAGE_SIZE)          # ceil
+            pages = [pg for pg in pages if pg <= last]
+            if not pages:
+                exhausted = True
+                break
+        batches = [await _page(pages[0])] if len(pages) == 1 else await asyncio.gather(
+            *(_page(pg) for pg in pages)
+        )
+        for batch in batches:
+            if total is None:
+                total = next((r.query_total_count for r in batch if r.query_total_count is not None), None)
+            examined += len(batch)
+            matches.extend(r for r in batch if predicate(r))
+            if len(batch) < _DART_PAGE_SIZE or (total is not None and examined >= total):
+                exhausted = True
+                break
+        if exhausted or len(matches) >= want:
             break
-        if len(matches) >= want:
-            break
+        next_pg = pages[-1] + 1
     start = (page - 1) * limit
     return _Scan(
         matches[start:start + limit], total, examined, exhausted,

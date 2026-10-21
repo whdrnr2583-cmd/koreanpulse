@@ -92,6 +92,10 @@ class FileCache(Cache):
         # store[namespace][key] = {"v": value, "exp": float|None}
         self._stores: dict[str, dict[str, dict[str, Any]]] = {}
         self._loaded: set[str] = set()
+        # Lines currently in each namespace file (to compact a long-running
+        # process too, not only at start-up).
+        self._lines: dict[str, int] = {}
+        self._compact_at: dict[str, int] = {}
         self._lock = asyncio.Lock()
 
     def _path(self, namespace: str) -> Path:
@@ -122,19 +126,21 @@ class FileCache(Cache):
             except OSError as exc:
                 logger.warning("cache: failed to load %s: %s", path, exc)
             else:
-                self._compact(path, store, total_lines)
+                total_lines = self._compact(path, store, total_lines)
+        self._lines[namespace] = total_lines
         self._stores[namespace] = store
         self._loaded.add(namespace)
         return store
 
     @classmethod
-    def _compact(cls, path: Path, store: dict[str, dict[str, Any]], total_lines: int) -> None:
+    def _compact(cls, path: Path, store: dict[str, dict[str, Any]], total_lines: int) -> int:
         """Drop expired entries from `store` and rewrite `path` with the
-        survivors when at least half of its lines were dead weight."""
+        survivors when at least half of its lines were dead weight. Returns
+        the resulting line count."""
         for k in [k for k, e in store.items() if cls._is_expired(e)]:
             del store[k]
         if total_lines < 200 or len(store) * 2 > total_lines:
-            return
+            return total_lines
         try:
             fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.stem + ".", suffix=".tmp")
             try:
@@ -147,8 +153,10 @@ class FileCache(Cache):
                 Path(tmp).unlink(missing_ok=True)
                 raise
             logger.info("cache: compacted %s (%d -> %d lines)", path.name, total_lines, len(store))
+            return len(store)
         except OSError as exc:
             logger.warning("cache: compaction of %s failed (%s)", path, exc)
+            return total_lines
 
     @staticmethod
     def _is_expired(entry: dict[str, Any]) -> bool:
@@ -201,5 +209,13 @@ class FileCache(Cache):
                 )
                 with self._path(namespace).open("a", encoding="utf-8") as f:
                     f.write(line + "\n")
+                self._lines[namespace] = self._lines.get(namespace, 0) + 1
+                if self._lines[namespace] >= self._compact_at.get(namespace, 500):
+                    self._lines[namespace] = self._compact(
+                        self._path(namespace), store, self._lines[namespace]
+                    )
+                    # Next check once the file has doubled past its live set
+                    # (avoids rescanning the store on every write).
+                    self._compact_at[namespace] = max(500, 2 * len(store))
             except (OSError, TypeError) as exc:
                 logger.warning("cache: failed to persist %s: %s", key, exc)

@@ -602,3 +602,26 @@ class TestDataDir:
 
         monkeypatch.setattr(_paths, "_writable_dir", fake)
         assert _paths.data_dir() == tmp_path / "home" / ".koreanpulse"
+
+
+class TestStreamingParse:
+    def test_skips_incomplete_records_and_trims_text(self):
+        xml = (
+            "<result>"
+            "<list><corp_code> 00000001 </corp_code><corp_name> 가나다 </corp_name>"
+            "<stock_code> </stock_code><modify_date>20260101</modify_date></list>"
+            "<list><corp_code></corp_code><corp_name>이름만</corp_name></list>"
+            "<list><corp_code>00000003</corp_code></list>"
+            "<list><corp_code>00000004</corp_code><corp_name>정상</corp_name>"
+            "<stock_code>000004</stock_code><corp_eng_name>X</corp_eng_name></list>"
+            "</result>"
+        ).encode()
+        got = _parse_xml(xml)
+        assert [(e.corp_code, e.corp_name, e.stock_code) for e in got] == [
+            ("00000001", "가나다", None),
+            ("00000004", "정상", "000004"),
+        ]
+
+    def test_truncated_xml_still_raises_corp_code_error(self):
+        with pytest.raises(CorpCodeError, match="malformed"):
+            _parse_xml(b"<result><list><corp_code>001</corp_code><corp_na")

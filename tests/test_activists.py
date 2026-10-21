@@ -339,3 +339,16 @@ class TestMatcherBoundariesAndVariants:
 
     def test_hangul_denylist_still_blocks_after_compaction(self):
         assert match_investor("다니엘 웰링턴 코리아") is None
+
+
+class TestMatcherMemoization:
+    def test_repeat_lookups_hit_the_cache_and_agree(self):
+        from koreanpulse.activists import _match_cached
+
+        _match_cached.cache_clear()
+        a = match_investor("BlackRock Fund Advisors")
+        b = match_investor("  BlackRock Fund Advisors ")
+        assert a == b and a.canonical == "BlackRock"
+        assert _match_cached.cache_info().hits >= 1
+        assert match_investor("개인투자자") is None
+        assert match_investor("개인투자자") is None

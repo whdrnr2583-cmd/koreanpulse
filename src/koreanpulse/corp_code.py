@@ -125,29 +125,38 @@ def _is_cache_fresh() -> bool:
 
 
 def _parse_xml(xml_bytes: bytes) -> list[CorpEntry]:
+    """Parse the corp index XML in a streaming pass.
+
+    `iterparse` + clearing each `<list>` after use keeps the lxml tree out of
+    memory (the full DOM of the ~24 MB file was built and held until return)
+    and walks each record's children once instead of four `findtext` path
+    lookups per record.
+    """
+    entries: list[CorpEntry] = []
     try:
-        root = etree.fromstring(xml_bytes)
+        for _, node in etree.iterparse(io.BytesIO(xml_bytes), events=("end",), tag="list"):
+            fields = {"corp_code": "", "corp_name": "", "stock_code": "", "modify_date": ""}
+            for child in node:
+                if child.tag in fields and child.text:
+                    fields[child.tag] = child.text.strip()
+            node.clear()
+            while node.getprevious() is not None:
+                del node.getparent()[0]
+            if not fields["corp_code"] or not fields["corp_name"]:
+                continue
+            entries.append(
+                CorpEntry(
+                    corp_code=fields["corp_code"],
+                    corp_name=fields["corp_name"],
+                    stock_code=fields["stock_code"] or None,
+                    modify_date=fields["modify_date"],
+                )
+            )
     except etree.XMLSyntaxError as exc:
         # A truncated disk cache (partial write on disk-full / killed process)
         # or a corrupt DART payload would otherwise surface a raw lxml
         # traceback to the MCP client. Wrap it so callers can recover.
         raise CorpCodeError(f"corp_code index XML is malformed: {exc}") from exc
-    entries: list[CorpEntry] = []
-    for node in root.findall(".//list"):
-        corp_code = (node.findtext("corp_code") or "").strip()
-        corp_name = (node.findtext("corp_name") or "").strip()
-        stock_code = (node.findtext("stock_code") or "").strip()
-        modify_date = (node.findtext("modify_date") or "").strip()
-        if not corp_code or not corp_name:
-            continue
-        entries.append(
-            CorpEntry(
-                corp_code=corp_code,
-                corp_name=corp_name,
-                stock_code=stock_code or None,
-                modify_date=modify_date,
-            )
-        )
     return entries
 
 
