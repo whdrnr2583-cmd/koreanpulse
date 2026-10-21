@@ -19,18 +19,19 @@ Out of scope (won't merge):
 
 You need:
 - Python 3.10+
-- `agentprod` checked out next to this repo (path dep in pyproject.toml).
-  Either clone <https://github.com/whdrnr2583-cmd/agentprod> as
-  `../agentprod`, or comment out the path source in `pyproject.toml`
-  while you work on koreanpulse alone.
+- `pip install -e '.[dev]'` pulls `agentprod` from PyPI, nothing else to
+  check out. (Only if you use `uv`: `[tool.uv.sources]` in `pyproject.toml`
+  points `agentprod` at a sibling `../agentprod` checkout; clone
+  <https://github.com/whdrnr2583-cmd/agentprod> there, or drop that source
+  while you work on koreanpulse alone.)
 
 ```bash
 git clone https://github.com/whdrnr2583-cmd/koreanpulse
 cd koreanpulse
 python -m venv .venv && source .venv/bin/activate     # or .venv\Scripts\activate
 pip install -e '.[dev]'
-cp .env.example .env                                   # add your DART key
-pytest -q                                              # should pass
+cp .env.example .env                                   # add your DART key (tests need none)
+pytest -q                                              # should pass; no network, no keys
 ```
 
 ## Running the live demo
@@ -44,12 +45,16 @@ Hits real DART. First run downloads the corp-code index (~5 MB, cached 7d).
 
 ## Tests
 
-- `pytest -q` runs the full suite (418 tests)
+- `pytest -q` runs the full suite (533 tests)
 - New code should ship with tests in `tests/` matching the existing style:
   one file per module, classes for grouping, `@pytest.mark.asyncio` for
   coroutines.
 - DART HTTP code uses `httpx.MockTransport` in tests — no live API access
-  required for CI.
+  required for CI. Tool-level tests fake `list_filings_cached` with a
+  page-aware fake (`tests/test_server_tools.py::FakeDart`) so a tool that
+  sizes the DART page by `limit` and filters afterwards fails.
+- A fix for a data-correctness bug ships with a test that fails without it:
+  revert the fix locally and confirm the test goes red before committing.
 
 ## Lint / style
 

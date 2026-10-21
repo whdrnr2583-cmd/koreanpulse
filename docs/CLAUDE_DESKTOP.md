@@ -121,7 +121,9 @@ Locations:
 }
 ```
 
-If `koreanpulse` isn't on PATH, use the absolute Python path:
+GUI apps do not inherit your shell `PATH`, so Claude Desktop often cannot find
+`koreanpulse` even though it works in a terminal. Use the absolute path from
+`which koreanpulse` as `command`, or the absolute Python path:
 
 ```json
 {
@@ -155,7 +157,7 @@ Open a Claude conversation and ask:
 > Use koreanpulse to find Samsung Electronics in DART and show me their last 7 days of filings, translated to English.
 
 Claude should call `lookup_corp_code('삼성전자')` →
-`track_korean_filings(corp_code=..., translate=true)`.
+`track_korean_filings(company_corp_code=..., days=7, translate=true)`.
 
 For activist watching:
 
@@ -170,6 +172,7 @@ Claude should call `monitor_activist_investors(days=14, activist_only=true)`. Th
 | `RuntimeError: [koreanpulse:missing] Missing license key` | Tool called without `license_key` arg while `KOREANPULSE_REQUIRE_LICENSE=1`. Pass the key as a tool arg or unset the var in dev. |
 | `TranslationError: KOREANPULSE_LICENSE_KEY missing` | `KOREANPULSE_CACHE_MODE=hosted` but no license key set. Either subscribe and set the key, or switch to `KOREANPULSE_CACHE_MODE=local`. |
 | `TranslationError: hosted cache failed (402)` | License invalid / inactive / quota exceeded. Check your subscription dashboard. The translator does **not** silently fall back to OSS self-host mode on Worker failure — paid value stays visible. |
+| Server shows as disconnected right after launch | `command` not found (see the PATH note above), or the working directory is not writable — fixed automatically since this release (state falls back to `~/.koreanpulse`; override with `KOREANPULSE_DATA_DIR`). Check the client's MCP log for the start-up lines. |
 | `DartDailyQuotaExceeded` | Soft cap (32K/day = 80% of DART's 40K) hit. Wait until KST midnight rollover or override `DART_DAILY_QUOTA` if you have a higher allotment. |
 
 ## Cursor / other clients

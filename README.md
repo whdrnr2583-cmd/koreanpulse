@@ -23,7 +23,7 @@ Korean stock disclosures, activist filings & foreign-holder flows in English —
 
 ## Status
 
-**Pre-alpha (v0.1.13).** 7 MCP tools shipped — 5 free + 2 license-gated (activist + foreign-holder allowlist tagging, Solo $29/mo+; these two run only on the hosted service, which is paused since 2026-09-21). 418 tests pass. Beta — watchlist polling + alert dispatch are planned and not yet available. Beta acquisition plan in `docs/BETA.md`.
+**Pre-alpha (v0.1.13).** 7 MCP tools shipped — 5 free + 2 license-gated (activist + foreign-holder allowlist tagging, Solo $29/mo+; these two run only on the hosted service, which is paused since 2026-09-21). 533 tests pass. Beta — watchlist polling + alert dispatch are planned and not yet available. Beta acquisition plan in `docs/BETA.md`.
 
 ---
 
@@ -126,6 +126,8 @@ OSS self-host is **not** in the pricing table above — it's a separate lane. Se
 
 When a paid tool is called without a license, the server returns a short notice explaining that a license key is required. No checkout link is included in the tool response.
 
+**Result shape.** A complete result is a plain list. When there is something an agent should know — nothing found in the window, another page (`next_page`), a company or news source that failed, translation unavailable, or an allowlist scan that hit its page cap — the tool returns `{"filings": [...], "notes": [...], "window_kst": {...}}` instead (`"articles"` for news, `"matches"` for company lookup). Read `notes` before concluding "no activity". Inputs are validated up front: a ticker or company name passed where an 8-digit `corp_code` belongs is rejected with the name of the tool that converts it.
+
 4 more planned (`docs/SPEC.md`): `digest_analyst_reports`, `get_ma_pipeline`, `track_government_policy`, `summarize_korean_earnings_call`.
 
 ## Differentiation vs incumbents
@@ -213,7 +215,7 @@ See `src/koreanpulse/cache.py`, `src/koreanpulse/dart.py:list_filings_cached`.
 - **Cache Worker** ([`cache-worker/`](cache-worker/README.md)) — Cloudflare Workers + KV. Holds our OpenAI key, fronts a global translation cache, gates each call behind a license check. Free tier (100K req/day Workers + 100K read/day KV) covers paid traffic until well past $5K MRR.
 - **Daily Worker** ([`daily-worker/`](daily-worker/README.md)) — Cloudflare Workers + KV. Cron-driven `/today` dashboard build (KST 16:30 weekdays).
 - **Webhook Worker** ([`webhook-worker/`](webhook-worker/README.md)) — Cloudflare Worker + D1 (SQLite). Handles **Polar** billing events (Polar is our sole billing provider, active 2026-05-06+) and `/v1/validate` for the Cache Worker. Replaces the old Lightsail/FastAPI/Postgres stack so the operator runs zero servers.
-- **Reuses [`agentprod`](../agentprod)** — Throttle, Retry, CostTracker.
+- **Reuses [`agentprod`](https://pypi.org/project/agentprod/)** — Throttle, Retry, CostTracker.
 
 ## OSS self-host vs Cloud
 

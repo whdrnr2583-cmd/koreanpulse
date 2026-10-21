@@ -56,5 +56,6 @@ what they do and why they exist. Read those alongside `ARCHITECTURE.md`:
 - `alerts.py` — Discord / Slack / Telegram webhook delivery
 - `models.py` — Pydantic public types (Filing, Article, ActivistFiling)
 - `sources.py` — RSS / DART source registry
-- `server.py` — FastMCP wire-up (the 6 tools)
+- `server.py` — FastMCP wire-up (the 7 tools)
 - `_env.py` — `.env` autoloader
+- `_paths.py` — local state directory (`KOREANPULSE_DATA_DIR`, `./.data`, `~/.koreanpulse` fallback)

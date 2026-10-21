@@ -62,7 +62,7 @@ const TOOLS_FREE = [
   },
   {
     name: "lookup_corp_code",
-    blurb: "Korean company name → DART corp code. Resolves Hangul or romanized spellings.",
+    blurb: "Korean company name → DART corp code. Searches the Korean DART index; about 35 well-known companies also resolve from their English name (e.g. Samsung Electronics).",
   },
   {
     name: "resolve_stock_code",
