@@ -59,7 +59,15 @@ pip install -e .
 | `ANTHROPIC_API_KEY` | optional | Alternative provider when `KOREANPULSE_TRANSLATE_PROVIDER=anthropic`. |
 
 Self-host runs in `KOREANPULSE_CACHE_MODE=local` by default — no further
-config needed. Translation caches to `.data/cache/translate.jsonl`.
+config needed. Local state (corp-code index, translation and filing caches,
+cost log) lives in `./.data`; if the working directory is not writable —
+Claude Desktop and other GUI clients often launch the server with `cwd=/` —
+it falls back to `~/.koreanpulse`. Set `KOREANPULSE_DATA_DIR` to choose the
+location yourself. Translations cache to `<state dir>/cache/translate.jsonl`.
+
+On start-up the server logs (stderr, so it shows in the client's MCP log) the
+state directory and any missing configuration: no `DART_API_KEY`, or no
+translation key.
 
 ## Claude Desktop config
 
@@ -80,9 +88,18 @@ config needed. Translation caches to `.data/cache/translate.jsonl`.
 }
 ```
 
-If `koreanpulse` isn't on PATH, use `python -m koreanpulse.server`.
+GUI apps do not inherit your shell `PATH`. If Claude Desktop shows the server
+as disconnected, put the absolute path in `command` (find it with
+`which koreanpulse`, or `where koreanpulse` on Windows), or run it through
+Python:
 
-Restart Claude Desktop. You should see `koreanpulse` in the MCP tools list.
+```json
+"command": "/full/path/to/python", "args": ["-m", "koreanpulse.server"]
+```
+
+Restart Claude Desktop. You should see `koreanpulse` in the MCP tools list
+(seven tools; the two license-gated ones answer with a license-required
+notice on a self-install).
 
 ## Try it
 
@@ -91,7 +108,13 @@ Use koreanpulse to find Samsung Electronics in DART and show me their
 last 7 days of filings, translated to English.
 ```
 
-Claude calls `lookup_corp_code('삼성전자')` → `track_korean_filings(corp_code=..., translate=true)`.
+Claude calls `lookup_corp_code('삼성전자')` → `track_korean_filings(company_corp_code=..., days=7, translate=true)`.
+
+Results are a plain list when complete. When there is something to tell the
+agent — nothing found in the window, more pages (`next_page`), a company or
+news source that failed, translation unavailable — the tool returns
+`{"filings": [...], "notes": [...], "window_kst": {...}}` instead; read
+`notes` before concluding "nothing happened".
 
 ## DART quota math (yours, not ours)
 
@@ -109,8 +132,14 @@ Claude calls `lookup_corp_code('삼성전자')` → `track_korean_filings(corp_c
 | Symptom | Likely cause |
 |---|---|
 | `DartError: DART_API_KEY env var is missing` | Set `DART_API_KEY` in the Claude Desktop config `env` block (or your shell). |
-| `TranslationError: OPENAI_API_KEY missing` | Either set the key, or accept that Korean-only fields come back. |
-| `DartDailyQuotaExceeded` | You hit your DART daily soft cap. Wait until KST midnight rollover. |
+| `DART_API_KEY is still the placeholder from .env.example` | You copied `.env.example` without replacing the key. |
+| `DART 010: ... not registered` / `DART 011` / `DART 012` | Key not registered / suspended / restricted to other IPs. Check it at <https://opendart.fss.or.kr/>. |
+| `title_en` empty and a `notes` entry says no translation backend is configured | Set `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY` + `KOREANPULSE_TRANSLATE_PROVIDER=anthropic`). Without a key the tools still work and return Korean text. |
+| `DartDailyQuotaExceeded` | You hit your local soft cap (`DART_DAILY_QUOTA`, default 32,000). Wait until KST midnight rollover. |
+| `DartRateLimited` / `DART 020` | DART itself says the key's 40,000 calls/day are used up. Resets at KST midnight; cached queries still work. |
+| A tool says `INCOMPLETE SCAN` | The window held more filings than `KOREANPULSE_MAX_SCAN_PAGES` × 100; narrow `days` or pass `company_corp_code`. |
+| `must be an 8-digit DART corp_code` | You passed a ticker or a name. `resolve_stock_code` (ticker) or `lookup_corp_code` (name) return the corp_code. |
+| `lookup_corp_code("Hyundai Motor")` finds nothing | The DART index is Korean. About 35 very well-known companies also resolve from their English name; otherwise search the Korean name (`현대자동차`). |
 | Translation looks wrong / hallucinated | Try `KOREANPULSE_TRANSLATE_PROVIDER=anthropic` (Claude Haiku). Different system prompt, different failure modes. |
 
 ## Upgrading to Cloud later

@@ -34,6 +34,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timezone, timedelta
 from typing import Optional
@@ -59,6 +60,69 @@ class DartError(RuntimeError):
 
 class DartDailyQuotaExceeded(DartError):
     """Raised when our local soft cap on daily DART calls would be exceeded."""
+
+
+class DartRateLimited(DartError):
+    """Raised when DART itself reports the key's request limit is used up
+    (status 020), as opposed to our own soft cap (`DartDailyQuotaExceeded`)."""
+
+
+class _TransientHttpStatus(Exception):
+    """Internal: a retryable HTTP status (429 / 5xx). Never leaves this module."""
+
+    def __init__(self, response: httpx.Response) -> None:
+        super().__init__(f"transient HTTP {response.status_code}")
+        self.response = response
+
+
+# Base delay for the retry backoff. A module constant so the test suite can
+# zero it (tests/conftest.py) instead of sleeping through real backoff.
+_RETRY_BASE_SECONDS = 0.5
+_RETRY_ATTEMPTS = 3
+
+
+def _is_transient(exc: BaseException) -> bool:
+    """Retry on connection/timeout failures and on 429/5xx responses.
+
+    Deliberately not agentprod's message-pattern matcher: `httpx.ReadTimeout`
+    stringifies to "" and `ConnectError` to "connection refused", neither of
+    which that matcher recognises, so DART timeouts were never retried.
+    """
+    return isinstance(exc, (httpx.TransportError, _TransientHttpStatus))
+
+
+# DART `status` codes worth explaining to a human / LLM. The message DART
+# sends is Korean and terse; the hint says what to do about it.
+_STATUS_HINTS: dict[str, str] = {
+    "010": "The API key is not registered. Check DART_API_KEY (get a free key at "
+           "https://opendart.fss.or.kr/; a placeholder from .env.example does not work).",
+    "011": "The API key is registered but currently unusable (suspended). "
+           "Check its status at https://opendart.fss.or.kr/.",
+    "012": "This key is restricted to other IP addresses. Update the allowed IPs "
+           "in your DART key settings.",
+    "020": "DART's request limit for this key is used up (40,000 calls/day). "
+           "It resets at KST midnight; cached queries still work.",
+    "021": "Too many companies requested in one query.",
+    "100": "A request field has an invalid value (check dates and corp_code).",
+    "101": "Access is denied for this request.",
+    "800": "DART is under maintenance. Retry later.",
+    "900": "DART reported an undefined internal error. Retry later.",
+    "901": "The account tied to this API key has expired. Re-issue the key at "
+           "https://opendart.fss.or.kr/.",
+}
+
+
+def _raise_for_dart_status(data: dict) -> None:
+    """Raise `DartError` for any status other than 000 (ok) / 013 (no data)."""
+    status = data.get("status")
+    if status in ("000", "013"):
+        return
+    msg = data.get("message", "unknown DART error")
+    hint = _STATUS_HINTS.get(str(status))
+    text = f"DART {status}: {msg}" + (f" — {hint}" if hint else "")
+    if status == "020":
+        raise DartRateLimited(text)
+    raise DartError(text)
 
 
 # DART's published hard cap is 40,000/day per key. Default soft cap = 80% so
@@ -136,6 +200,11 @@ def _api_key() -> str:
             "DART_API_KEY env var is missing. "
             "Get one at https://opendart.fss.or.kr/ and set it before calling DART tools."
         )
+    if key.lower().startswith("your-") or "your-40-char" in key.lower():
+        raise DartError(
+            "DART_API_KEY is still the placeholder from .env.example. "
+            "Replace it with your own key from https://opendart.fss.or.kr/."
+        )
     return key
 
 
@@ -157,6 +226,78 @@ def _coerce_optional_int(value: object) -> Optional[int]:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+async def _get_json(
+    endpoint: str,
+    params: dict,
+    *,
+    client: Optional[httpx.AsyncClient],
+) -> dict:
+    """GET `{DART_API_BASE}/{endpoint}` and return the decoded JSON object.
+
+    Shared by every DART endpoint wrapper so retry, quota and error handling
+    cannot drift apart. Behaviour:
+
+    - every attempt (including retries) is throttled and counted against the
+      soft daily quota, since DART bills each HTTP request;
+    - connection errors, timeouts, HTTP 429 and 5xx are retried with
+      exponential backoff; other 4xx fail immediately;
+    - all failures surface as `DartError` carrying only the status code or
+      the exception *type name* — never the request URL, which holds
+      `crtfc_key` on its query string;
+    - a 200 with a non-JSON body (maintenance page) or a non-object JSON
+      value is a `DartError`, not a raw decode error.
+    """
+    owns_client = client is None
+    client = client or httpx.AsyncClient(timeout=30.0)
+    try:
+
+        async def _call() -> httpx.Response:
+            await _bump_daily_counter(1)
+            await _throttle.acquire(timeout=2.0, label=f"dart:{endpoint}")
+            resp = await client.get(f"{DART_API_BASE}/{endpoint}", params=params)
+            if resp.status_code == 429 or resp.status_code >= 500:
+                raise _TransientHttpStatus(resp)
+            return resp
+
+        try:
+            resp = await retry_async(
+                _call,
+                max_attempts=_RETRY_ATTEMPTS,
+                base_seconds=_RETRY_BASE_SECONDS,
+                is_retryable_fn=_is_transient,
+            )
+            resp.raise_for_status()
+        except (_TransientHttpStatus, httpx.HTTPStatusError) as exc:
+            code = exc.response.status_code
+            raise DartError(
+                f"DART {endpoint} returned HTTP {code}. "
+                f"This usually means DART is rate-limiting or in maintenance; "
+                f"retry shortly."
+            ) from exc
+        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+            raise DartError(
+                f"DART {endpoint} request failed after retries: {type(exc).__name__}"
+            ) from exc
+        # DART normally returns JSON, but on maintenance / gateway errors it
+        # can hand back a 200 with an HTML page or an empty body.
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            body_preview = (resp.text or "")[:120].replace("\n", " ")
+            raise DartError(
+                f"DART returned a non-JSON body (status {resp.status_code}): "
+                f"{body_preview!r}. This usually means DART is in maintenance "
+                f"or the endpoint returned an error page."
+            ) from exc
+    finally:
+        if owns_client:
+            await client.aclose()
+
+    if not isinstance(data, dict):
+        raise DartError(f"DART returned an unexpected JSON shape: {type(data).__name__}")
+    return data
 
 
 async def list_filings(
@@ -197,60 +338,9 @@ async def list_filings(
     if pblntf_ty:
         params["pblntf_ty"] = pblntf_ty
 
-    owns_client = client is None
-    client = client or httpx.AsyncClient(timeout=30.0)
-    try:
-        # Soft daily-quota guard before throttle — fail fast if we're over budget.
-        await _bump_daily_counter(1)
-        await _throttle.acquire(timeout=2.0, label="dart:list")
-
-        async def _call() -> httpx.Response:
-            return await client.get(f"{DART_API_BASE}/list.json", params=params)
-
-        # A non-2xx status or a network failure that survives all retries
-        # otherwise leaks a raw httpx.HTTPStatusError / transport exception to
-        # the MCP client. corp_code._download_corp_code wraps the identical
-        # failure mode in CorpCodeError — mirror that asymmetry here so both
-        # DART entry points hand callers a structured DartError. (No caller
-        # depends on the httpx exception type — server.py lets it propagate.)
-        try:
-            resp = await retry_async(_call, max_attempts=3, base_seconds=0.5)
-            resp.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            raise DartError(
-                f"DART list.json returned HTTP {exc.response.status_code}. "
-                f"This usually means DART is rate-limiting or in maintenance; "
-                f"retry shortly."
-            ) from exc
-        except (httpx.HTTPError, httpx.TimeoutException) as exc:
-            raise DartError(
-                f"DART list.json request failed after retries: {exc}"
-            ) from exc
-        # DART normally returns JSON, but on maintenance / gateway errors it
-        # can hand back a 200 with an HTML page or an empty body. `resp.json()`
-        # then raises a raw JSONDecodeError that would leak to the MCP client;
-        # wrap it in DartError with a clear message instead.
-        try:
-            data = resp.json()
-        except ValueError as exc:
-            body_preview = (resp.text or "")[:120].replace("\n", " ")
-            raise DartError(
-                f"DART returned a non-JSON body (status {resp.status_code}): "
-                f"{body_preview!r}. This usually means DART is in maintenance "
-                f"or the endpoint returned an error page."
-            ) from exc
-    finally:
-        if owns_client:
-            await client.aclose()
-
-    if not isinstance(data, dict):
-        raise DartError(f"DART returned an unexpected JSON shape: {type(data).__name__}")
-
+    data = await _get_json("list.json", params, client=client)
+    _raise_for_dart_status(data)
     status = data.get("status")
-    if status not in ("000", "013"):
-        # 000 = OK, 013 = no result (DART convention). Anything else = error.
-        msg = data.get("message", "unknown DART error")
-        raise DartError(f"DART {status}: {msg}")
 
     if status == "013":
         return []
@@ -306,17 +396,21 @@ _MAJOR_HOLDING_TTL_SECONDS = 3600
 class MajorHolding:
     """One row from DART's majorstock.json (대량보유상황보고).
 
-    Only the 3 fields consumed by the paid-tier enrichment are parsed —
-    `repror` (보고자, the reporting entity), `stkrt` (보유비율, current
-    holding %), and `stkrt_irds` (증감, change vs the prior report). DART
-    returns other fields (report reason, share counts, contract details)
-    that we deliberately do not surface here — don't add them without a
-    verified live payload to parse against (no fabricated fields).
+    Only the fields consumed by the enrichment are parsed — `repror`
+    (보고자, the reporting entity), `stkrt` (보유비율, current holding %),
+    `stkrt_irds` (증감, change vs the prior report) and `rcept_no` (접수번호,
+    the filing the row belongs to; documented in OpenDART's majorstock
+    response, optional here — None when absent so a payload without it
+    still parses and old cache entries stay valid). DART returns other
+    fields (report reason, share counts, contract details) that we
+    deliberately do not surface here — don't add them without a verified
+    live payload to parse against (no fabricated fields).
     """
 
     repror: str
     stkrt: Optional[float]
     stkrt_irds: Optional[float]
+    rcept_no: Optional[str] = None
 
 
 def _coerce_optional_float(value: object) -> Optional[float]:
@@ -377,51 +471,9 @@ async def list_major_holdings(
         "corp_code": corp_code,
     }
 
-    owns_client = client is None
-    client = client or httpx.AsyncClient(timeout=30.0)
-    try:
-        # Soft daily-quota guard before throttle — fail fast if we're over budget.
-        await _bump_daily_counter(1)
-        await _throttle.acquire(timeout=2.0, label="dart:majorstock")
-
-        async def _call() -> httpx.Response:
-            return await client.get(f"{DART_API_BASE}/majorstock.json", params=params)
-
-        try:
-            resp = await retry_async(_call, max_attempts=3, base_seconds=0.5)
-            resp.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            raise DartError(
-                f"DART majorstock.json returned HTTP {exc.response.status_code}. "
-                f"This usually means DART is rate-limiting or in maintenance; "
-                f"retry shortly."
-            ) from exc
-        except (httpx.HTTPError, httpx.TimeoutException) as exc:
-            raise DartError(
-                f"DART majorstock.json request failed after retries: "
-                f"{type(exc).__name__}"
-            ) from exc
-        try:
-            data = resp.json()
-        except ValueError as exc:
-            body_preview = (resp.text or "")[:120].replace("\n", " ")
-            raise DartError(
-                f"DART returned a non-JSON body (status {resp.status_code}): "
-                f"{body_preview!r}. This usually means DART is in maintenance "
-                f"or the endpoint returned an error page."
-            ) from exc
-    finally:
-        if owns_client:
-            await client.aclose()
-
-    if not isinstance(data, dict):
-        raise DartError(f"DART returned an unexpected JSON shape: {type(data).__name__}")
-
+    data = await _get_json("majorstock.json", params, client=client)
+    _raise_for_dart_status(data)
     status = data.get("status")
-    if status not in ("000", "013"):
-        # 000 = OK, 013 = no result (DART convention). Anything else = error.
-        msg = data.get("message", "unknown DART error")
-        raise DartError(f"DART {status}: {msg}")
 
     holdings: list[MajorHolding] = []
     if status == "000":
@@ -441,6 +493,7 @@ async def list_major_holdings(
                     repror=repror,
                     stkrt=_coerce_optional_float(row.get("stkrt")),
                     stkrt_irds=_coerce_optional_float(row.get("stkrt_irds")),
+                    rcept_no=str(row.get("rcept_no") or "").strip() or None,
                 )
             )
 
@@ -482,8 +535,13 @@ def _ttl_for_query(end_de: date) -> int:
 def _coerce_date(d: date | str) -> date:
     if isinstance(d, date):
         return d
-    s = str(d).replace("-", "")
-    return datetime.strptime(s, "%Y%m%d").date()
+    s = str(d).strip().replace("-", "")
+    try:
+        return datetime.strptime(s, "%Y%m%d").date()
+    except ValueError as exc:
+        raise ValueError(
+            f"invalid date {d!r}: expected YYYY-MM-DD or YYYYMMDD"
+        ) from exc
 
 
 async def list_filings_cached(
@@ -571,6 +629,10 @@ def get_default_cache() -> Cache:
 # param. So we infer the broad category from the report title. Order matters
 # (more specific patterns first).
 _TITLE_TO_TYPE: tuple[tuple[str, str], ...] = (
+    # Exchange fair-disclosure first: "연결재무제표기준영업(잠정)실적(공정공시)" is an
+    # I-type disclosure even though its name also contains a periodic-report
+    # phrase, and "(공정공시)" never appears in a genuine periodic report title.
+    ("공정공시", "I"),
     # Periodic — A
     ("사업보고서", "A"),
     ("반기보고서", "A"),
@@ -604,13 +666,22 @@ _TITLE_TO_TYPE: tuple[tuple[str, str], ...] = (
     # Audit — F
     ("감사보고서", "F"),
     ("외부감사인지정", "F"),
-    # Exchange disclosure — I (공정공시 falls here)
-    ("공정공시", "I"),
+    ("최대주주등소유주식변동신고서", "D"),
+    ("공개매수", "D"),
+    # Exchange disclosure — I
     ("현금ㆍ현물배당결정", "I"),
     ("현금·현물배당결정", "I"),
     ("주주총회소집결의", "I"),
     ("특수관계인", "I"),
     ("특수관계자", "I"),
+    ("단일판매", "I"),
+    ("공급계약체결", "I"),
+    ("투자판단관련주요경영사항", "I"),
+    ("조회공시요구", "I"),
+    ("매출액또는손익구조", "I"),
+    ("주주총회소집공고", "I"),
+    ("기업설명회", "I"),
+    ("불성실공시법인지정", "I"),
     # FTC — J
     ("기업집단", "J"),
     ("내부거래", "J"),
@@ -649,15 +720,32 @@ def _is_correction_title(title: str) -> bool:
     return False
 
 
+# DART writes the Korean interpunct in several code points depending on the
+# filer's tooling (U+318D ㆍ, U+00B7 ·, U+2027 ‧, U+30FB ・, U+2022 •). Fold them
+# to one so "임원ㆍ주요주주…" and "임원·주요주주…" classify the same way.
+_INTERPUNCT_RE = re.compile("[\u00b7\u2027\u2022\u30fb\u318d]")
+
+
+def _norm_title(title: str) -> str:
+    """Whitespace-free, interpunct-folded form used for keyword matching."""
+    return _INTERPUNCT_RE.sub("\u318d", "".join(title.split()))
+
+
+_TITLE_TO_TYPE_NORM: tuple[tuple[str, str], ...] = tuple(
+    (_norm_title(prefix), code) for prefix, code in _TITLE_TO_TYPE
+)
+
+
 def _classify_filing_type(title: str) -> str:
     """Heuristic: infer DART filing-type code from the report title.
 
     Returns one of A/B/C/D/E/F/G/H/I/J. Defaults to E ('other') on no match.
+    Matching ignores whitespace and interpunct variants.
     """
     # Strip leading [기재정정] or similar prefixes.
-    stripped = _strip_leading_bracket_tags(title)
+    stripped = _norm_title(_strip_leading_bracket_tags(title))
 
-    for prefix, code in _TITLE_TO_TYPE:
+    for prefix, code in _TITLE_TO_TYPE_NORM:
         if prefix in stripped:
             return code
     return "E"
@@ -731,10 +819,21 @@ def tag_red_flags(title: str) -> list[str]:
     if not title:
         return []
     tags: list[str] = []
+    compact = "".join(title.split())  # "감사의견한정" == "감사의견 한정"
     for keyword, tag in _RED_FLAG_KEYWORDS:
-        if keyword in title and tag not in tags:
+        if "".join(keyword.split()) in compact and tag not in tags:
             tags.append(tag)
     return tags
+
+
+def _parse_rcept_date(rcept_dt: object, receipt_no: str) -> datetime:
+    for candidate in (str(rcept_dt or "").strip(), receipt_no[:8]):
+        try:
+            return datetime.strptime(candidate, "%Y%m%d")
+        except ValueError:
+            continue
+    logger.warning("dart: no parseable filing date (rcept_dt=%r, rcept_no=%r)", rcept_dt, receipt_no)
+    return datetime.now(_KST).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
 
 
 def _parse_filing(
@@ -759,7 +858,7 @@ def _parse_filing(
             `Filing.model_dump`/`model_validate` instead of this function.
     """
     receipt_no = str(row.get("rcept_no") or "").strip()
-    title = row.get("report_nm", "").strip()
+    title = str(row.get("report_nm") or "").strip()
 
     # Trust the request param when present, else infer from title.
     filing_type_code = requested_type or _classify_filing_type(title)
@@ -768,11 +867,11 @@ def _parse_filing(
     )
 
     # rcept_dt is yyyymmdd
-    rcept_dt = row.get("rcept_dt", "")
-    try:
-        filed_at = datetime.strptime(rcept_dt, "%Y%m%d")
-    except ValueError:
-        filed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    # rcept_dt is yyyymmdd (KST). If DART omits or garbles it, the first 8
+    # digits of the 14-digit receipt number are the same date; only as a last
+    # resort fall back to today's KST date, never a UTC "now" that can land on
+    # the wrong calendar day.
+    filed_at = _parse_rcept_date(row.get("rcept_dt"), receipt_no)
 
     return Filing(
         corp_code=row.get("corp_code", ""),

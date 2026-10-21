@@ -3,7 +3,8 @@
 Search order (first hit wins):
     1. $KOREANPULSE_ENV_FILE  (explicit override)
     2. ./.env                 (current working directory)
-    3. <project_root>/.env    (this repo's root, useful when invoked from elsewhere)
+    3. <project_root>/.env    (source checkouts only, useful when invoked from elsewhere;
+                               skipped for a pip-installed copy)
 
 Existing OS env vars are never overwritten — that's how a sysadmin or a
 Claude Desktop config block can always win over a checked-out `.env`.
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 _LOADED = False
 
 
-def _candidate_paths() -> list[Path]:
+def _candidate_paths(module_file: Path | None = None) -> list[Path]:
     paths: list[Path] = []
     explicit = os.environ.get("KOREANPULSE_ENV_FILE", "").strip()
     if explicit:
@@ -31,12 +32,19 @@ def _candidate_paths() -> list[Path]:
 
     paths.append(Path.cwd() / ".env")
 
-    # Walk upward from this file to find a `.env` next to pyproject.toml.
-    here = Path(__file__).resolve()
-    for ancestor in here.parents:
-        if (ancestor / "pyproject.toml").exists():
-            paths.append(ancestor / ".env")
-            break
+    # Source checkout only: walk upward from this file to a `.env` next to
+    # pyproject.toml. For a pip-installed copy (site-packages) the walk would
+    # climb out of the environment and could land on an *unrelated* project's
+    # pyproject.toml/.env (a venv living inside some other repo), silently
+    # importing that project's secrets - e.g. its OPENAI_API_KEY - into this
+    # server. Installed users configure via the client's `env` block, the
+    # shell, ./.env or KOREANPULSE_ENV_FILE.
+    here = (module_file or Path(__file__)).resolve()
+    if not {"site-packages", "dist-packages"} & set(here.parts):
+        for ancestor in here.parents:
+            if (ancestor / "pyproject.toml").exists():
+                paths.append(ancestor / ".env")
+                break
 
     # De-duplicate while preserving order.
     seen: set[str] = set()

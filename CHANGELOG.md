@@ -2,6 +2,140 @@
 
 ## [Unreleased]
 
+### Changed (performance and output size, 2026-10-21)
+
+Measured with a fake DART (httpx MockTransport, 0.3 s latency per request,
+1000 shareholding rows, allowlisted filer at row 950) and a synthetic
+117,000-entry corp index; before = commit dfa9ef1.
+
+| | before | after |
+|---|---|---|
+| `monitor_foreign_holders` cold scan, 10 DART calls | 3.23 s (sequential) | 2.04 s (`KOREANPULSE_SCAN_CONCURRENCY=2`, new default); 1.51 s at 3 |
+| same request repeated within the cache TTL | 0 DART calls | 0 DART calls (page cache, 60 s for windows ending today) |
+| allowlist match, per distinct filer name | 165 us | 23 us (aliases pre-normalized; results memoized) |
+| corp_code XML parse (24 MB, 117k entries) | 0.88 s, 42.5 MB peak | 0.51 s, 34.9 MB peak (streaming `iterparse`) |
+| 20 distinct company names to English | 1.01 s | 0.15 s (concurrent, deduped by name) |
+| 79 MB `dart_list.jsonl` | loaded as is | compacted to 0.13 MB on load; hot keys compact every ~500 writes at runtime |
+| tool descriptions + parameter schemas | 18,467 chars | 14,428 chars, and the result shape / red-flag catalog are now visible to the model |
+| one Filing row as JSON | 750 chars | 491 chars (null fields omitted; 30 rows 22.5k -> 14.7k) |
+
+- **Scan concurrency** (`KOREANPULSE_SCAN_CONCURRENCY`, default 2, max 5, 1 =
+  sequential): page 1 runs alone (its `total_count` bounds the page count),
+  later pages in waves. Each request still passes the 5 req/s throttle and
+  the daily quota counter; a wave may fetch at most `concurrency - 1` pages
+  more than strictly needed. Quota cost is unchanged for a full scan.
+- **Cached repeats carry staleness:** a window ending today is cached for
+  60 s, 1-6 days old for 1 h, older for 24 h (unchanged), so a repeated
+  query inside that TTL will not see a filing published meanwhile.
+- **Output:** `Filing` rows omit null-valued keys (absent == null; the cache
+  round-trips unchanged). Empty `[]` vs dict behaviour is as described below.
+- **FastMCP cuts a tool description at the first `Args:`/`Returns:`/
+  `Examples:` header**, so the result-shape, scan-cap and red-flag text that
+  lived after those headers was never shown to the model. It now sits in the
+  description prose; `Args` stay as parameter descriptions (every parameter
+  now has one; `resolve_stock_code` had none).
+- Measured and left alone: cold import is about 0.8 s, of which this
+  package is under 0.1 s (fastmcp/mcp/pydantic dominate); the 5 req/s DART
+  throttle already bounds the concurrency gain.
+- Tests: 533 -> 549.
+
+### Fixed (data correctness, reliability and usability pass, 2026-10-21)
+
+Found by reading the code against real DART behaviour and running the
+self-host path end to end; every fix below ships with a test that fails
+without it. No new features, no pricing or licensing changes; the hosted
+service stays paused and the two license-gated tools stay hosted-only.
+
+**Data accuracy**
+- **`monitor_activist_investors` / `monitor_foreign_holders` could report a
+  false "no match".** They fetched only the newest `limit` DART shareholding
+  filings of all companies and applied the allowlist to that page, so a
+  KCGI/BlackRock filing a few hundred rows deep was never seen. Matching now
+  runs inside a newest-first scan of 100-row pages (up to
+  `KOREANPULSE_MAX_SCAN_PAGES`, default 10). If the cap is hit the result
+  says `INCOMPLETE SCAN` instead of looking like an all-clear. Same fix for
+  `track_korean_filings(material_only=True)`.
+- **Filer matching** (`activists.match_investor`): Latin aliases now need a
+  word boundary ("Miranda Asset Management" no longer tags as Anda Asset,
+  "Midlife Asset" as Life Asset); spacing/punctuation/full-width variants
+  match ("J.P. Morgan", "T.Rowe Price", "(주)트러스톤 자산운용"); "Millennium"
+  English alias narrowed to the management entities; added FMR LLC, Capital
+  World/International Investors, Matthews International, GIC's full legal
+  name. `daily-worker/src/activists.ts` mirrors the data and matcher
+  (source only - the worker is not redeployed here).
+- **`holding_pct` enrichment** now prefers the majorstock row whose
+  `rcept_no` equals the filing's receipt number, else the holder's latest
+  report (it used the first row, which could be years old).
+- **Filing-type labels:** earnings fair-disclosure titles
+  (`...영업(잠정)실적(공정공시)`) are type I, not A; `ㆍ`/`·`/`‧` and spacing
+  variants classify identically; common exchange/shareholding titles
+  (단일판매, 조회공시요구, 최대주주등소유주식변동신고서 ...) are recognised.
+- **`since`** compares calendar days: a checkpoint with a time of day no
+  longer hides filings made later the same day (`filed_at` is date-only).
+- `filed_at` falls back to the receipt number's date, then KST today, rather
+  than UTC "now".
+- Translation: an empty Anthropic completion is an error (it used to be
+  cached forever as ""); a poisoned "" entry is ignored; titles are
+  whitespace-normalized before keying.
+
+**Reliability and security**
+- DART 429/5xx, connection errors and timeouts are now actually retried
+  (`httpx.ReadTimeout` stringifies to "" and was never matched); each
+  attempt is throttled and counted against the soft quota. DART status
+  010/011/012/020/800/... carry an actionable hint; 020 is `DartRateLimited`.
+  The `.env.example` placeholder key is rejected locally.
+- **The stdio server logged the DART API key** (httpx INFO request URLs) to
+  stderr, which MCP clients persist; the fix existed only in `mcp_http`.
+  Webhook errors no longer echo URL prefixes; hosted-mode logs no longer
+  print a license-key prefix.
+- Corp-code index: concurrent first calls share one download; refreshed
+  after 7 days in a long-running process; a failed refresh keeps the stale
+  copy; atomic disk write. `FileCache` compacts dead lines on load.
+- A pip-installed copy no longer loads an unrelated project's `.env` found by
+  walking up from site-packages.
+
+**Agent usability**
+- Results are still a plain list when complete. When there is something to
+  say, the tools return `{"filings"|"articles"|"matches": [...], "notes":
+  [...], "window_kst": {...}, "next_page"?, "errors"?}`: empty results (with
+  the window searched and what to try), more pages, a failed company in a
+  batch (the others are no longer discarded), a failed news source,
+  unavailable/partial translation. **Behaviour change:** an empty result was
+  `[]` and is now the dict form with an explanation.
+- New `page` argument on `track_korean_filings`, `monitor_activist_investors`,
+  `monitor_foreign_holders`; `limit`/`days` clamped to valid ranges.
+- Inputs validated with messages that name the fixing tool (a 6-digit ticker
+  as `company_corp_code` -> `resolve_stock_code`); invalid `filing_type`,
+  `origin` and news `sources` are rejected instead of silently returning
+  nothing; industry tags are case-insensitive.
+- `lookup_corp_code` ignores case/spacing/`(주)` and resolves ~35 well-known
+  English names; its docstring no longer claims arbitrary English search.
+- Titles and news are translated concurrently; translation is skipped (and
+  noted) when no provider key is set; news feeds are fetched concurrently.
+
+**Self-host**
+- State directory: `KOREANPULSE_DATA_DIR`, else `./.data`, else
+  `~/.koreanpulse` when the working directory is read-only. Claude Desktop
+  launches servers with `cwd=/`; the server used to die at import with
+  `PermissionError`.
+- Start-up logs the state directory and a missing/placeholder `DART_API_KEY`
+  or missing translation key.
+- Docs: `.env.example` no longer ships `OPENAI_API_KEY=skeu` (which made the
+  server believe a key was set) or the unused `KIS_BUCKET_RPS`;
+  SELF_HOSTING/CLAUDE_DESKTOP corrected (`company_corp_code`, absolute
+  `command` path for GUI apps, new troubleshooting rows); ARCHITECTURE news
+  feed list and module notes updated; CONTRIBUTING dev setup matches
+  `pip install -e '.[dev]'`; README `agentprod` link points at PyPI.
+
+**Tests:** 418 passed became 533 passed (+115) in the first pass, 549 after the performance pass: matcher boundaries/variants,
+DART retry/status/filed_at/classifier, corp-code refresh/lookup/data-dir,
+cache compaction, page-aware tool tests (the monitor tools had none),
+holding-match precision, translation robustness, key hygiene.
+
+**Not changed / not done:** no release, no PyPI upload, no worker deploy
+(`daily-worker/src/activists.ts` needs the next deploy to pick up the new
+matcher), no change to pricing, licensing or the paused hosted service.
+
 ### Removed (dead payment code, 2026-10-18)
 
 - **Lemon Squeezy Python module.** Deleted `koreanpulse.billing`

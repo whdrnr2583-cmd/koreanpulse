@@ -13,6 +13,7 @@ recall. Replace with a fine-tuned classifier later if precision matters.
 """
 from __future__ import annotations
 
+import asyncio
 import html
 import logging
 import re
@@ -29,6 +30,10 @@ from koreanpulse.models import Article
 from koreanpulse.sources import NEWS_SOURCES, NEWS_SOURCE_BY_KEY, NewsSource
 
 logger = logging.getLogger(__name__)
+
+
+class FeedParseError(ValueError):
+    """A source answered but its RSS body is not parseable XML."""
 
 
 # Per-source throttle. Conservative — be a good citizen.
@@ -137,7 +142,7 @@ async def _fetch_rss(source: NewsSource, client: httpx.AsyncClient) -> list[dict
         root = etree.fromstring(resp.content)
     except etree.XMLSyntaxError as exc:
         logger.warning("news: %s rss parse failed: %s", source.key, exc)
-        return []
+        raise FeedParseError(f"{source.key}: feed is not valid XML") from exc
 
     items: list[dict] = []
     for item in root.findall(".//item"):
@@ -216,6 +221,7 @@ async def fetch_industry_news(
     source_keys: Optional[list[str]] = None,
     limit: int = 30,
     client: Optional[httpx.AsyncClient] = None,
+    failures: Optional[list[str]] = None,
 ) -> list[Article]:
     """Aggregate Korean industry news from configured RSS sources.
 
@@ -226,6 +232,9 @@ async def fetch_industry_news(
             None = all sources with RSS.
         limit: max articles total.
         client: optional shared httpx client.
+        failures: optional out-list; the key of every source that could not be
+            fetched or parsed is appended, so the caller can report a partial
+            result instead of passing it off as complete.
 
     Returns:
         Articles sorted by published_at descending. `summary_en` is empty —
@@ -241,12 +250,21 @@ async def fetch_industry_news(
     client = client or httpx.AsyncClient(timeout=30.0)
     try:
         all_items: list[Article] = []
-        for src in sources:
-            try:
-                rows = await _fetch_rss(src, client)
-            except (httpx.HTTPError, httpx.TimeoutException) as exc:
-                logger.warning("news: %s fetch failed: %s", src.key, exc)
+
+        # Sources are independent: fetch them concurrently (each one is still
+        # throttled) so one slow feed does not serialize the other three.
+        outcomes = await asyncio.gather(
+            *(_fetch_rss(src, client) for src in sources), return_exceptions=True
+        )
+        for src, outcome in zip(sources, outcomes):
+            if isinstance(outcome, (httpx.HTTPError, httpx.TimeoutException, FeedParseError)):
+                logger.warning("news: %s fetch failed: %s", src.key, type(outcome).__name__)
+                if failures is not None:
+                    failures.append(src.key)
                 continue
+            if isinstance(outcome, BaseException):
+                raise outcome
+            rows = outcome
             for r in rows:
                 if not r["title"] or not r["link"]:
                     continue
@@ -280,4 +298,4 @@ async def fetch_industry_news(
             await client.aclose()
 
     all_items.sort(key=lambda a: a.published_at, reverse=True)
-    return all_items[:limit]
+    return all_items[: max(0, limit)]

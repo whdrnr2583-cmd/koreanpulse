@@ -159,6 +159,18 @@ async def _send_telegram(url: str, *, title: str, body: str) -> AlertResult:
 # ── Public API ─────────────────────────────────────────────────────────────
 
 
+def _redact_url(url: str) -> str:
+    """scheme://host only. Webhook URLs carry their secret in the path/query
+    (Discord token, Slack key, Telegram bot token), so an error message must
+    never echo them — the first 80 characters of a Discord webhook already
+    include the token."""
+    try:
+        p = urlparse(url)
+    except ValueError:
+        return "unparseable"
+    return f"{p.scheme}://{p.hostname}" if p.scheme and p.hostname else "unparseable"
+
+
 async def send_alert(url: str, *, title: str, body: str) -> AlertResult:
     """Send an alert to any supported webhook URL.
 
@@ -181,7 +193,7 @@ async def send_alert(url: str, *, title: str, body: str) -> AlertResult:
             return await _send_telegram(url, title=title, body=body)
         return AlertResult(
             ok=False, channel=channel, status_code=None,
-            error=f"unsupported webhook URL: {url[:80]}",
+            error=f"unsupported webhook URL ({_redact_url(url)})",
         )
     except (httpx.HTTPError, ValueError) as exc:
         logger.warning("alert send failed (%s): %s", channel.value, exc)

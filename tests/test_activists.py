@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from koreanpulse.activists import (
     ALL_INVESTORS,
     FOREIGN_HOLDERS,
@@ -293,3 +295,60 @@ class TestNoActivistLabelForNonAllowlistFilers:
         assert align is not None
         assert align.klass is InvestorClass.ACTIVIST
         assert align.canonical == "Align Partners"
+
+
+class TestMatcherBoundariesAndVariants:
+    """Regression guards for the 2026-10 matcher hardening: Latin aliases
+    must start on a word boundary (no false tags inside longer words) and
+    spacing/punctuation/suffix variants of a real filer must still match."""
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Miranda Asset Management",   # contains "anda asset"
+            "Midlife Asset Management",   # contains "life asset"
+            "Richa Partners LLC",         # contains "cha partners"
+            "Daniel Wellington Korea",    # watch brand, not Wellington Management
+            "Millennium Hotels Korea",    # bare "millennium" is not the fund
+            "다니엘웰링턴코리아",
+        ],
+    )
+    def test_unrelated_names_do_not_match(self, name):
+        assert match_investor(name) is None
+
+    @pytest.mark.parametrize(
+        "name,canonical",
+        [
+            ("J.P. Morgan Securities plc", "JPMorgan"),
+            ("JPMorgan Chase Bank", "JPMorgan"),
+            ("T.Rowe Price Associates, Inc.", "T. Rowe Price"),
+            ("ALIGN-PARTNERS Capital", "Align Partners"),
+            ("Align  Partners   Asset Management", "Align Partners"),
+            ("(주)트러스톤 자산운용", "Truston Asset"),
+            ("플랫폼  파트너스", "Platform Partners"),
+            ("ＢｌａｃｋＲｏｃｋ Fund Advisors", "BlackRock"),   # full-width Latin
+            ("FMR LLC", "Fidelity"),
+            ("Millennium Management LLC", "Millennium"),
+            ("Millennium International Management LP", "Millennium"),
+            ("Government of Singapore Investment Corporation", "GIC (Singapore SWF)"),
+        ],
+    )
+    def test_formatting_variants_match(self, name, canonical):
+        m = match_investor(name)
+        assert m is not None and m.canonical == canonical
+
+    def test_hangul_denylist_still_blocks_after_compaction(self):
+        assert match_investor("다니엘 웰링턴 코리아") is None
+
+
+class TestMatcherMemoization:
+    def test_repeat_lookups_hit_the_cache_and_agree(self):
+        from koreanpulse.activists import _match_cached
+
+        _match_cached.cache_clear()
+        a = match_investor("BlackRock Fund Advisors")
+        b = match_investor("  BlackRock Fund Advisors ")
+        assert a == b and a.canonical == "BlackRock"
+        assert _match_cached.cache_info().hits >= 1
+        assert match_investor("개인투자자") is None
+        assert match_investor("개인투자자") is None

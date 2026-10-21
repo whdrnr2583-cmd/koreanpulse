@@ -5,7 +5,7 @@ import json
 import httpx
 import pytest
 
-from koreanpulse.cache import FileCache
+from koreanpulse.cache import FileCache, cache_key
 from koreanpulse.translate import (
     TranslationError,
     Translator,
@@ -297,3 +297,93 @@ class TestLocalProviderTransportErrors:
         with pytest.raises(TranslationError) as excinfo:
             await t.translate_ko_to_en("테스트")
         assert not isinstance(excinfo.value, httpx.HTTPError)
+
+
+class TestTranslationRobustness:
+    @staticmethod
+    def _patch_client(monkeypatch, handler):
+        real = httpx.AsyncClient
+
+        def factory(*args, **kwargs):
+            return real(transport=httpx.MockTransport(handler), timeout=5.0)
+
+        monkeypatch.setattr("koreanpulse.translate.httpx.AsyncClient", factory)
+
+    @pytest.mark.asyncio
+    async def test_empty_anthropic_completion_is_an_error_and_never_cached(self, monkeypatch, tmp_path):
+        calls = {"n": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls["n"] += 1
+            return httpx.Response(
+                200, json={"content": [], "stop_reason": "max_tokens", "usage": {}}
+            )
+
+        self._patch_client(monkeypatch, handler)
+        cache = FileCache(root=tmp_path)
+        t = Translator(cache=cache, provider="anthropic", api_key="k", mode="local")
+        with pytest.raises(TranslationError, match="empty content"):
+            await t.translate_ko_to_en("삼성전자 실적")
+        assert calls["n"] == 1
+        key = cache_key("translate", "anthropic", t.model, "삼성전자 실적")
+        assert await cache.get(key) is None
+
+    @pytest.mark.asyncio
+    async def test_poisoned_empty_cache_entry_is_ignored(self, monkeypatch, tmp_path):
+        cache = FileCache(root=tmp_path)
+        key = cache_key("translate", "openai", "gpt-5-mini", "사업보고서")
+        await cache.set(key, "")   # what an old version could have stored
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={"choices": [{"message": {"content": "Annual report"}}], "usage": {}},
+            )
+
+        self._patch_client(monkeypatch, handler)
+        t = Translator(cache=cache, provider="openai", api_key="k", mode="local")
+        assert await t.translate_ko_to_en("사업보고서") == "Annual report"
+
+    @pytest.mark.asyncio
+    async def test_whitespace_variants_share_one_cache_entry(self, monkeypatch, tmp_path):
+        calls = {"n": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls["n"] += 1
+            return httpx.Response(
+                200,
+                json={"choices": [{"message": {"content": "Annual report"}}], "usage": {}},
+            )
+
+        self._patch_client(monkeypatch, handler)
+        t = Translator(cache=FileCache(root=tmp_path), provider="openai", api_key="k", mode="local")
+        a = await t.translate_ko_to_en("사업보고서")
+        b = await t.translate_ko_to_en("  사업보고서\n")
+        c = await t.translate_ko_to_en("사업   보고서")  # genuinely different text
+        assert a == b == "Annual report"
+        assert calls["n"] == 2  # the padded variant was a cache hit; "사업 보고서" was not
+        assert c == "Annual report"
+
+    def test_configured_reflects_keys_and_mode(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("KOREANPULSE_LICENSE_KEY", raising=False)
+        assert Translator(provider="openai", mode="local").configured is False
+        assert Translator(provider="openai", api_key="k", mode="local").configured is True
+        assert Translator(mode="hosted").configured is False
+        assert Translator(mode="hosted", license_key="kp_x").configured is True
+
+    @pytest.mark.asyncio
+    async def test_hosted_failure_log_never_contains_the_license_key(self, caplog):
+        secret = "kp_SECRETSECRETSECRET"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(403, json={"error": "license inactive"})
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        t = Translator(mode="hosted", license_key=secret, http_client=client)
+        with caplog.at_level("WARNING"):
+            with pytest.raises(TranslationError) as ei:
+                await t.translate_ko_to_en("삼성전자")
+        assert "kp_SECRET" not in caplog.text
+        assert secret not in str(ei.value)
+        await client.aclose()

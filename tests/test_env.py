@@ -82,3 +82,26 @@ class TestLoadEnvOnce:
         monkeypatch.setenv("KOREANPULSE_ENV_FILE", str(tmp_path / "does_not_exist.env"))
         # Should not raise
         load_env_once()
+
+
+class TestInstalledCopyDoesNotWalkIntoOtherProjects:
+    def test_site_packages_install_skips_ancestor_dotenv(self, tmp_path, monkeypatch):
+        """venv inside someone else's repo: .../proj/pyproject.toml + .env must
+        not be picked up by an installed koreanpulse."""
+        monkeypatch.delenv("KOREANPULSE_ENV_FILE", raising=False)
+        proj = tmp_path / "proj"
+        pkg = proj / ".venv" / "lib" / "python3.12" / "site-packages" / "koreanpulse"
+        pkg.mkdir(parents=True)
+        (proj / "pyproject.toml").write_text("[project]\nname='other'\n")
+        (proj / ".env").write_text("OPENAI_API_KEY=not-mine\n")
+        paths = env_mod._candidate_paths(pkg / "_env.py")
+        assert proj / ".env" not in paths
+
+    def test_source_checkout_still_finds_repo_dotenv(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("KOREANPULSE_ENV_FILE", raising=False)
+        repo = tmp_path / "repo"
+        pkg = repo / "src" / "koreanpulse"
+        pkg.mkdir(parents=True)
+        (repo / "pyproject.toml").write_text("[project]\nname='koreanpulse'\n")
+        paths = env_mod._candidate_paths(pkg / "_env.py")
+        assert repo.resolve() / ".env" in [p.resolve() for p in paths]

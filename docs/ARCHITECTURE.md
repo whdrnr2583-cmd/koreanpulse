@@ -115,8 +115,15 @@ customer's machine.
 
 `.env` autoloader. Imported eagerly from `__init__.py` so submodules see
 populated `os.environ` even before any explicit call. Search order:
-`KOREANPULSE_ENV_FILE` → `./.env` → repo-root `.env`. Never overrides
-existing env.
+`KOREANPULSE_ENV_FILE` → `./.env` → repo-root `.env` (source checkouts
+only; a pip-installed copy never walks up into an unrelated project's
+`.env`). Never overrides existing env.
+
+### `koreanpulse._paths`
+
+`data_dir()` — where local state lives: `KOREANPULSE_DATA_DIR`, else
+`./.data`, else `~/.koreanpulse` when the working directory is read-only
+(GUI MCP clients launch with `cwd=/`), else the system temp dir.
 
 ### `koreanpulse.sources`
 
@@ -127,7 +134,9 @@ Adding a new news source is one entry here.
 ### `koreanpulse.cache`
 
 `FileCache(root)` — append-only JSONL per namespace, lazily loaded into
-memory. Optional per-entry `ttl_seconds`. Same interface implements
+memory (default root `<state dir>/cache`). Optional per-entry
+`ttl_seconds`. A namespace file is compacted when it is loaded and over
+half its lines are expired or superseded. Same interface implements
 `NullCache` for tests / opt-out. `Cache` is a Protocol so swapping for
 Redis / Postgres is one class.
 
@@ -141,8 +150,12 @@ DART OpenAPI client. Three things:
 1. **Daily soft quota** (`DART_DAILY_QUOTA`, default 32 000) enforced
    before every outbound call via `_bump_daily_counter()`. Raises
    `DartDailyQuotaExceeded` cleanly so callers can surface a 402.
-2. **Throttle** — agentprod token bucket at 5 req/s burst, jittered, to
-   stay below DART's empirical per-key burst cap (~10/s).
+2. **Throttle + retry** — agentprod token bucket at 5 req/s burst,
+   jittered, to stay below DART's empirical per-key burst cap (~10/s).
+   Connection errors, timeouts, HTTP 429 and 5xx are retried (3 attempts,
+   exponential backoff); each attempt is throttled and counted against the
+   soft quota. DART `status` codes (010/011/012/020/800 ...) become
+   `DartError` messages with a next step; 020 is `DartRateLimited`.
 3. **`list_filings_cached`** — same shape as `list_filings`, but goes
    through the FileCache with a freshness-aware TTL:
    - end_de ≥ today → 60s
@@ -151,22 +164,34 @@ DART OpenAPI client. Three things:
 
 The `_classify_filing_type()` heuristic infers DART filing-type code (A–J)
 from the title — DART's `list.json` does **not** include `pblntf_ty` in
-its responses, so the title is the only signal at list-time.
+its responses, so the title is the only signal at list-time. Matching
+ignores whitespace and the several Unicode interpuncts DART uses
+(`ㆍ` `·` `‧`); a request-side `pblntf_ty` always wins over the heuristic.
 
 ### `koreanpulse.corp_code`
 
 DART corp-code index. The full XML (~5 MB, ~117 k entries) is downloaded
-once and cached on disk for 7 days. In-memory dicts keyed by name
-(substring match) and stock_code (exact). First lookup pays the download
+once and cached on disk for 7 days (written atomically); the in-memory
+index is also re-read after 7 days so a long-running server sees new
+listings. Concurrent first calls share one download, and if a refresh
+fails the stale memory/disk copy keeps serving. Name lookup is
+substring-based and ignores case, width, spacing, punctuation and `(주)`;
+about 35 well-known English names map to their DART Korean names
+(`_ENGLISH_ALIASES`) — results always come from the real index.
+stock_code and corp_code lookups are exact. First lookup pays the download
 cost; everything after is local.
 
 ### `koreanpulse.news`
 
-RSS aggregator. Currently 2 active feeds (etnews, hankyung), 2 placeholders
-(MK, ChosunBiz) without RSS. Each item gets:
+RSS aggregator. Four active feeds (etnews, hankyung, koreaherald —
+English-native — and zdnet), fetched concurrently; two placeholders (MK,
+ChosunBiz) have no RSS. A feed that fails to download or parse is reported
+to the caller (`notes` / `INCOMPLETE`) rather than silently omitted. Each
+item gets:
 
 - `industries`: multi-label tag set drawn from `INDUSTRY_KEYWORDS` (16
-  industries, Korean substring match)
+  industries; Korean keywords by substring, ASCII keywords on a letter
+  boundary)
 - `relevance_score`: 0.4 + 0.15 per matched tag, capped at 1.0
 - `attribution`: required string per source
 
@@ -208,9 +233,13 @@ planned, not yet available. Customer-facing copy reflects this.
 
 ### `koreanpulse.activists`
 
-Korean activist-investor allowlist. 17 entries, each with both Korean and
-English aliases. `match_activist(filer_name)` returns the canonical
-English label or None. Used by the `monitor_activist_investors` tool to
+Korean activist-investor allowlist (17 entries) plus the foreign-holder
+allowlist (20), each with Korean and English aliases.
+`match_activist(filer_name)` returns the canonical English label or None.
+Matching folds case/width/punctuation/spacing; Latin aliases must start on
+a word boundary ("Miranda Asset" is not "Anda Asset"); a per-record
+denylist blocks known collisions. `daily-worker/src/activists.ts` mirrors
+the data and the matcher (`tests/test_activists_sync.py` guards the data). Used by the `monitor_activist_investors` tool to
 flag DART type-D shareholding disclosures.
 
 ### `koreanpulse.alerts`
@@ -344,7 +373,7 @@ For the 12-month customer-mix forecast (~756 MAU mostly free + ~86 paying):
 
 ## Test surface
 
-- 418 tests passing
+- 549 tests passing
 - Unit tests cover every module
 - DART tests use `httpx.MockTransport` — no live API required for CI
 - Live verification path: `python examples/quickstart.py` (see RUN_LIVE.md)

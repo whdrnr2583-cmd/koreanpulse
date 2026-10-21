@@ -59,11 +59,15 @@ def _reset_index():
     corp_code_mod._BY_NAME = {}
     corp_code_mod._BY_STOCK = {}
     corp_code_mod._BY_CORP = {}
+    corp_code_mod._NORM_NAMES = []
+    corp_code_mod._LOADED_AT = 0.0
     yield
     corp_code_mod._INDEX = []
     corp_code_mod._BY_NAME = {}
     corp_code_mod._BY_STOCK = {}
     corp_code_mod._BY_CORP = {}
+    corp_code_mod._NORM_NAMES = []
+    corp_code_mod._LOADED_AT = 0.0
 
 
 @pytest.fixture(autouse=True)
@@ -408,3 +412,216 @@ class TestLookupByStockCodeNormalization:
     @pytest.mark.asyncio
     async def test_still_returns_none_for_unknown_code(self):
         assert await lookup_by_stock_code("999999") is None
+
+
+def _seed(entries):
+    corp_code_mod._install(entries)
+
+
+class TestNameNormalizationAndAliases:
+    @pytest.fixture(autouse=True)
+    def _seed_index(self):
+        from koreanpulse.corp_code import CorpEntry
+
+        _seed(
+            [
+                CorpEntry("00126380", "삼성전자", "005930", "20260101"),
+                CorpEntry("00164779", "SK하이닉스", "000660", "20260101"),
+                CorpEntry("00266961", "NAVER", "035420", "20260101"),
+                CorpEntry("00258801", "카카오", "035720", "20260101"),
+                CorpEntry("00999998", "(주)케이티앤지서비스", None, "20260101"),
+            ]
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("q", ["sk하이닉스", "SK 하이닉스", "Sk하이닉스", "ＳＫ하이닉스"])
+    async def test_case_width_and_spacing_insensitive(self, q):
+        hits = await lookup_by_name(q)
+        assert [h.corp_name for h in hits] == ["SK하이닉스"]
+
+    @pytest.mark.asyncio
+    async def test_lowercase_latin_name(self):
+        assert [h.corp_name for h in await lookup_by_name("naver")] == ["NAVER"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "q,expected",
+        [
+            ("Samsung Electronics", "삼성전자"),
+            ("SK hynix", "SK하이닉스"),
+            ("kakao", "카카오"),
+        ],
+    )
+    async def test_english_names_resolve_via_alias(self, q, expected):
+        hits = await lookup_by_name(q)
+        assert hits and hits[0].corp_name == expected
+
+    @pytest.mark.asyncio
+    async def test_unknown_english_name_returns_empty_not_garbage(self):
+        assert await lookup_by_name("Acme Widgets Ltd") == []
+
+    @pytest.mark.asyncio
+    async def test_alias_never_invents_entries_missing_from_index(self):
+        # "Hyundai Motor" maps to 현대자동차, which is not in this index.
+        assert await lookup_by_name("Hyundai Motor") == []
+
+    @pytest.mark.asyncio
+    async def test_limit_zero_or_negative_returns_nothing(self):
+        assert await lookup_by_name("삼성", limit=0) == []
+        assert await lookup_by_name("삼성", limit=-3) == []
+
+
+class TestIndexRefreshRobustness:
+    @pytest.mark.asyncio
+    async def test_concurrent_first_calls_download_once(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        zip_bytes = _zip_bytes(SAMPLE_XML)
+        calls = {"n": 0}
+
+        import asyncio
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            calls["n"] += 1
+            await asyncio.sleep(0.02)  # a real suspension point, like network I/O
+            return httpx.Response(200, content=zip_bytes)
+
+        monkeypatch.setattr(httpx, "AsyncClient", _mock_client_factory(handler))
+
+        results = await asyncio.gather(*[ensure_index_loaded() for _ in range(6)])
+        assert results == [2] * 6
+        assert calls["n"] == 1
+
+    @pytest.mark.asyncio
+    async def test_failed_refresh_keeps_stale_disk_cache(self, monkeypatch):
+        """An expired disk cache + a DART outage must not break lookups."""
+        import os
+        import time as _time
+
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        corp_code_mod.CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        corp_code_mod.CACHE_FILE.write_bytes(SAMPLE_XML)
+        old = _time.time() - corp_code_mod.CACHE_TTL_SECONDS - 3600
+        os.utime(corp_code_mod.CACHE_FILE, (old, old))
+        assert not corp_code_mod._is_cache_fresh()
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(503, text="down")
+
+        monkeypatch.setattr(httpx, "AsyncClient", _mock_client_factory(handler))
+        assert await ensure_index_loaded() == 2
+
+    @pytest.mark.asyncio
+    async def test_failed_refresh_without_any_cache_still_raises(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(503, text="down")
+
+        monkeypatch.setattr(httpx, "AsyncClient", _mock_client_factory(handler))
+        with pytest.raises(CorpCodeError, match="HTTP 503"):
+            await ensure_index_loaded()
+
+    @pytest.mark.asyncio
+    async def test_in_memory_index_is_refreshed_after_ttl(self, monkeypatch):
+        """A server left running for weeks must pick up new listings."""
+        import time as _time
+
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        zip_bytes = _zip_bytes(SAMPLE_XML)
+        calls = {"n": 0}
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            calls["n"] += 1
+            return httpx.Response(200, content=zip_bytes)
+
+        monkeypatch.setattr(httpx, "AsyncClient", _mock_client_factory(handler))
+        await ensure_index_loaded()
+        assert calls["n"] == 1
+        await ensure_index_loaded()
+        assert calls["n"] == 1  # still fresh in memory
+
+        corp_code_mod._LOADED_AT = _time.time() - corp_code_mod.CACHE_TTL_SECONDS - 10
+        # the disk copy is also treated as expired
+        import os
+
+        old = _time.time() - corp_code_mod.CACHE_TTL_SECONDS - 10
+        os.utime(corp_code_mod.CACHE_FILE, (old, old))
+        await ensure_index_loaded()
+        assert calls["n"] == 2
+
+    @pytest.mark.asyncio
+    async def test_unwritable_cache_dir_does_not_break_loading(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        blocker = tmp_path / "file_not_dir"
+        blocker.write_text("x")
+        monkeypatch.setattr(corp_code_mod, "CACHE_DIR", blocker / "dart")
+        monkeypatch.setattr(corp_code_mod, "CACHE_FILE", blocker / "dart" / "corpCode.xml")
+        zip_bytes = _zip_bytes(SAMPLE_XML)
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=zip_bytes)
+
+        monkeypatch.setattr(httpx, "AsyncClient", _mock_client_factory(handler))
+        assert await ensure_index_loaded() == 2
+
+    @pytest.mark.asyncio
+    async def test_cache_write_is_atomic_no_tmp_left_behind(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        zip_bytes = _zip_bytes(SAMPLE_XML)
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=zip_bytes)
+
+        monkeypatch.setattr(httpx, "AsyncClient", _mock_client_factory(handler))
+        await ensure_index_loaded()
+        names = sorted(p.name for p in corp_code_mod.CACHE_DIR.iterdir())
+        assert names == ["corpCode.xml"]
+
+
+class TestDataDir:
+    def test_explicit_env_wins(self, monkeypatch, tmp_path):
+        from koreanpulse import _paths
+
+        monkeypatch.setattr(_paths, "_RESOLVED", None)
+        monkeypatch.setenv("KOREANPULSE_DATA_DIR", str(tmp_path / "kp"))
+        assert _paths.data_dir() == tmp_path / "kp"
+        assert (tmp_path / "kp").is_dir()
+
+    def test_unwritable_cwd_falls_back_to_home(self, monkeypatch, tmp_path):
+        """MCP hosts often launch with cwd=/ — this used to crash at import."""
+        from koreanpulse import _paths
+
+        monkeypatch.setattr(_paths, "_RESOLVED", None)
+        monkeypatch.delenv("KOREANPULSE_DATA_DIR", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path / "home"))
+        (tmp_path / "home").mkdir()
+        real = _paths._writable_dir
+
+        def fake(path):
+            return False if str(path) == ".data" else real(path)
+
+        monkeypatch.setattr(_paths, "_writable_dir", fake)
+        assert _paths.data_dir() == tmp_path / "home" / ".koreanpulse"
+
+
+class TestStreamingParse:
+    def test_skips_incomplete_records_and_trims_text(self):
+        xml = (
+            "<result>"
+            "<list><corp_code> 00000001 </corp_code><corp_name> 가나다 </corp_name>"
+            "<stock_code> </stock_code><modify_date>20260101</modify_date></list>"
+            "<list><corp_code></corp_code><corp_name>이름만</corp_name></list>"
+            "<list><corp_code>00000003</corp_code></list>"
+            "<list><corp_code>00000004</corp_code><corp_name>정상</corp_name>"
+            "<stock_code>000004</stock_code><corp_eng_name>X</corp_eng_name></list>"
+            "</result>"
+        ).encode()
+        got = _parse_xml(xml)
+        assert [(e.corp_code, e.corp_name, e.stock_code) for e in got] == [
+            ("00000001", "가나다", None),
+            ("00000004", "정상", "000004"),
+        ]
+
+    def test_truncated_xml_still_raises_corp_code_error(self):
+        with pytest.raises(CorpCodeError, match="malformed"):
+            _parse_xml(b"<result><list><corp_code>001</corp_code><corp_na")

@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Any, Optional
 
 import httpx
@@ -114,6 +115,15 @@ class TranslationError(RuntimeError):
     pass
 
 
+_WS_RE = re.compile(r"\s+")
+
+
+def _clean(text: str) -> str:
+    """Trim and collapse whitespace so " 사업보고서\n" and "사업보고서" share one
+    cache entry (and one paid LLM call)."""
+    return _WS_RE.sub(" ", text or "").strip()
+
+
 class Translator:
     """Cached server-side translator + summarizer with pluggable LLM provider.
 
@@ -190,6 +200,15 @@ class Translator:
         self._http_client = http_client
 
     @property
+    def configured(self) -> bool:
+        """True when a translation call could succeed: a provider key in
+        local mode, or a license key in hosted mode. Lets tools skip N
+        doomed calls and tell the agent why `title_en` is empty."""
+        if self._mode == "hosted":
+            return bool(self._license_key)
+        return bool(self._api_key)
+
+    @property
     def provider(self) -> str:
         return self._provider
 
@@ -208,7 +227,8 @@ class Translator:
         labels: Optional[dict[str, str]] = None,
     ) -> str:
         """Translate Korean text to English. Cached per (provider, model, text)."""
-        if not text or not text.strip():
+        text = _clean(text)
+        if not text:
             return ""
 
         if self._mode == "hosted":
@@ -221,7 +241,7 @@ class Translator:
         # Provider in cache key so swapping models doesn't poison cache.
         key = cache_key("translate", self._provider, self._model, text)
         cached = await self._cache.get(key)
-        if cached is not None:
+        if cached:  # an empty string is never a valid translation (ignore poisoned entries)
             return cached  # type: ignore[no-any-return]
 
         out = await self._call_llm(
@@ -252,7 +272,8 @@ class Translator:
         Worker handles caching and returns the result; in local mode we
         cache locally.
         """
-        if not name_ko or not name_ko.strip():
+        name_ko = _clean(name_ko)
+        if not name_ko:
             return ""
 
         if self._mode == "hosted":
@@ -260,7 +281,7 @@ class Translator:
 
         key = cache_key("corp_name", self._provider, self._model, name_ko)
         cached = await self._cache.get(key)
-        if cached is not None:
+        if cached:
             return cached  # type: ignore[no-any-return]
 
         out = await self._call_llm(
@@ -280,7 +301,8 @@ class Translator:
         labels: Optional[dict[str, str]] = None,
     ) -> str:
         """Summarize Korean text in ≤200 English words. Cached per (provider, model, text)."""
-        if not text or not text.strip():
+        text = _clean(text)
+        if not text:
             return ""
 
         if self._mode == "hosted":
@@ -290,7 +312,7 @@ class Translator:
 
         key = cache_key("summarize", self._provider, self._model, text)
         cached = await self._cache.get(key)
-        if cached is not None:
+        if cached:
             return cached  # type: ignore[no-any-return]
 
         prompt = f"{text[:DEFAULT_MAX_INPUT_CHARS]}\n\n---\nAttribution: {attribution}"
@@ -352,13 +374,8 @@ class Translator:
                 err = resp.json().get("error", "unknown")
             except (ValueError, AttributeError):
                 err = (resp.text or "")[:200]
-            # Logged with key prefix only — never the full secret.
-            logger.warning(
-                "hosted cache returned %s for license=%s…: %s",
-                resp.status_code,
-                self._license_key[:8],
-                err,
-            )
+            # The license key is never logged, not even a prefix.
+            logger.warning("hosted cache returned %s: %s", resp.status_code, err)
             raise TranslationError(
                 f"hosted cache failed ({resp.status_code}): {err}. "
                 f"Check KOREANPULSE_LICENSE_KEY or set "
@@ -448,7 +465,7 @@ class Translator:
                 f"OpenAI API returned HTTP {exc.response.status_code} after retries"
             ) from exc
         except httpx.HTTPError as exc:
-            raise TranslationError(f"OpenAI API request failed: {exc}") from exc
+            raise TranslationError(f"OpenAI API request failed: {type(exc).__name__}") from exc
 
         try:
             text = data["choices"][0]["message"]["content"]
@@ -517,7 +534,7 @@ class Translator:
                 f"Anthropic API returned HTTP {exc.response.status_code} after retries"
             ) from exc
         except httpx.HTTPError as exc:
-            raise TranslationError(f"Anthropic API request failed: {exc}") from exc
+            raise TranslationError(f"Anthropic API request failed: {type(exc).__name__}") from exc
 
         try:
             content_blocks = data.get("content", [])
@@ -526,6 +543,15 @@ class Translator:
             )
         except (KeyError, AttributeError) as exc:
             raise TranslationError(f"unexpected Anthropic response shape: {exc}") from exc
+
+        # Same rule as the OpenAI path: an empty completion (refusal, max_tokens
+        # hit before any text) is a failure, not a translation. It used to be
+        # returned and then cached forever as "".
+        if not text.strip():
+            raise TranslationError(
+                f"empty content from {self._model} "
+                f"(stop_reason={data.get('stop_reason', '')})"
+            )
 
         if self._cost is not None:
             usage = data.get("usage", {})

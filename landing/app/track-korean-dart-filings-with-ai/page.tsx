@@ -338,7 +338,8 @@ export default function TrackDartWithAiGuide() {
           <ul className="mt-4 space-y-2 text-zinc-300">
             <li>
               <code className="text-accent">lookup_corp_code</code> — resolves a
-              Korean company name (Hangul or romanized) to its DART corp code.
+              Korean company name (Hangul; about 35 well-known companies also
+              by English name) to its DART corp code.
             </li>
             <li>
               <code className="text-accent">resolve_stock_code</code> — resolves
