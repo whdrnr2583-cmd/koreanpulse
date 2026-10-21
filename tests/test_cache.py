@@ -116,3 +116,52 @@ class TestFileCacheTTL:
         await c.set("dart_list:k", "old", ttl_seconds=3600)
         await c.set("dart_list:k", "new", ttl_seconds=7200)
         assert await c.get("dart_list:k") == "new"
+
+
+class TestCompaction:
+    @pytest.mark.asyncio
+    async def test_dead_lines_are_dropped_on_next_load(self, tmp_path):
+        import json
+        import time
+
+        path = tmp_path / "dart_list.jsonl"
+        now = time.time()
+        lines = []
+        # 300 superseded/expired writes of one hot key + 1 live key.
+        for i in range(300):
+            lines.append(json.dumps({"k": "dart_list:hot", "v": [i], "exp": now - 10}))
+        lines.append(json.dumps({"k": "dart_list:keep", "v": ["live"], "exp": now + 3600}))
+        lines.append(json.dumps({"k": "dart_list:forever", "v": 1, "exp": None}))
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        cache = FileCache(root=tmp_path)
+        assert await cache.get("dart_list:keep") == ["live"]
+        assert await cache.get("dart_list:hot") is None
+        assert await cache.get("dart_list:forever") == 1
+        remaining = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        assert len(remaining) == 2
+        assert not list(tmp_path.glob("*.tmp"))
+
+    @pytest.mark.asyncio
+    async def test_small_files_are_left_alone(self, tmp_path):
+        import json
+
+        path = tmp_path / "translate.jsonl"
+        path.write_text(json.dumps({"k": "translate:a", "v": "x", "exp": 1.0}) + "\n")
+        cache = FileCache(root=tmp_path)
+        assert await cache.get("translate:a") is None
+        assert path.read_text().count("\n") == 1
+
+    @pytest.mark.asyncio
+    async def test_live_entries_survive_a_restart_after_compaction(self, tmp_path):
+        import json
+        import time
+
+        path = tmp_path / "ns.jsonl"
+        now = time.time()
+        rows = [json.dumps({"k": f"ns:{i}", "v": i, "exp": now - 1}) for i in range(250)]
+        rows.append(json.dumps({"k": "ns:alive", "v": "yes", "exp": None}))
+        path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+        FileCache(root=tmp_path)._ensure_loaded("ns")
+        again = FileCache(root=tmp_path)
+        assert await again.get("ns:alive") == "yes"

@@ -10,10 +10,14 @@ codes, so this is plenty fresh.
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import os
+import re
+import tempfile
 import time
+import unicodedata
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,11 +26,13 @@ from typing import Optional
 import httpx
 from lxml import etree
 
+from koreanpulse._paths import data_dir
+
 logger = logging.getLogger(__name__)
 
 
 CORP_CODE_URL = "https://opendart.fss.or.kr/api/corpCode.xml"
-CACHE_DIR = Path(".data/dart")
+CACHE_DIR = data_dir() / "dart"
 CACHE_FILE = CACHE_DIR / "corpCode.xml"
 CACHE_TTL_SECONDS = 7 * 24 * 3600  # 7 days
 
@@ -45,6 +51,12 @@ _INDEX: list[CorpEntry] = []
 _BY_NAME: dict[str, CorpEntry] = {}
 _BY_STOCK: dict[str, CorpEntry] = {}
 _BY_CORP: dict[str, CorpEntry] = {}
+# Normalized names, parallel to _INDEX (rebuilt lazily when the lengths differ).
+_NORM_NAMES: list[str] = []
+# time.time() of the last successful (re)load; 0.0 = unknown (index seeded by hand).
+_LOADED_AT = 0.0
+_load_lock: Optional[asyncio.Lock] = None
+_load_lock_loop: Optional[asyncio.AbstractEventLoop] = None
 
 
 class CorpCodeError(RuntimeError):
@@ -139,44 +151,196 @@ def _parse_xml(xml_bytes: bytes) -> list[CorpEntry]:
     return entries
 
 
-async def ensure_index_loaded(force_refresh: bool = False) -> int:
-    """Make sure the in-memory index is populated. Returns # entries."""
-    global _INDEX, _BY_NAME, _BY_STOCK, _BY_CORP
-    if _INDEX and not force_refresh:
-        return len(_INDEX)
+def _get_load_lock() -> asyncio.Lock:
+    """One lock per running event loop, so concurrent first calls trigger a
+    single download instead of N parallel ~5 MB fetches."""
+    global _load_lock, _load_lock_loop
+    loop = asyncio.get_running_loop()
+    if _load_lock is None or _load_lock_loop is not loop:
+        _load_lock = asyncio.Lock()
+        _load_lock_loop = loop
+    return _load_lock
 
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-    if _is_cache_fresh() and not force_refresh:
-        xml_bytes = CACHE_FILE.read_bytes()
-        logger.info("corp_code: loaded from disk cache")
+def _memory_index_stale() -> bool:
+    """True when a long-running server's in-memory index is older than the TTL.
+
+    Without this the index was loaded once per process and never refreshed,
+    so a stdio server left running for weeks never saw new listings (IPOs)
+    or renamed companies until restarted.
+    """
+    return bool(_LOADED_AT) and (time.time() - _LOADED_AT) > CACHE_TTL_SECONDS
+
+
+def _write_cache_atomically(xml_bytes: bytes) -> None:
+    """Best-effort atomic write: a crash mid-write must not leave a truncated
+    file that then looks 'fresh' for seven days. A cache that cannot be
+    written degrades to re-downloading, not to an error."""
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=CACHE_DIR, prefix="corpCode.", suffix=".tmp")
         try:
-            entries = _parse_xml(xml_bytes)
-        except CorpCodeError as exc:
-            # Corrupt disk cache (e.g. truncated by a partial write) — without
-            # this recovery the parse would fail on every call for the full 7
-            # day TTL. Discard the bad file and re-download once.
-            logger.warning("corp_code: disk cache corrupt (%s), re-downloading", exc)
-            CACHE_FILE.unlink(missing_ok=True)
-            xml_bytes = await _download_corp_code()
-            CACHE_FILE.write_bytes(xml_bytes)
-            entries = _parse_xml(xml_bytes)
-    else:
-        xml_bytes = await _download_corp_code()
-        CACHE_FILE.write_bytes(xml_bytes)
-        logger.info("corp_code: downloaded fresh from DART (%d bytes)", len(xml_bytes))
-        entries = _parse_xml(xml_bytes)
+            with os.fdopen(fd, "wb") as f:
+                f.write(xml_bytes)
+            os.replace(tmp, CACHE_FILE)
+        except BaseException:
+            Path(tmp).unlink(missing_ok=True)
+            raise
+    except OSError as exc:
+        logger.warning("corp_code: could not write disk cache (%s); continuing without it", exc)
 
+
+def _install(entries: list[CorpEntry]) -> None:
+    global _INDEX, _BY_NAME, _BY_STOCK, _BY_CORP, _NORM_NAMES, _LOADED_AT
     _INDEX = entries
     _BY_NAME = {e.corp_name: e for e in entries}
     _BY_STOCK = {e.stock_code: e for e in entries if e.stock_code}
     _BY_CORP = {e.corp_code: e for e in entries}
+    _NORM_NAMES = [_norm_name(e.corp_name) for e in entries]
+    _LOADED_AT = time.time()
     logger.info("corp_code: indexed %d entries", len(entries))
-    return len(entries)
+
+
+async def ensure_index_loaded(force_refresh: bool = False) -> int:
+    """Make sure the in-memory index is populated. Returns # entries.
+
+    Refresh policy: disk cache for 7 days, and the in-memory index is also
+    re-read after 7 days in a long-running process. If a refresh download
+    fails but an older index (memory or disk) exists, the older one is kept
+    and a warning is logged — a transient DART outage must not take
+    company-name lookups down with it.
+    """
+    if _INDEX and not force_refresh and not _memory_index_stale():
+        return len(_INDEX)
+
+    async with _get_load_lock():
+        # Another caller may have finished the load while we waited.
+        if _INDEX and not force_refresh and not _memory_index_stale():
+            return len(_INDEX)
+
+        try:
+            CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            logger.warning("corp_code: cache dir %s unusable (%s)", CACHE_DIR, exc)
+
+        entries: Optional[list[CorpEntry]] = None
+        if not force_refresh and _is_cache_fresh():
+            try:
+                entries = _parse_xml(CACHE_FILE.read_bytes())
+                logger.info("corp_code: loaded from disk cache")
+            except (CorpCodeError, OSError) as exc:
+                # Corrupt/truncated disk cache: discard it so the download
+                # below replaces it instead of failing for the full TTL.
+                logger.warning("corp_code: disk cache unusable (%s), re-downloading", exc)
+                CACHE_FILE.unlink(missing_ok=True)
+
+        if entries is None:
+            try:
+                xml_bytes = await _download_corp_code()
+                entries = _parse_xml(xml_bytes)
+            except CorpCodeError as exc:
+                entries = _fallback_entries(exc)
+            else:
+                _write_cache_atomically(xml_bytes)
+                logger.info("corp_code: downloaded fresh from DART (%d bytes)", len(xml_bytes))
+
+        _install(entries)
+        return len(entries)
+
+
+def _fallback_entries(exc: CorpCodeError) -> list[CorpEntry]:
+    """Pick the best older index when a (re)download failed, else re-raise."""
+    if _INDEX:
+        logger.warning("corp_code: refresh failed (%s); keeping the in-memory index", exc)
+        return _INDEX
+    if CACHE_FILE.exists():
+        try:
+            entries = _parse_xml(CACHE_FILE.read_bytes())
+        except (CorpCodeError, OSError):
+            raise exc
+        logger.warning("corp_code: refresh failed (%s); using the stale disk cache", exc)
+        return entries
+    raise exc
+
+
+# ── Name normalization + English aliases ───────────────────────────────────
+
+_NON_WORD_RE = re.compile(r"[\W_]+")
+
+
+def _norm_name(text: str) -> str:
+    """Case-, width-, spacing- and punctuation-insensitive form of a company
+    name. "(주)" / "주식회사" markers are dropped so "SK 하이닉스",
+    "sk하이닉스" and "㈜SK하이닉스" all compare equal."""
+    t = unicodedata.normalize("NFKC", text).lower()
+    t = t.replace("(주)", "").replace("주식회사", "")
+    return _NON_WORD_RE.sub("", t)
+
+
+# English / romanized name -> the name DART actually lists. DART's index is
+# Korean-only, so an English-first agent searching "Samsung Electronics" got
+# an empty list. Only well-known listed groups are mapped, and only the
+# Korean target is used: results always come from the real DART index.
+_ENGLISH_ALIASES: dict[str, tuple[str, ...]] = {
+    "samsung electronics": ("삼성전자",),
+    "samsung sdi": ("삼성SDI",),
+    "samsung biologics": ("삼성바이오로직스",),
+    "samsung c&t": ("삼성물산",),
+    "samsung life": ("삼성생명",),
+    "samsung heavy industries": ("삼성중공업",),
+    "samsung electro-mechanics": ("삼성전기",),
+    "sk hynix": ("SK하이닉스",),
+    "sk innovation": ("SK이노베이션",),
+    "sk telecom": ("SK텔레콤",),
+    "sk square": ("SK스퀘어",),
+    "lg energy solution": ("LG에너지솔루션",),
+    "lg chem": ("LG화학",),
+    "lg electronics": ("LG전자",),
+    "hyundai motor": ("현대자동차",),
+    "hyundai mobis": ("현대모비스",),
+    "hyundai rotem": ("현대로템",),
+    "hd hyundai heavy industries": ("HD현대중공업",),
+    "kia": ("기아",),
+    "hanwha aerospace": ("한화에어로스페이스",),
+    "posco holdings": ("POSCO홀딩스",),
+    "naver": ("NAVER",),
+    "kakao": ("카카오",),
+    "celltrion": ("셀트리온",),
+    "kb financial": ("KB금융",),
+    "shinhan financial": ("신한지주",),
+    "hana financial": ("하나금융지주",),
+    "korean air": ("대한항공",),
+    "krafton": ("크래프톤",),
+    "ncsoft": ("엔씨소프트",),
+    "alteogen": ("알테오젠",),
+    "ecopro": ("에코프로",),
+    "doosan enerbility": ("두산에너빌리티",),
+    "kt&g": ("KT&G",),
+}
+_ENGLISH_ALIASES_NORM: dict[str, tuple[str, ...]] = {
+    _norm_name(k): v for k, v in _ENGLISH_ALIASES.items()
+}
+
+
+def english_alias_targets(query: str) -> tuple[str, ...]:
+    """Korean DART names suggested for an English/romanized `query`
+    (exact or partial match on a well-known name); () when none."""
+    q = _norm_name(query)
+    if len(q) < 3:
+        return ()
+    out: list[str] = []
+    for key, targets in _ENGLISH_ALIASES_NORM.items():
+        if q == key or (len(q) >= 4 and q in key):
+            out.extend(t for t in targets if t not in out)
+    return tuple(out)
 
 
 async def lookup_by_name(query: str, *, listed_only: bool = False, limit: int = 10) -> list[CorpEntry]:
     """Substring-match `query` against Korean corp names.
+
+    Matching ignores case, width, spaces/punctuation and "(주)" markers, and a
+    well-known English name ("Samsung Electronics", "SK hynix") is mapped to
+    its DART Korean name first (see `_ENGLISH_ALIASES`).
 
     Collects *all* matches (respecting `listed_only`) before ranking, then
     sorts so the most useful hit lands first — an early-break on `limit`
@@ -194,10 +358,15 @@ async def lookup_by_name(query: str, *, listed_only: bool = False, limit: int = 
     q = query.strip()
     if not q:
         return []
+    targets = [t for t in {_norm_name(q), *(_norm_name(a) for a in english_alias_targets(q))} if t]
+    if not targets:
+        return []
+    if len(_NORM_NAMES) != len(_INDEX):
+        _rebuild_norm_names()
     matches = [
-        entry
-        for entry in _INDEX
-        if q in entry.corp_name and (not listed_only or entry.stock_code)
+        (entry, norm)
+        for entry, norm in zip(_INDEX, _NORM_NAMES)
+        if any(t in norm for t in targets) and (not listed_only or entry.stock_code)
     ]
 
     def _modify_rank(entry: CorpEntry) -> int:
@@ -210,15 +379,20 @@ async def lookup_by_name(query: str, *, listed_only: bool = False, limit: int = 
             return 0
 
     matches.sort(
-        key=lambda e: (
-            e.corp_name != q,
-            not e.corp_name.startswith(q),
-            e.stock_code is None,
-            len(e.corp_name),
-            _modify_rank(e),
+        key=lambda m: (
+            m[1] not in targets,
+            not any(m[1].startswith(t) for t in targets),
+            m[0].stock_code is None,
+            len(m[0].corp_name),
+            _modify_rank(m[0]),
         )
     )
-    return matches[:limit]
+    return [entry for entry, _ in matches[: max(0, limit)]]
+
+
+def _rebuild_norm_names() -> None:
+    global _NORM_NAMES
+    _NORM_NAMES = [_norm_name(e.corp_name) for e in _INDEX]
 
 
 def normalize_stock_code(stock_code: str) -> str:
