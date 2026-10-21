@@ -92,6 +92,18 @@ def _parse_since(raw: str) -> datetime:
 
 logger = logging.getLogger(__name__)
 
+
+def _quiet_http_loggers() -> None:
+    """httpx logs every request URL at INFO, and DART request URLs carry the
+    API key (`crtfc_key=`). Keep those loggers at WARNING so the key never
+    reaches stderr / the MCP client's log file. (mcp_http did this for the
+    hosted ASGI app only; the stdio server — the self-host path — did not.)"""
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
+_quiet_http_loggers()
+
 mcp = FastMCP("koreanpulse")
 
 # Singletons reused across tool invocations.
@@ -1427,6 +1439,7 @@ def main() -> None:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s: %(message)s"
     )
+    _quiet_http_loggers()
     logger.info("koreanpulse %s starting; state directory %s", __version__, data_dir())
     for line in _startup_warnings():
         logger.warning("%s", line)

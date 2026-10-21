@@ -406,3 +406,39 @@ class TestStartupWarnings:
         monkeypatch.setenv("DART_API_KEY", "a" * 40)
         monkeypatch.setattr(server_mod, "_get_translator", lambda: _Flaky())
         assert server_mod._startup_warnings() == []
+
+
+class TestKeyHygiene:
+    def test_http_client_loggers_are_not_at_info(self):
+        """DART request URLs carry crtfc_key; httpx logs URLs at INFO."""
+        import logging
+
+        for name in ("httpx", "httpcore"):
+            logging.getLogger(name).setLevel(logging.NOTSET)   # as basicConfig(INFO) leaves it
+        server_mod._quiet_http_loggers()
+        assert logging.getLogger("httpx").level == logging.WARNING
+        assert logging.getLogger("httpcore").level == logging.WARNING
+
+    @pytest.mark.asyncio
+    async def test_dart_key_never_reaches_a_tool_error(self, monkeypatch):
+        """End to end through the real client: a transport failure must not
+        put the request URL (and so the key) into the message the agent sees."""
+        import httpx
+
+        import koreanpulse.dart as dart_mod
+
+        monkeypatch.setenv("DART_API_KEY", "SUPERSECRETKEY0123456789")
+        monkeypatch.setattr(server_mod, "list_filings_cached", dart_mod.list_filings_cached)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("boom", request=request)
+
+        real = httpx.AsyncClient
+        monkeypatch.setattr(
+            httpx, "AsyncClient",
+            lambda *a, **k: real(transport=httpx.MockTransport(handler), timeout=5.0),
+        )
+        with pytest.raises(Exception) as ei:
+            await track_korean_filings(translate=False, days=1)
+        assert "SUPERSECRET" not in str(ei.value)
+        assert "SUPERSECRET" not in repr(ei.value.__cause__)

@@ -176,3 +176,15 @@ class TestSendAlert:
         )
         assert not r.ok
         assert "ConnectError" in (r.error or "")
+
+
+class TestUnsupportedUrlIsNotEchoed:
+    @pytest.mark.asyncio
+    async def test_error_never_contains_the_secret_part_of_the_url(self):
+        from koreanpulse.alerts import send_alert
+
+        url = "https://example.invalid/hooks/SECRET-TOKEN-1234567890/more"
+        result = await send_alert(url, title="t", body="b")
+        assert result.ok is False
+        assert "SECRET" not in (result.error or "")
+        assert "example.invalid" in (result.error or "")
