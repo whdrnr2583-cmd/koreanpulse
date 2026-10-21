@@ -526,3 +526,45 @@ class TestCorpNameTranslation:
         assert sorted(t.calls) == [f"회사{i}" for i in range(4)]   # once per distinct name
         assert t.peak > 1
         assert all(r.corp_name_en == "EN " + r.corp_name_ko for r in rows)
+
+
+class TestToolDescriptionsAreWhatTheLLMSees:
+    """FastMCP cuts a tool description at the first `Args:` / `Returns:` /
+    `Examples:` header, so anything an agent needs (result shape, scan caveat,
+    red-flag catalog) must sit in the prose before it."""
+
+    @pytest.mark.asyncio
+    async def test_result_shape_and_caveats_are_visible_and_size_is_bounded(self):
+        tools = {t.name: t for t in await server_mod.mcp.list_tools()}
+        track = tools["track_korean_filings"].description
+        assert '"notes"' in track and "next_page" in track and "going_concern" in track
+        for name in ("monitor_activist_investors", "monitor_foreign_holders"):
+            d = tools[name].description
+            assert "INCOMPLETE SCAN" in d and "license" in d.lower()
+        assert '"notes"' in tools["search_korean_industry_news"].description
+        assert "matches" in tools["lookup_corp_code"].description
+        total = sum(len(t.description or "") + len(str(t.parameters)) for t in tools.values())
+        assert total < 16000, f"tool metadata grew to {total} chars (was 18.5k before trimming)"
+
+    @pytest.mark.asyncio
+    async def test_every_param_keeps_its_description(self):
+        tools = {t.name: t for t in await server_mod.mcp.list_tools()}
+        for t in tools.values():
+            for pname, schema in t.parameters.get("properties", {}).items():
+                assert schema.get("description"), f"{t.name}.{pname} lost its description"
+
+
+class TestSlimFilingOutput:
+    def test_none_valued_fields_are_not_serialized_but_round_trip(self):
+        f = _f(0)
+        d = f.model_dump(mode="json")
+        assert "summary_en" not in d and "holding_pct" not in d and "raw_xml_url" not in d
+        assert d["red_flags"] == [] and d["is_correction"] is False   # non-None stay
+        assert Filing.model_validate(d).summary_en is None
+
+    def test_filled_optional_fields_still_appear(self):
+        f = _f(0)
+        f.title_en = "Annual report"
+        f.holding_pct = 5.2
+        d = f.model_dump(mode="json")
+        assert d["title_en"] == "Annual report" and d["holding_pct"] == 5.2

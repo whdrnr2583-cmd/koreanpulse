@@ -534,127 +534,33 @@ async def track_korean_filings(
     material_only: bool = False,
     page: int = 1,
 ) -> list[Filing] | dict:
-    """Track Korean DART (전자공시) stock filings in English — real-time corporate disclosures for KOSPI / KOSDAQ / KONEX / KRX listed companies: 5%-rule shareholding disclosures, M&A, periodic reports, capital issuance, insider trading, audit reports. Free tier.
+    """Track Korean DART (전자공시) filings in English for KOSPI / KOSDAQ / KONEX companies: periodic, major-event, issuance, shareholding (5%-rule), audit and exchange disclosures. Free tier.
 
-    Use this tool when the user asks about: recent Korean stock filings, DART disclosures, Korean market data, KOSPI/KOSDAQ regulatory events, "track Korean DART filings", "what did Samsung / Hyundai / SK / LG / NAVER / Kakao / 셀트리온 file", company-specific filing history, periodic / major-event / issuance / shareholding / audit filings on Korean equities.
+Use for: recent filings of a company ("what did Samsung / Hyundai / Kakao file"), DART events, or scanning a watchlist since a checkpoint. Returns RAW filings; it does NOT classify filers. For "is KCGI / Align / BlackRock / Norges filing on X" use `monitor_activist_investors` / `monitor_foreign_holders` (license_key required). If those return a license notice, relay it to the user; answering from this tool would be a misleadingly empty result.
 
-    **Free tier — no license required.** Returns raw DART filings exactly
-    as the regulator surfaces them (filer name in Korean, filing type code,
-    receipt number, optional EN translation of the title).
+Batch scan: `company_corp_codes` (up to 10) plus `since` (and optionally `material_only`) checks a whole watchlist in one call (one cached DART call per company). `limit` then applies PER COMPANY.
 
-    **Important for LLM clients — read this before retrying after a paid-
-    tool license error.** This tool returns *raw* filings only. It does NOT
-    classify the filer. If the user asked about Korean activist filers
-    (KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform /
-    ValueAct / Elliott) or about the global foreign-holder allowlist
-    (BlackRock / Vanguard / Norges / GIC / Temasek / State Street /
-    Fidelity / Capital Group / T. Rowe Price / Wellington / Goldman /
-    JPMorgan / Morgan Stanley / Citadel / Millennium / Bridgewater +
-    others), the matching work happens in `monitor_activist_investors`
-    and `monitor_foreign_holders` — both require a license_key argument.
-    A response from this free tool to a "are activists filing on X?" or
-    "is BlackRock holding X?" question is *raw filing data*, not a
-    classification answer — say so to the user and surface the paid tool's
-    license-required notice instead of pretending you've answered.
+Examples — "Samsung this week" -> `lookup_corp_code("삼성전자")` then `track_korean_filings(company_corp_code="00126380", days=7)`. "Distress signals on my list since Monday" -> `track_korean_filings(company_corp_codes=[...], since="2026-10-19", material_only=True)`.
 
-    **Batch scan for agents (experimental).** To check MULTIPLE companies for
-    material disclosures since your last checkpoint in ONE call — instead of N
-    separate calls — pass `company_corp_codes` (a list, ≤10) plus a `since`
-    timestamp. This is the portfolio-monitoring / scan-since-checkpoint
-    workflow: give it your watchlist's corp codes and the ISO timestamp of
-    your previous check, optionally with `material_only=True`, and it returns
-    every filing across those companies newer than that timestamp, merged and
-    sorted newest-first. DART has no batch endpoint, so this fans out one
-    cache-backed call per corp code — the ≤10 cap keeps a single call from
-    blowing past DART's daily quota.
+Errors — a corp code that is not exactly 8 digits (a 6-digit ticker, a name) is rejected with the tool that converts it. DART publishes on Korean business days only.
 
-    Args:
-        company_corp_code: 8-digit DART corp code (single company). Use
-            `lookup_corp_code` first to resolve a company name. Omit to query
-            all companies. Ignored when `company_corp_codes` (plural) is
-            provided non-empty — the plural list takes precedence.
-        company_corp_codes: OPTIONAL list of up to 10 corp codes for batch
-            mode. When provided non-empty, the tool queries each corp code
-            concurrently (one cache-backed DART call each), merges the
-            results, and sorts newest-first — use this to scan a whole
-            watchlist in one call. More than 10 codes raises a validation
-            error (DART has no batch endpoint; this is N calls, so the cap
-            protects the daily quota). Takes precedence over
-            `company_corp_code` (singular) when both are given.
-        since: OPTIONAL ISO-8601 date or datetime (e.g. '2026-05-01' or
-            '2026-05-01T09:00:00'). When provided it is the cutoff instead of
-            `days` — only filings with `filed_at >= since` are returned. Use
-            it to fetch only what is new since your last checkpoint.
-            `filed_at` is date-granular (KST), so the comparison is by calendar
-            day: every filing on or after the `since` date is returned, even
-            when `since` carries a time of day. A malformed value raises a
-            validation error.
-            When omitted, the `days` window is used exactly as before.
-        material_only: OPTIONAL. When True, return only filings whose
-            `red_flags` list is non-empty (governance/distress-tagged — see
-            the red_flags catalog below). Applies to both single and batch
-            queries. Reuses the existing red-flag tagging; adds no new
-            classification.
-        days: how many days back from today (KST), 1-30; the window is
-            [today - days, today]. Ignored when `since` is provided.
-        filing_type: optional one-letter code:
-            A=periodic, B=major event, C=issuance, D=shareholding,
-            E=other, F=audit, G=fund, H=ABS, I=exchange, J=FTC.
-        limit: max filings per page (1-100, default 30). DART returns
-            most-recent first; use `page` to reach older items.
-            In batch mode (`company_corp_codes`) `limit` applies PER COMPANY,
-            not to the merged set, so a heavy filer can never crowd a quieter
-            company out of the results: an empty result for a company means
-            that company genuinely filed nothing in the window. A batch call
-            can therefore return up to `limit × len(company_corp_codes)` rows.
-        translate: True to fill `title_en` via server-side LLM (cached).
-        summarize: True to fill `summary_en` (≤200 words). Costs more — use
-            sparingly. Long-form analysis should be done by the client LLM.
-        license_key: subscription key. Required when KOREANPULSE_REQUIRE_LICENSE=1.
-        page: 1-based page of `limit` results (default 1). When `next_page` is
-            returned, call again with that value for older filings.
+Returns — a plain list when complete. When there is something to tell you (nothing found, more pages, a failed company, translation unavailable) a dict `{"filings": [...], "notes": [...], "window_kst": {"from","to"}, "next_page"?, "total_matches"?, "errors"?}`. Read `notes`: empty `filings` without `errors` means DART returned nothing for the window; `errors` lists companies that are MISSING, not quiet.
 
-    Examples:
-        - "What did Samsung Electronics file this week?" -> `lookup_corp_code("삼성전자")`,
-          then `track_korean_filings(company_corp_code="00126380", days=7)`.
-        - "Any distress signals across my watchlist since Monday?" ->
-          `track_korean_filings(company_corp_codes=[...], since="2026-10-19", material_only=True)`.
+Each filing has: `market` (KOSPI/KOSDAQ/KONEX/OTHER); `red_flags` from the title: cb_issuance, controlling_shareholder_change, rehabilitation, audit_opinion (distress opinions only), disclosure_violation, rights_issue, capital_reduction, management_designation, delisting_risk, trading_halt, reverse_split, short_term_borrowing, going_concern; `is_correction` and `previous_receipt_no` (the amended original, only if in the same fetched window); `query_total_count` (DART match count before paging) and `data_fetched_at` (UTC; absent for cached rows). Absent keys mean null.
 
-    Errors: a `company_corp_code` that is not exactly 8 digits (a 6-digit KRX
-    ticker, a company name) is rejected with a message naming the tool that
-    converts it. Dates are KST; DART publishes on Korean business days only.
-
-    Returns:
-        A plain list of filings when the result is complete. Whenever there is
-        something to tell you — nothing found, more pages exist, a company
-        failed, translation unavailable — a dict instead:
-        `{"filings": [...], "notes": ["..."], "window_kst": {"from", "to"},
-        "next_page"?, "total_matches"?, "errors"?}`. Read `notes`: an empty
-        `filings` with no `errors` means DART returned nothing for that
-        window; `errors` means those companies are MISSING, not quiet.
-
-        Filings are ordered by most recent first. Each filing carries:
-        - `market`: listing venue from DART corp_cls — "KOSPI", "KOSDAQ",
-          "KONEX", or "OTHER" (None when DART omits it). Use this instead of
-          guessing KOSPI vs KOSDAQ from the company name.
-        - `red_flags`: governance/distress tags inferred from the title:
-          - cb_issuance — convertible bond issuance (전환사채권발행)
-          - controlling_shareholder_change — largest-shareholder change (최대주주변경)
-          - rehabilitation — court receivership / rehabilitation (회생절차)
-          - audit_opinion — distress-only audit opinion (의견거절/한정/부적정);
-            a clean ('적정') opinion is not tagged
-          - disclosure_violation — unfaithful-disclosure designation (불성실공시)
-          - rights_issue — paid-in capital increase (유상증자)
-          - capital_reduction — capital reduction (감자)
-          - management_designation — administrative-issue designation (관리종목)
-          - delisting_risk — delisting event/risk (상장폐지)
-          - trading_halt — trading suspension (거래정지)
-          - reverse_split — share consolidation (주식병합)
-          - short_term_borrowing — short-term borrowing disclosure (단기차입금)
-          - going_concern — going-concern doubt (계속기업/존속능력)
-        - `is_correction` / `previous_receipt_no`: whether this is a DART correction re-filing ([기재정정]/[첨부정정]), and the receipt_no of the original it amends when that original is in the same fetched window (None otherwise).
-        - `query_total_count` / `data_fetched_at`: DART's full match count before this response's `limit` truncation, and the UTC as-of timestamp of the live fetch (None on rows served from cache).
-    """
+Args:
+    company_corp_code: 8-digit DART corp code (get it from `lookup_corp_code` / `resolve_stock_code`). Omit for all companies. Ignored if `company_corp_codes` is given.
+    company_corp_codes: up to 10 corp codes (batch mode).
+    since: ISO date/datetime cutoff replacing `days`. Compared by calendar day (KST): every filing on or after that date is returned, even if `since` has a time.
+    material_only: only filings with non-empty `red_flags`.
+    days: window [today - days, today] in KST, 1-30. Ignored with `since`.
+    filing_type: one letter: A=periodic, B=major event, C=issuance, D=shareholding, E=other, F=audit, G=fund, H=ABS, I=exchange, J=FTC.
+    limit: rows per page, 1-100 (default 30), newest first.
+    page: 1-based page; use the returned `next_page` for older filings.
+    translate: fill `title_en` / `corp_name_en` (cached).
+    summarize: also fill `summary_en` (costlier; use sparingly).
+    license_key: only when KOREANPULSE_REQUIRE_LICENSE=1.
+"""
     logger.info("tool_call: track_korean_filings days=%d limit=%d translate=%s summarize=%s", days, limit, translate, summarize)
     await _gate(license_key, units=1 + (1 if summarize else 0))
 
@@ -834,14 +740,14 @@ async def lookup_corp_code(
 
     The DART index is Korean-only. Search with the Korean name ("삼성전자", "현대차" will not match — use the registered name "현대자동차"). About 35 very well-known companies also resolve from their English name ("Samsung Electronics", "SK hynix", "Kakao", "Celltrion"); for any other English name, translate or look up the Korean registered name first. Matching ignores case, spaces, punctuation and "(주)".
 
+    Returns — A list of CorpEntry (`corp_code` is the 8-digit input for other tools; `stock_code` is None for unlisted companies). When nothing matches, a dict `{"matches": [], "notes": [...]}` explains why and what to try next.
+    
+
     Args:
         query: Korean company name or a substring of it, e.g. "삼성전자", "셀트리온", "SK하이닉스".
         listed_only: if True, only return companies with a KRX stock code.
         limit: max matches to return (1-50, default 10). Exact name first, then prefix, then listed, then shorter name.
         license_key: subscription key. Required when license gate is enabled.
-
-    Returns:
-        A list of CorpEntry (`corp_code` is the 8-digit input for other tools; `stock_code` is None for unlisted companies). When nothing matches, a dict `{"matches": [], "notes": [...]}` explains why and what to try next.
     """
     logger.info("tool_call: lookup_corp_code query=%s listed_only=%s limit=%d", str(query)[:30], listed_only, limit)
     await _gate(license_key, units=1)
@@ -887,6 +793,10 @@ async def resolve_stock_code(
     Returns the entry (`corp_code`, `corp_name`, `stock_code`), or `null` when the code is not a listed KRX common-stock ticker in DART's index (check for typos; delisted tickers and ETFs are not in it). Accepts "5930", "005930" and "005930.KS".
 
     When the code is unresolved but looks like a Korean preferred-stock ticker (6 digits, non-zero last digit, e.g. 005935 for 삼성전자우), the response carries an additive `related_common_stock` hint pointing at the common-stock entry — the corp registry only maps common stock, so no preferred-stock corp_code is fabricated.
+    
+    Args:
+        stock_code: KRX ticker, e.g. "005930", "5930" or "005930.KS".
+        license_key: only when the license gate is enabled.
     """
     logger.info("tool_call: resolve_stock_code stock_code=%s", str(stock_code)[:10])
     await _gate(license_key, units=1)
@@ -940,36 +850,21 @@ async def search_korean_industry_news(
     translate: bool = True,
     license_key: Optional[str] = None,
 ) -> list[Article] | dict:
-    """Korean industry news search across 16 sectors with on-demand English translation. Sources: 전자신문 (etnews) + 한국경제 (hankyung) + The Korea Herald (English-native) + 지디넷코리아 (zdnet). Free tier.
+    """Search recent Korean industry news (RSS: 전자신문 etnews, 한국경제 hankyung, The Korea Herald [English-native], 지디넷코리아 zdnet) tagged into 16 sectors, with English titles. Free tier.
 
-    Use this tool when the user asks about: Korean industry trends, sector-specific news on Korean equities (Korean semiconductors / K-battery / K-shipbuilding / K-biotech / K-defense / Korean auto / EV charging / Korean AI / steel / petrochem / construction / fintech / gaming / e-commerce / telco / energy), recent corporate developments not yet captured in DART filings, English summaries of Korean industry coverage. Industry tags listed below — pass them in `industries` to filter.
+Feeds carry only the latest items (about a day or two): use this for "what is happening now" in a sector, and `track_korean_filings` for company disclosures.
 
-    Args:
-        industries: filter to one or more industry tags. Available:
-            semiconductor, shipbuilding, battery, biotech, defense, auto,
-            ev_charging, ai, steel, petrochem, construction, fintech, gaming,
-            ecommerce, telco, energy. An unrecognized tag is never silently
-            dropped or errored — see Returns below.
-        sources: filter to source keys (etnews, hankyung, koreaherald, zdnet).
-            None = all. koreaherald is English-native — its titles are
-            returned as-is (no ko->en translation round-trip needed).
-        limit: max articles (≤50).
-        translate: server-side translates `title_en` for Korean-language
-            sources. Cached aggressively. No-op for koreaherald (already
-            English).
-        license_key: required when license gate is enabled.
+Industry tags: semiconductor, shipbuilding, battery, biotech, defense, auto, ev_charging, ai, steel, petrochem, construction, fintech, gaming, ecommerce, telco, energy. Matching is case-insensitive.
 
-    Returns:
-        A bare list of Articles sorted by published_at desc — same shape
-        as before — when every requested `industries` tag is recognized
-        (or `industries` is omitted). If one or more requested tags is NOT
-        a supported industry, the return value is instead a dict:
-        `{"articles": [...], "unsupported_industries": [...], "supported_industries": [...]}`
-        — articles for the recognized tags still come back (an
-        unsupported tag is dropped from the filter, not treated as an
-        error), and the extra fields tell the caller which of their tags
-        didn't match so they can retry with a supported one.
-    """
+Result shape — a plain list of Articles (newest first) when complete; otherwise `{"articles": [...], "notes": [...], "unsupported_industries"?, "supported_industries"?}`: an unsupported tag is dropped from the filter (not an error) and listed; a failed source is reported as INCOMPLETE; an empty result and unavailable translation are explained in `notes`.
+
+Args:
+    industries: one or more industry tags (list above); omit for all.
+    sources: source keys etnews, hankyung, koreaherald, zdnet; omit for all. koreaherald titles are already English.
+    limit: max articles, 1-50.
+    translate: fill `title_en` for Korean-language sources (cached).
+    license_key: only when the license gate is enabled.
+"""
     logger.info("tool_call: search_korean_industry_news industries=%s sources=%s limit=%d translate=%s", industries, sources, limit, translate)
     await _gate(license_key, units=1)
 
@@ -1038,66 +933,28 @@ async def monitor_activist_investors(
     license_key: Optional[str] = None,
     page: int = 1,
 ) -> list[ActivistFiling] | dict | str:
-    """Korean activist investor tracking — activist filer classification on DART 5%-rule (주식등의대량보유상황보고서) shareholding disclosures. Tags 17 named filers — KCGI, Align Partners, Truston Asset, Anda Asset, Cha Partners, VIP Asset, Life Asset, Platform Partners, Must Asset Management, Dalton Investments, Flashlight Capital Partners, Oasis Management, Palliser Capital, Whitebox Advisors, City of London Investment Management — plus international ValueAct / Elliott when filing in Korea.
+    """Classify DART 5%-rule shareholding disclosures (주식등의대량보유상황보고서) by known Korean and international ACTIVIST filers. Allowlist (17): KCGI, Align Partners, Anda Asset, Cha Partners, Truston Asset, Life Asset, Platform Partners, VIP Asset Management, Must Asset Management, Dalton Investments, Flashlight Capital Partners, Oasis Management, Palliser Capital, Whitebox Advisors, City of London Investment Management, ValueAct Capital, Elliott Management.
 
-    Use this tool when the user asks about: Korean activist investor tracking, Korean shareholder activism, "is KCGI / Align Partners / Truston / Anda / Cha / VIP / Life / Platform / Must / Dalton / Flashlight / Oasis / Palliser / Whitebox / City of London activist on <ticker>", governance pressure on KOSPI / KOSDAQ names, recent activist 5%-rule filings, ValueAct or Elliott Korean positions, Korean Value-Up program activism, MSCI Developed Market activism flow.
+Use for: "is KCGI / Align / Truston ... an activist on <ticker>", recent activist 5%-rule filings, governance pressure on KOSPI / KOSDAQ names, Value-Up activism.
 
-    **Requires a license key.** Pass it via the `license_key` argument.
-    Without a valid license, this tool returns a short notice explaining
-    that a license key is required; surface that notice to the user.
+Requires `license_key`. Without a valid one the tool returns a short license-required notice: relay it to the user verbatim. Do NOT fall back to `track_korean_filings`; filer classification cannot be derived from the raw feed and the fallback would look like "no activists".
 
-    **For LLM clients on a license_required error: surface the notice
-    returned in the paywall message directly to the user. Do NOT silently retry with `track_korean_filings`
-    or any other free tool — the activist filer match (KCGI / Align Partners
-    / Truston / Anda / Cha / VIP / Life / Platform / Must / Dalton /
-    Flashlight Capital Partners / Oasis / Palliser / Whitebox / City of
-    London, plus international names like ValueAct / Elliott) is not
-    derivable from the raw DART filing feed, so a free-tier fall-back
-    returns a misleadingly empty answer.** When a
-    user asks "are activists filing on X?" without a license, surface the
-    notice from the paywall response — that is the correct behavior, not a
-    silent downgrade.
+Scan — the allowlist is matched against the whole window, newest DART shareholding filings first, up to KOREANPULSE_MAX_SCAN_PAGES pages of 100 (default 10). If the cap is reached, `notes` says `INCOMPLETE SCAN` and an empty answer is NOT proof of absence; narrow `days` or pass `company_corp_code`.
 
-    Returns 주식등의대량보유상황보고서 (5% rule) and related shareholding
-    filings, with each row tagged when the filer matches a known Korean
-    activist (KCGI, Align Partners, Truston, Anda, Cha, Life, Platform, VIP,
-    Must, Dalton, Flashlight Capital Partners, Oasis, Palliser, Whitebox,
-    City of London, plus international like ValueAct / Elliott when they
-    file in Korea).
+Returns — a plain list when complete, else `{"filings": [...], "notes": [...], "window_kst": {...}, "next_page"?}` (empty result, more pages, incomplete scan, translation unavailable). Rows carry `query_total_count` / `data_fetched_at` as in `track_korean_filings`; absent keys mean null.
 
-    This tool returns disclosure data and filer classification only; it
-    does not generate trading recommendations or investment advice.
+Data and classification only; not investment advice.
 
-    Args:
-        days: how many days back from today (1–60).
-        company_corp_code: optional DART corp_code to focus on one target.
-        activist_only: if True, drop rows that didn't match a known activist.
-        translate: server-side EN translation of titles (cached).
-        limit: max rows per page (1-100).
-        page: 1-based page of results; use the returned `next_page`.
-        enrich_holdings: if True (default), rows matched to a known activist
-            get their `holding_pct` / `holding_pct_change` / `holder_reporter_ko`
-            filled from DART's majorstock.json (best-effort — a lookup
-            failure leaves those fields None rather than failing the call).
-            Capped at 8 distinct corp_codes per call.
-        license_key: required when license gate is enabled.
-
-    Scan behaviour: the allowlist is matched against the whole window, newest
-    DART shareholding filings first, reading up to KOREANPULSE_MAX_SCAN_PAGES
-    pages of 100 (default 10). If that cap is reached before the window is
-    exhausted, the result says `INCOMPLETE SCAN` in `notes` — an empty answer
-    is then NOT proof that no activist filed; narrow `days` or pass
-    `company_corp_code`.
-
-    Returns:
-        ActivistFiling rows ordered by filing date desc — a plain list when
-        complete, or `{"filings": [...], "notes": [...], "window_kst": {...},
-        "next_page"?}` when there is something to report (empty result,
-        another page, incomplete scan, translation unavailable). `query_total_count`
-        / `data_fetched_at` carry DART's full match count before this
-        response's `limit` truncation and the UTC as-of timestamp of the
-        live fetch (None on rows served from cache).
-    """
+Args:
+    days: window back from today (KST), 1-60.
+    company_corp_code: optional 8-digit DART corp code to focus on one target.
+    activist_only: drop rows that matched no allowlisted activist (otherwise every shareholding filing is returned with `is_likely_activist` set).
+    limit: rows per page, 1-100.
+    page: 1-based page; use the returned `next_page`.
+    translate: fill `title_en` / `corp_name_en`.
+    enrich_holdings: fill `holding_pct`, `holding_pct_change`, `holder_reporter_ko` for matched rows from DART majorstock.json (best effort; at most 8 distinct companies per call).
+    license_key: required.
+"""
     logger.info("tool_call: monitor_activist_investors days=%d activist_only=%s limit=%d corp_code=%s license_key_set=%s", days, activist_only, limit, company_corp_code, license_key is not None)
     paywall = await _paid_gate(
         license_key,
@@ -1183,69 +1040,28 @@ async def monitor_foreign_holders(
     license_key: Optional[str] = None,
     page: int = 1,
 ) -> list[ForeignHolderFiling] | dict | str:
-    """Monitor foreign investor activity in Korean stocks — foreign-holder classification on DART 5%-rule disclosures by global asset managers and sovereign wealth funds. Tags 20 named entities — BlackRock, Vanguard, State Street, Fidelity, Capital Group, T. Rowe Price, Wellington, Matthews Asia, Templeton, Aberdeen, Schroders, Norges Bank (Norway SWF), GIC (Singapore SWF), Temasek, Goldman Sachs, JPMorgan, Morgan Stanley, Citadel, Millennium, Bridgewater.
+    """Classify DART 5%-rule shareholding disclosures by global asset managers and sovereign funds (foreign capital flow, not activism). Allowlist (20): BlackRock, Vanguard, State Street, Fidelity, Capital Group, T. Rowe Price, Wellington Management, Matthews Asia, Templeton, Aberdeen, Schroders, Norges Bank (Norway SWF), GIC (Singapore SWF), Temasek, Goldman Sachs, JPMorgan, Morgan Stanley, Citadel, Millennium, Bridgewater (`koreanpulse.activists.FOREIGN_HOLDERS`).
 
-    Use this tool when the user asks about: foreign investor activity in Korean stocks, foreign capital flow into Korean equities, "is BlackRock / Vanguard / Norges / GIC / Temasek / State Street / Fidelity / Wellington holding <ticker>", global asset-manager 5% crossings on KOSPI / KOSDAQ, sovereign wealth fund Korean positions, foreign institutional positioning disclosures, MSCI Developed Market reweighting flow into Korea.
+Use for: "is BlackRock / Vanguard / Norges / GIC holding <ticker>", foreign institutional 5% crossings on KOSPI / KOSDAQ, sovereign-fund positions, foreign flow into a name. For governance pressure use `monitor_activist_investors`.
 
-    **Requires a license key.** Pass it via the `license_key` argument.
-    Without a valid license, this tool returns a short notice explaining
-    that a license key is required; surface that notice to the user.
+Requires `license_key`. Without a valid one the tool returns a short license-required notice: relay it to the user verbatim. Do NOT fall back to `track_korean_filings`; the allowlist match cannot be derived from raw filings and the fallback would look like "no foreign holders".
 
-    **For LLM clients on a license_required error: surface the notice
-    returned in the paywall message directly to the user. Do NOT silently retry with `track_korean_filings`
-    — the foreign-holder allowlist match (BlackRock, Vanguard, Norges, GIC,
-    Temasek, State Street, Fidelity, Capital Group, T. Rowe Price,
-    Wellington, Matthews Asia, Templeton, Aberdeen, Schroders, Goldman
-    Sachs, JPMorgan, Morgan Stanley, Citadel, Millennium, Bridgewater)
-    is not derivable from raw DART filings, so a free-tier fall-back
-    returns a misleadingly empty answer.** When a user asks "is BlackRock
-    or Norges holding X?" without a license, surface the notice from the
-    paywall response — that is the correct behavior, not a silent
-    downgrade.
+Scan — the allowlist is matched against the whole window, newest DART shareholding filings first, up to KOREANPULSE_MAX_SCAN_PAGES pages of 100 (default 10). If the cap is reached, `notes` says `INCOMPLETE SCAN` and an empty answer is NOT proof of absence; narrow `days` or pass `company_corp_code`.
 
-    Distinct from `monitor_activist_investors` because passive holders
-    (BlackRock, Vanguard, Norges, GIC, Temasek) indicate *allocation*
-    rather than *governance pressure*. Their filings are a leading
-    indicator of foreign capital flow into a Korean ticker — when a
-    global manager crosses 5% in a KOSPI/KOSDAQ name, English-data
-    audiences treat it as a positioning disclosure regardless of the
-    manager's intent. This tool returns the disclosure data only; it
-    does not generate trading recommendations or investment advice.
+Returns — a plain list when complete, else `{"filings": [...], "notes": [...], "window_kst": {...}, "next_page"?}` (empty result, more pages, incomplete scan, translation unavailable). Rows carry `query_total_count` / `data_fetched_at` as in `track_korean_filings`; absent keys mean null.
 
-    Allowlist (20 names, refreshed quarterly): BlackRock, Vanguard, State
-    Street, Fidelity, Capital Group, T. Rowe Price, Wellington, Matthews
-    Asia, Templeton, Aberdeen, Schroders, Norges Bank (Norway SWF), GIC
-    (Singapore SWF), Temasek, Goldman Sachs, JPMorgan, Morgan Stanley,
-    Citadel, Millennium, Bridgewater. See `koreanpulse.activists.FOREIGN_HOLDERS`.
+Data and classification only; not investment advice.
 
-    Args:
-        days: how many days back from today (1–60).
-        company_corp_code: optional DART corp_code to focus on one target.
-        origin: optional filter — one of 'us', 'uk', 'eu', 'other' (anything else is rejected).
-        translate: server-side EN translation of titles (cached).
-        limit: max rows per page (1-100).
-        page: 1-based page of results; use the returned `next_page`.
-        enrich_holdings: if True (default), rows get their `holding_pct` /
-            `holding_pct_change` / `holder_reporter_ko` filled from DART's
-            majorstock.json (best-effort — a lookup failure leaves those
-            fields None rather than failing the call). Capped at 8 distinct
-            corp_codes per call.
-        license_key: required when license gate is enabled.
-
-    Scan behaviour: the allowlist is matched against the whole window, newest
-    DART shareholding filings first, reading up to KOREANPULSE_MAX_SCAN_PAGES
-    pages of 100 (default 10). If the cap is reached first, `notes` says
-    `INCOMPLETE SCAN` and an empty answer is not proof of absence.
-
-    Returns:
-        ForeignHolderFiling rows ordered by filing date desc — a plain list
-        when complete, or `{"filings": [...], "notes": [...], "window_kst":
-        {...}, "next_page"?}` when there is something to report. Each row
-        carries `holder_label` (canonical English) and `holder_origin`.
-        `query_total_count` / `data_fetched_at` carry DART's full match
-        count before this response's `limit` truncation and the UTC as-of
-        timestamp of the live fetch (None on rows served from cache).
-    """
+Args:
+    days: window back from today (KST), 1-60.
+    company_corp_code: optional 8-digit DART corp code.
+    origin: optional filter, one of 'us', 'uk', 'eu', 'other' (anything else is rejected). Rows carry `holder_label` and `holder_origin`.
+    limit: rows per page, 1-100.
+    page: 1-based page; use the returned `next_page`.
+    translate: fill `title_en` / `corp_name_en`.
+    enrich_holdings: fill `holding_pct`, `holding_pct_change`, `holder_reporter_ko` (best effort; at most 8 distinct companies per call).
+    license_key: required.
+"""
     logger.info("tool_call: monitor_foreign_holders days=%d limit=%d corp_code=%s license_key_set=%s", days, limit, company_corp_code, license_key is not None)
     paywall = await _paid_gate(
         license_key,

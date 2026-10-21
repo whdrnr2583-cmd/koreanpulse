@@ -45,7 +45,7 @@ Hits real DART. First run downloads the corp-code index (~5 MB, cached 7d).
 
 ## Tests
 
-- `pytest -q` runs the full suite (533 tests)
+- `pytest -q` runs the full suite (549 tests)
 - New code should ship with tests in `tests/` matching the existing style:
   one file per module, classes for grouping, `@pytest.mark.asyncio` for
   coroutines.

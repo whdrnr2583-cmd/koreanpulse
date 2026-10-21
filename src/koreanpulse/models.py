@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_serializer
 
 
 class Article(BaseModel):
@@ -148,6 +148,19 @@ class Filing(BaseModel):
             "match was found — a wrong link is worse than no link."
         ),
     )
+
+
+    @model_serializer(mode="wrap")
+    def _omit_none(self, handler):  # type: ignore[no-untyped-def]
+        """Serialize without keys whose value is None.
+
+        Most optional fields (summary, holding %, correction link, fetch
+        time, raw url ...) are None on most rows; sending `"x": null` for each
+        costs LLM tokens on every filing (about a third of a typical row).
+        Absent key == None for every consumer: all of them are optional with
+        a None default, so `model_validate` round-trips (cache) unchanged.
+        """
+        return {k: v for k, v in handler(self).items() if v is not None}
 
 
 class ActivistFiling(Filing):

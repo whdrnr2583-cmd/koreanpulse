@@ -23,7 +23,7 @@ Korean stock disclosures, activist filings & foreign-holder flows in English —
 
 ## Status
 
-**Pre-alpha (v0.1.13).** 7 MCP tools shipped — 5 free + 2 license-gated (activist + foreign-holder allowlist tagging, Solo $29/mo+; these two run only on the hosted service, which is paused since 2026-09-21). 533 tests pass. Beta — watchlist polling + alert dispatch are planned and not yet available. Beta acquisition plan in `docs/BETA.md`.
+**Pre-alpha (v0.1.13).** 7 MCP tools shipped — 5 free + 2 license-gated (activist + foreign-holder allowlist tagging, Solo $29/mo+; these two run only on the hosted service, which is paused since 2026-09-21). 549 tests pass. Beta — watchlist polling + alert dispatch are planned and not yet available. Beta acquisition plan in `docs/BETA.md`.
 
 ---
 
@@ -126,7 +126,7 @@ OSS self-host is **not** in the pricing table above — it's a separate lane. Se
 
 When a paid tool is called without a license, the server returns a short notice explaining that a license key is required. No checkout link is included in the tool response.
 
-**Result shape.** A complete result is a plain list. When there is something an agent should know — nothing found in the window, another page (`next_page`), a company or news source that failed, translation unavailable, or an allowlist scan that hit its page cap — the tool returns `{"filings": [...], "notes": [...], "window_kst": {...}}` instead (`"articles"` for news, `"matches"` for company lookup). Read `notes` before concluding "no activity". Inputs are validated up front: a ticker or company name passed where an 8-digit `corp_code` belongs is rejected with the name of the tool that converts it.
+**Result shape.** A complete result is a plain list. When there is something an agent should know — nothing found in the window, another page (`next_page`), a company or news source that failed, translation unavailable, or an allowlist scan that hit its page cap — the tool returns `{"filings": [...], "notes": [...], "window_kst": {...}}` instead (`"articles"` for news, `"matches"` for company lookup). Read `notes` before concluding "no activity". Keys whose value is null are omitted from filings (absent means null), and the tool descriptions an agent sees carry the full result shape. Inputs are validated up front: a ticker or company name passed where an 8-digit `corp_code` belongs is rejected with the name of the tool that converts it.
 
 4 more planned (`docs/SPEC.md`): `digest_analyst_reports`, `get_ma_pipeline`, `track_government_policy`, `summarize_korean_earnings_call`.
 

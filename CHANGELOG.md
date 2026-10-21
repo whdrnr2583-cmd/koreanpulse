@@ -2,6 +2,43 @@
 
 ## [Unreleased]
 
+### Changed (performance and output size, 2026-10-21)
+
+Measured with a fake DART (httpx MockTransport, 0.3 s latency per request,
+1000 shareholding rows, allowlisted filer at row 950) and a synthetic
+117,000-entry corp index; before = commit dfa9ef1.
+
+| | before | after |
+|---|---|---|
+| `monitor_foreign_holders` cold scan, 10 DART calls | 3.23 s (sequential) | 2.04 s (`KOREANPULSE_SCAN_CONCURRENCY=2`, new default); 1.51 s at 3 |
+| same request repeated within the cache TTL | 0 DART calls | 0 DART calls (page cache, 60 s for windows ending today) |
+| allowlist match, per distinct filer name | 165 us | 23 us (aliases pre-normalized; results memoized) |
+| corp_code XML parse (24 MB, 117k entries) | 0.88 s, 42.5 MB peak | 0.51 s, 34.9 MB peak (streaming `iterparse`) |
+| 20 distinct company names to English | 1.01 s | 0.15 s (concurrent, deduped by name) |
+| 79 MB `dart_list.jsonl` | loaded as is | compacted to 0.13 MB on load; hot keys compact every ~500 writes at runtime |
+| tool descriptions + parameter schemas | 18,467 chars | 14,428 chars, and the result shape / red-flag catalog are now visible to the model |
+| one Filing row as JSON | 750 chars | 491 chars (null fields omitted; 30 rows 22.5k -> 14.7k) |
+
+- **Scan concurrency** (`KOREANPULSE_SCAN_CONCURRENCY`, default 2, max 5, 1 =
+  sequential): page 1 runs alone (its `total_count` bounds the page count),
+  later pages in waves. Each request still passes the 5 req/s throttle and
+  the daily quota counter; a wave may fetch at most `concurrency - 1` pages
+  more than strictly needed. Quota cost is unchanged for a full scan.
+- **Cached repeats carry staleness:** a window ending today is cached for
+  60 s, 1-6 days old for 1 h, older for 24 h (unchanged), so a repeated
+  query inside that TTL will not see a filing published meanwhile.
+- **Output:** `Filing` rows omit null-valued keys (absent == null; the cache
+  round-trips unchanged). Empty `[]` vs dict behaviour is as described below.
+- **FastMCP cuts a tool description at the first `Args:`/`Returns:`/
+  `Examples:` header**, so the result-shape, scan-cap and red-flag text that
+  lived after those headers was never shown to the model. It now sits in the
+  description prose; `Args` stay as parameter descriptions (every parameter
+  now has one; `resolve_stock_code` had none).
+- Measured and left alone: cold import is about 0.8 s, of which this
+  package is under 0.1 s (fastmcp/mcp/pydantic dominate); the 5 req/s DART
+  throttle already bounds the concurrency gain.
+- Tests: 533 -> 549.
+
 ### Fixed (data correctness, reliability and usability pass, 2026-10-21)
 
 Found by reading the code against real DART behaviour and running the
@@ -90,7 +127,7 @@ service stays paused and the two license-gated tools stay hosted-only.
   feed list and module notes updated; CONTRIBUTING dev setup matches
   `pip install -e '.[dev]'`; README `agentprod` link points at PyPI.
 
-**Tests:** 418 passed became 533 passed (+115): matcher boundaries/variants,
+**Tests:** 418 passed became 533 passed (+115) in the first pass, 549 after the performance pass: matcher boundaries/variants,
 DART retry/status/filed_at/classifier, corp-code refresh/lookup/data-dir,
 cache compaction, page-aware tool tests (the monitor tools had none),
 holding-match precision, translation robustness, key hygiene.

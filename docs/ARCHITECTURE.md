@@ -373,7 +373,7 @@ For the 12-month customer-mix forecast (~756 MAU mostly free + ~86 paying):
 
 ## Test surface
 
-- 533 tests passing
+- 549 tests passing
 - Unit tests cover every module
 - DART tests use `httpx.MockTransport` — no live API required for CI
 - Live verification path: `python examples/quickstart.py` (see RUN_LIVE.md)
