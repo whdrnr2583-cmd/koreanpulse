@@ -11,6 +11,7 @@ from koreanpulse.dart import (
     DART_HARD_DAILY_LIMIT,
     DartDailyQuotaExceeded,
     DartError,
+    DartRateLimited,
     MajorHolding,
     _classify_filing_type,
     _is_correction_title,
@@ -19,6 +20,7 @@ from koreanpulse.dart import (
     daily_usage_snapshot,
     list_filings,
     list_major_holdings,
+    tag_red_flags,
 )
 
 
@@ -112,11 +114,15 @@ class TestClassifyFilingType:
             _classify_filing_type("[기재정정]주요사항보고서(자기주식취득결정)")
             == "B"
         )
+        # 공정공시 (fair disclosure) is DART exchange-disclosure type I even
+        # when the report name contains a periodic-looking phrase; filtering
+        # list.json by pblntf_ty=A would not return it, so labelling it A made
+        # the row disagree with DART's own taxonomy.
         assert (
             _classify_filing_type(
                 "[기재정정]연결재무제표기준영업(잠정)실적(공정공시)"
             )
-            == "A"
+            == "I"
         )
 
     def test_unknown_falls_back_to_E(self):
@@ -949,3 +955,199 @@ class TestListMajorHoldings:
         assert call_count["n"] == 1  # second call served from cache
         assert r1 == r2
         assert daily_usage_snapshot()["calls"] == 1
+
+
+class TestClassifierVariants:
+    """Interpunct / whitespace variants and common exchange-disclosure titles."""
+
+    @pytest.mark.parametrize(
+        "title",
+        [
+            "임원ㆍ주요주주특정증권등소유상황보고서",   # U+318D
+            "임원·주요주주특정증권등소유상황보고서",    # U+00B7
+            "임원‧주요주주특정증권등소유상황보고서",    # U+2027
+            "임원 ㆍ 주요주주 특정증권등 소유상황보고서",
+        ],
+    )
+    def test_interpunct_and_spacing_variants_are_shareholding(self, title):
+        assert _classify_filing_type(title) == "D"
+
+    @pytest.mark.parametrize(
+        "title,code",
+        [
+            ("단일판매ㆍ공급계약체결", "I"),
+            ("투자판단관련주요경영사항", "I"),
+            ("조회공시요구(풍문또는보도)", "I"),
+            ("최대주주등소유주식변동신고서", "D"),
+            ("공개매수신고서", "D"),
+            ("영업(잠정)실적(공정공시)", "I"),
+        ],
+    )
+    def test_common_titles(self, title, code):
+        assert _classify_filing_type(title) == code
+
+    def test_red_flag_survives_internal_spacing(self):
+        assert tag_red_flags("감사보고서(감사의견한정)") == ["audit_opinion"]
+        assert tag_red_flags("감사보고서(감사의견 한정)") == ["audit_opinion"]
+        assert tag_red_flags("감사보고서(감사의견 적정)") == []
+
+
+def _ok_payload():
+    return {
+        "status": "000",
+        "total_count": 1,
+        "list": [
+            {
+                "corp_code": "00126380",
+                "corp_name": "삼성전자",
+                "report_nm": "사업보고서",
+                "rcept_no": "20260502000123",
+                "rcept_dt": "20260502",
+                "flr_nm": "삼성전자",
+            }
+        ],
+    }
+
+
+class TestTransientRetry:
+    """5xx / 429 / timeouts are retried (and each attempt is counted);
+    4xx and DART-level errors are not."""
+
+    @pytest.mark.asyncio
+    async def test_503_then_success_is_retried(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        calls = {"n": 0}
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            calls["n"] += 1
+            if calls["n"] < 3:
+                return httpx.Response(503, text="maintenance")
+            return httpx.Response(200, json=_ok_payload())
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            rows = await list_filings(
+                bgn_de=date(2026, 5, 1), end_de=date(2026, 5, 3), client=client
+            )
+        assert len(rows) == 1
+        assert calls["n"] == 3
+        # Every real HTTP request is billed by DART, so every attempt counts.
+        assert daily_usage_snapshot()["calls"] == 3
+
+    @pytest.mark.asyncio
+    async def test_read_timeout_is_retried(self, monkeypatch):
+        """httpx.ReadTimeout stringifies to '' — the old message-pattern
+        retry matcher never retried it."""
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        calls = {"n": 0}
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise httpx.ReadTimeout("")
+            return httpx.Response(200, json=_ok_payload())
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            rows = await list_filings(
+                bgn_de=date(2026, 5, 1), end_de=date(2026, 5, 3), client=client
+            )
+        assert len(rows) == 1 and calls["n"] == 2
+
+    @pytest.mark.asyncio
+    async def test_persistent_503_gives_up_after_three_attempts(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        calls = {"n": 0}
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            calls["n"] += 1
+            return httpx.Response(503, text="down")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(DartError, match="HTTP 503"):
+                await list_filings(
+                    bgn_de=date(2026, 5, 1), end_de=date(2026, 5, 3), client=client
+                )
+        assert calls["n"] == 3
+
+    @pytest.mark.asyncio
+    async def test_404_is_not_retried(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        calls = {"n": 0}
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            calls["n"] += 1
+            return httpx.Response(404, text="nope")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(DartError, match="HTTP 404"):
+                await list_filings(
+                    bgn_de=date(2026, 5, 1), end_de=date(2026, 5, 3), client=client
+                )
+        assert calls["n"] == 1
+
+    @pytest.mark.asyncio
+    async def test_majorstock_shares_the_retry_path(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+        calls = {"n": 0}
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return httpx.Response(502, text="bad gateway")
+            return httpx.Response(200, json={"status": "013", "message": "no data"})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            assert await list_major_holdings("00126380", client=client) == []
+        assert calls["n"] == 2
+
+
+class TestStatusMessages:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "status,needle",
+        [("010", "not registered"), ("011", "unusable"), ("012", "IP"), ("800", "maintenance")],
+    )
+    async def test_known_status_codes_carry_a_hint(self, monkeypatch, status, needle):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json={"status": status, "message": "원문"})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(DartError) as ei:
+                await list_filings(
+                    bgn_de=date(2026, 5, 1), end_de=date(2026, 5, 3), client=client
+                )
+        assert f"DART {status}" in str(ei.value)
+        assert needle in str(ei.value)
+        assert "test_key" not in str(ei.value)
+
+    @pytest.mark.asyncio
+    async def test_020_is_a_distinct_rate_limit_error(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "test_key")
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json={"status": "020", "message": "한도 초과"})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(DartRateLimited, match="KST midnight"):
+                await list_filings(
+                    bgn_de=date(2026, 5, 1), end_de=date(2026, 5, 3), client=client
+                )
+
+    @pytest.mark.asyncio
+    async def test_env_example_placeholder_key_is_rejected_locally(self, monkeypatch):
+        monkeypatch.setenv("DART_API_KEY", "your-40-char-dart-key-here")
+        with pytest.raises(DartError, match="placeholder"):
+            await list_filings(bgn_de=date(2026, 5, 1), end_de=date(2026, 5, 3))
+
+
+class TestFiledAtFallback:
+    def test_bad_rcept_dt_falls_back_to_receipt_number_date(self):
+        f = _parse_filing(
+            {"rcept_no": "20260502000123", "rcept_dt": "", "report_nm": "사업보고서"}
+        )
+        assert f.filed_at == datetime(2026, 5, 2)
+
+    def test_missing_report_nm_does_not_crash(self):
+        f = _parse_filing({"rcept_no": "20260502000123", "rcept_dt": "20260502"})
+        assert f.title == ""
