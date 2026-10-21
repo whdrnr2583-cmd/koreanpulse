@@ -190,6 +190,15 @@ class Translator:
         self._http_client = http_client
 
     @property
+    def configured(self) -> bool:
+        """True when a translation call could succeed: a provider key in
+        local mode, or a license key in hosted mode. Lets tools skip N
+        doomed calls and tell the agent why `title_en` is empty."""
+        if self._mode == "hosted":
+            return bool(self._license_key)
+        return bool(self._api_key)
+
+    @property
     def provider(self) -> str:
         return self._provider
 

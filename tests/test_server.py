@@ -575,7 +575,9 @@ class TestTrackKoreanFilingsBatchScan:
         self._fake_source(monkeypatch, {c: [] for c in codes})
         # Must not raise at the boundary.
         result = await track_korean_filings(company_corp_codes=codes, translate=False)
-        assert result == []
+        # Nothing filed: not a bare [] — the envelope says why it is empty.
+        assert result["filings"] == []
+        assert any("None of" in n for n in result["notes"])
 
     @pytest.mark.asyncio
     async def test_since_filters_and_overrides_days_window(self, monkeypatch):
@@ -766,7 +768,7 @@ class TestSearchKoreanIndustryNewsUnsupportedIndustries:
 
     @pytest.mark.asyncio
     async def test_all_valid_industries_returns_bare_list(self, monkeypatch):
-        async def fake_fetch(*, industries=None, source_keys=None, limit=30, client=None):
+        async def fake_fetch(*, industries=None, source_keys=None, limit=30, client=None, failures=None):
             return [_article()]
 
         monkeypatch.setattr(server_mod, "fetch_industry_news", fake_fetch)
@@ -778,7 +780,7 @@ class TestSearchKoreanIndustryNewsUnsupportedIndustries:
 
     @pytest.mark.asyncio
     async def test_no_industries_arg_returns_bare_list(self, monkeypatch):
-        async def fake_fetch(*, industries=None, source_keys=None, limit=30, client=None):
+        async def fake_fetch(*, industries=None, source_keys=None, limit=30, client=None, failures=None):
             return [_article()]
 
         monkeypatch.setattr(server_mod, "fetch_industry_news", fake_fetch)
@@ -787,7 +789,7 @@ class TestSearchKoreanIndustryNewsUnsupportedIndustries:
 
     @pytest.mark.asyncio
     async def test_one_unsupported_industry_surfaces_dict_not_raise(self, monkeypatch):
-        async def fake_fetch(*, industries=None, source_keys=None, limit=30, client=None):
+        async def fake_fetch(*, industries=None, source_keys=None, limit=30, client=None, failures=None):
             return [_article()]
 
         monkeypatch.setattr(server_mod, "fetch_industry_news", fake_fetch)
@@ -803,7 +805,7 @@ class TestSearchKoreanIndustryNewsUnsupportedIndustries:
     async def test_all_unsupported_industries_returns_empty_articles_not_error(
         self, monkeypatch
     ):
-        async def fake_fetch(*, industries=None, source_keys=None, limit=30, client=None):
+        async def fake_fetch(*, industries=None, source_keys=None, limit=30, client=None, failures=None):
             # Real fetch_industry_news set-intersection semantics: an
             # all-unsupported filter never matches any article's tags.
             return []
@@ -818,7 +820,7 @@ class TestSearchKoreanIndustryNewsUnsupportedIndustries:
 
     @pytest.mark.asyncio
     async def test_supported_industries_list_matches_16_sectors(self, monkeypatch):
-        async def fake_fetch(*, industries=None, source_keys=None, limit=30, client=None):
+        async def fake_fetch(*, industries=None, source_keys=None, limit=30, client=None, failures=None):
             return []
 
         monkeypatch.setattr(server_mod, "fetch_industry_news", fake_fetch)
