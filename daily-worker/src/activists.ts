@@ -9,9 +9,11 @@
  *
  * Keep KOREAN_ACTIVISTS in sync with src/koreanpulse/activists.py.
  *
- * Matching is case-insensitive substring. Korean substrings match the
- * raw filer name; latin substrings match the lowercased name. A mixed
- * string like "KCGI 자산운용" matches both layers.
+ * Matching mirrors match_investor() in activists.py: names are NFKC-folded
+ * and lowercased; Korean aliases match as substrings of the name with all
+ * spaces/punctuation removed; Latin aliases must start on a word boundary
+ * (so "Miranda Asset" is not "Anda Asset") over the punctuation-collapsed
+ * name. A mixed string like "KCGI 자산운용" matches both layers.
  */
 
 export type InvestorClass = "activist" | "foreign";
@@ -59,22 +61,22 @@ export const FOREIGN_HOLDERS: InvestorRecord[] = [
   { canonical: "BlackRock", klass: "foreign", origin: "us", aliasesKo: ["블랙록"], aliasesEn: ["blackrock"] },
   { canonical: "Vanguard", klass: "foreign", origin: "us", aliasesKo: ["뱅가드"], aliasesEn: ["vanguard"] },
   { canonical: "State Street", klass: "foreign", origin: "us", aliasesKo: ["스테이트 스트리트", "스테이트스트리트"], aliasesEn: ["state street"] },
-  { canonical: "Fidelity", klass: "foreign", origin: "us", aliasesKo: ["피델리티"], aliasesEn: ["fidelity"] },
-  { canonical: "Capital Group", klass: "foreign", origin: "us", aliasesKo: ["캐피털그룹", "캐피탈그룹"], aliasesEn: ["capital group", "capital research"] },
+  { canonical: "Fidelity", klass: "foreign", origin: "us", aliasesKo: ["피델리티", "에프엠알"], aliasesEn: ["fidelity", "fmr llc"] },
+  { canonical: "Capital Group", klass: "foreign", origin: "us", aliasesKo: ["캐피털그룹", "캐피탈그룹"], aliasesEn: ["capital group", "capital research", "capital international investors", "capital world investors"] },
   { canonical: "T. Rowe Price", klass: "foreign", origin: "us", aliasesKo: ["티로프라이스", "티 로 프라이스"], aliasesEn: ["t. rowe price", "t rowe price"] },
   { canonical: "Wellington Management", klass: "foreign", origin: "us", aliasesKo: ["웰링턴"], aliasesEn: ["wellington"] },
-  { canonical: "Matthews Asia", klass: "foreign", origin: "us", aliasesKo: ["매튜스아시아"], aliasesEn: ["matthews asia"] },
+  { canonical: "Matthews Asia", klass: "foreign", origin: "us", aliasesKo: ["매튜스아시아"], aliasesEn: ["matthews asia", "matthews international capital"] },
   { canonical: "Templeton", klass: "foreign", origin: "us", aliasesKo: ["템플턴"], aliasesEn: ["templeton", "franklin templeton"] },
   { canonical: "Aberdeen", klass: "foreign", origin: "uk", aliasesKo: ["애버딘", "아버딘"], aliasesEn: ["aberdeen", "abrdn"] },
   { canonical: "Schroders", klass: "foreign", origin: "uk", aliasesKo: ["슈로더"], aliasesEn: ["schroders", "schroder"] },
   { canonical: "Norges Bank (Norway SWF)", klass: "foreign", origin: "eu", aliasesKo: ["노르웨이중앙은행", "노르웨이은행"], aliasesEn: ["norges bank"] },
-  { canonical: "GIC (Singapore SWF)", klass: "foreign", origin: "other", aliasesKo: ["싱가포르투자청"], aliasesEn: ["gic private", "gic pte"] },
+  { canonical: "GIC (Singapore SWF)", klass: "foreign", origin: "other", aliasesKo: ["싱가포르투자청"], aliasesEn: ["gic private", "gic pte", "government of singapore investment"] },
   { canonical: "Temasek", klass: "foreign", origin: "other", aliasesKo: ["테마섹"], aliasesEn: ["temasek"] },
   { canonical: "Goldman Sachs", klass: "foreign", origin: "us", aliasesKo: ["골드만삭스", "골드만 삭스"], aliasesEn: ["goldman sachs"] },
-  { canonical: "JPMorgan", klass: "foreign", origin: "us", aliasesKo: ["JP모간", "JP모건", "제이피모건"], aliasesEn: ["jpmorgan", "jp morgan"] },
+  { canonical: "JPMorgan", klass: "foreign", origin: "us", aliasesKo: ["JP모간", "JP모건", "제이피모건"], aliasesEn: ["jpmorgan", "jp morgan", "j p morgan"] },
   { canonical: "Morgan Stanley", klass: "foreign", origin: "us", aliasesKo: ["모건스탠리", "모건 스탠리"], aliasesEn: ["morgan stanley"] },
   { canonical: "Citadel", klass: "foreign", origin: "us", aliasesKo: ["시타델"], aliasesEn: ["citadel"] },
-  { canonical: "Millennium", klass: "foreign", origin: "us", aliasesKo: ["밀레니엄"], aliasesEn: ["millennium"] },
+  { canonical: "Millennium", klass: "foreign", origin: "us", aliasesKo: ["밀레니엄"], aliasesEn: ["millennium management", "millennium international management"] },
   { canonical: "Bridgewater", klass: "foreign", origin: "us", aliasesKo: ["브리지워터"], aliasesEn: ["bridgewater"] },
 ];
 
@@ -87,7 +89,7 @@ const ALL_INVESTORS: InvestorRecord[] = [...KOREAN_ACTIVISTS, ...FOREIGN_HOLDERS
 const ALIAS_DENYLIST: Record<string, string[]> = {
   // "웰링턴" alone also matches the Daniel Wellington watch brand's Korean
   // subsidiary/importer naming ("다니엘웰링턴...").
-  "Wellington Management": ["다니엘웰링턴"],
+  "Wellington Management": ["다니엘웰링턴", "daniel wellington"],
   // "캐피탈그룹"/"캐피털그룹" also matches "제일캐피탈그룹" and other
   // "제일캐피탈"-prefixed Korean consumer-finance entities, unrelated to
   // The Capital Group Companies.
@@ -104,6 +106,31 @@ export interface InvestorMatch {
   origin: InvestorRecord["origin"];
 }
 
+const HANGUL_RE = /[\uac00-\ud7a3\u1100-\u11ff\u3130-\u318f]/;
+
+function fold(text: string): string {
+  return text.normalize("NFKC").toLowerCase();
+}
+/** Drop everything that is not a letter/digit ("VIP 자산운용" == "(주)VIP자산운용"). */
+function compact(text: string): string {
+  return fold(text).replace(/[^\p{L}\p{N}]+/gu, "");
+}
+/** Collapse punctuation/whitespace runs to one space, keeping word boundaries. */
+function spaced(text: string): string {
+  return fold(text).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+function escapeRe(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function aliasInName(alias: string, compactName: string, spacedName: string): boolean {
+  if (!alias) return false;
+  if (HANGUL_RE.test(alias)) return compactName.includes(compact(alias));
+  const needle = spaced(alias);
+  if (!needle) return false;
+  return new RegExp("(?<![a-z0-9])" + escapeRe(needle)).test(spacedName);
+}
+
 /**
  * Match a filer name against the full allowlist. Returns the matched
  * record's metadata, or null if no match.
@@ -116,18 +143,15 @@ export function matchInvestor(filerName: string | null | undefined): InvestorMat
   if (!filerName) return null;
   const name = filerName.trim();
   if (!name) return null;
-  const nameLower = name.toLowerCase();
+  const compactName = compact(name);
+  const spacedName = spaced(name);
+  if (!compactName) return null;
 
   for (const rec of ALL_INVESTORS) {
     const denylist = ALIAS_DENYLIST[rec.canonical];
-    if (denylist && denylist.some((bad) => name.includes(bad))) continue;
-    for (const alias of rec.aliasesKo) {
-      if (alias && name.includes(alias)) {
-        return { canonical: rec.canonical, klass: rec.klass, origin: rec.origin };
-      }
-    }
-    for (const alias of rec.aliasesEn) {
-      if (alias && nameLower.includes(alias)) {
+    if (denylist && denylist.some((bad) => compactName.includes(compact(bad)))) continue;
+    for (const alias of [...rec.aliasesKo, ...rec.aliasesEn]) {
+      if (aliasInName(alias, compactName, spacedName)) {
         return { canonical: rec.canonical, klass: rec.klass, origin: rec.origin };
       }
     }

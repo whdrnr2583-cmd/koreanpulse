@@ -40,6 +40,8 @@ needed to this list this cycle.
 from __future__ import annotations
 
 import enum
+import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Literal, Optional
 
@@ -218,15 +220,17 @@ FOREIGN_HOLDERS: tuple[InvestorRecord, ...] = (
     InvestorRecord("State Street", InvestorClass.FOREIGN, "us",
                    ("스테이트 스트리트", "스테이트스트리트"), ("state street",)),
     InvestorRecord("Fidelity", InvestorClass.FOREIGN, "us",
-                   ("피델리티",), ("fidelity",)),
+                   ("피델리티", "에프엠알"), ("fidelity", "fmr llc")),
     InvestorRecord("Capital Group", InvestorClass.FOREIGN, "us",
-                   ("캐피털그룹", "캐피탈그룹"), ("capital group", "capital research")),
+                   ("캐피털그룹", "캐피탈그룹"),
+                   ("capital group", "capital research", "capital international investors",
+                    "capital world investors")),
     InvestorRecord("T. Rowe Price", InvestorClass.FOREIGN, "us",
                    ("티로프라이스", "티 로 프라이스"), ("t. rowe price", "t rowe price")),
     InvestorRecord("Wellington Management", InvestorClass.FOREIGN, "us",
                    ("웰링턴",), ("wellington",)),
     InvestorRecord("Matthews Asia", InvestorClass.FOREIGN, "us",
-                   ("매튜스아시아",), ("matthews asia",)),
+                   ("매튜스아시아",), ("matthews asia", "matthews international capital")),
     InvestorRecord("Templeton", InvestorClass.FOREIGN, "us",
                    ("템플턴",), ("templeton", "franklin templeton")),
     InvestorRecord("Aberdeen", InvestorClass.FOREIGN, "uk",
@@ -236,19 +240,20 @@ FOREIGN_HOLDERS: tuple[InvestorRecord, ...] = (
     InvestorRecord("Norges Bank (Norway SWF)", InvestorClass.FOREIGN, "eu",
                    ("노르웨이중앙은행", "노르웨이은행"), ("norges bank",)),
     InvestorRecord("GIC (Singapore SWF)", InvestorClass.FOREIGN, "other",
-                   ("싱가포르투자청",), ("gic private", "gic pte")),
+                   ("싱가포르투자청",),
+                   ("gic private", "gic pte", "government of singapore investment")),
     InvestorRecord("Temasek", InvestorClass.FOREIGN, "other",
                    ("테마섹",), ("temasek",)),
     InvestorRecord("Goldman Sachs", InvestorClass.FOREIGN, "us",
                    ("골드만삭스", "골드만 삭스"), ("goldman sachs",)),
     InvestorRecord("JPMorgan", InvestorClass.FOREIGN, "us",
-                   ("JP모간", "JP모건", "제이피모건"), ("jpmorgan", "jp morgan")),
+                   ("JP모간", "JP모건", "제이피모건"), ("jpmorgan", "jp morgan", "j p morgan")),
     InvestorRecord("Morgan Stanley", InvestorClass.FOREIGN, "us",
                    ("모건스탠리", "모건 스탠리"), ("morgan stanley",)),
     InvestorRecord("Citadel", InvestorClass.FOREIGN, "us",
                    ("시타델",), ("citadel",)),
     InvestorRecord("Millennium", InvestorClass.FOREIGN, "us",
-                   ("밀레니엄",), ("millennium",)),
+                   ("밀레니엄",), ("millennium management", "millennium international management")),
     InvestorRecord("Bridgewater", InvestorClass.FOREIGN, "us",
                    ("브리지워터",), ("bridgewater",)),
 )
@@ -267,7 +272,7 @@ ALL_INVESTORS: tuple[InvestorRecord, ...] = KOREAN_ACTIVISTS + FOREIGN_HOLDERS
 _ALIAS_DENYLIST: dict[str, tuple[str, ...]] = {
     # "웰링턴" alone also matches the Daniel Wellington watch brand's
     # Korean subsidiary/importer naming ("다니엘웰링턴...").
-    "Wellington Management": ("다니엘웰링턴",),
+    "Wellington Management": ("다니엘웰링턴", "daniel wellington"),
     # "캐피탈그룹"/"캐피털그룹" also matches "제일캐피탈그룹" and other
     # "제일캐피탈"-prefixed Korean consumer-finance entities, unrelated to
     # The Capital Group Companies.
@@ -280,13 +285,59 @@ _ALIAS_DENYLIST: dict[str, tuple[str, ...]] = {
 }
 
 
+_HANGUL_RE = re.compile(r"[\uac00-\ud7a3\u1100-\u11ff\u3130-\u318f]")
+_NON_WORD_RE = re.compile(r"[\W_]+")
+
+
+def _fold(text: str) -> str:
+    """NFKC + lowercase (folds full-width Latin, compatibility Hangul, case)."""
+    return unicodedata.normalize("NFKC", text).lower()
+
+
+def _compact(text: str) -> str:
+    """Fold, then drop every non-letter/digit (spaces, dots, parentheses,
+    middle dots). "VIP 자산운용" and "(주)VIP자산운용" both become
+    "vip자산운용", so spacing / punctuation variants of a Korean name match."""
+    return _NON_WORD_RE.sub("", _fold(text))
+
+
+def _spaced(text: str) -> str:
+    """Fold, then collapse every run of punctuation/whitespace to one space,
+    keeping word boundaries ("T.Rowe Price, Inc." -> "t rowe price inc")."""
+    return _NON_WORD_RE.sub(" ", _fold(text)).strip()
+
+
+def _alias_in_name(alias: str, compact_name: str, spaced_name: str) -> bool:
+    if not alias:
+        return False
+    if _HANGUL_RE.search(alias):
+        # Korean has no word boundaries and attaches particles/suffixes
+        # directly ("안다자산운용(주)"), so plain containment on the
+        # space/punctuation-insensitive form is the right test.
+        return _compact(alias) in compact_name
+    # Latin alias: must start on a word boundary. A bare substring test
+    # tagged "Miranda Asset Management" as Anda Asset and "Midlife Asset"
+    # as Life Asset. The right edge stays open on purpose
+    # ("Schroder" -> "Schroders", "BlackRock" -> "BlackRock Fund Advisors").
+    needle = _spaced(alias)
+    if not needle:
+        return False
+    return re.search(r"(?<![a-z0-9])" + re.escape(needle), spaced_name) is not None
+
+
 def match_investor(filer_name: Optional[str]) -> Optional[InvestorMatch]:
     """Match a filer name against the full allowlist.
 
     Returns the matched record's metadata (canonical / klass / origin),
-    or None if no match. Matching is case-insensitive substring; Korean
-    aliases match against the raw name, latin aliases against the
-    lowercased name. A mixed string like "KCGI 자산운용" matches both layers.
+    or None if no match.
+
+    Matching is tolerant of presentation variants: case, full-width
+    characters, whitespace and punctuation (``J.P. Morgan``, ``T.Rowe``,
+    ``플랫폼  파트너스``, ``(주)트러스톤자산운용``). Korean aliases match as
+    substrings of the compacted name; Latin aliases must begin at a word
+    boundary so a short alias cannot fire inside an unrelated word
+    ("Miranda" is not "Anda"). A mixed string like "KCGI 자산운용" matches
+    on either layer.
 
     A record listed in `_ALIAS_DENYLIST` is skipped entirely (not just the
     offending alias) when the filer name contains one of its denylisted
@@ -298,17 +349,17 @@ def match_investor(filer_name: Optional[str]) -> Optional[InvestorMatch]:
     name = filer_name.strip()
     if not name:
         return None
-    name_lower = name.lower()
+    compact_name = _compact(name)
+    spaced_name = _spaced(name)
+    if not compact_name:
+        return None
 
     for rec in ALL_INVESTORS:
         denylist = _ALIAS_DENYLIST.get(rec.canonical, ())
-        if denylist and any(bad in name for bad in denylist):
+        if denylist and any(_compact(bad) in compact_name for bad in denylist):
             continue
-        for alias in rec.aliases_ko:
-            if alias and alias in name:
-                return InvestorMatch(rec.canonical, rec.klass, rec.origin)
-        for alias in rec.aliases_en:
-            if alias and alias in name_lower:
+        for alias in (*rec.aliases_ko, *rec.aliases_en):
+            if _alias_in_name(alias, compact_name, spaced_name):
                 return InvestorMatch(rec.canonical, rec.klass, rec.origin)
     return None
 
